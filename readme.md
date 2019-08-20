@@ -10,7 +10,7 @@ Elle permet également la mise en cache des couches du Géoportail sur un mobile
 
 ## Objet CordovApp
 
-Afin de simplifier l'utilisation de Cordova, un base applicative a été développée : CordovApp (dans le fichier js/wapp/cordovapp.js de l'application). 
+Afin de simplifier l'utilisation de Cordova, un base applicative a été développée : CordovApp (dans le fichier CordovApp.js). 
 Le but est de simplifier et unifier l'initialisation de l'application.
 
 L'objet CordovApp définit une application standard et prend en charge :
