@@ -33,6 +33,7 @@ import {transform as ol_proj_transform} from 'ol/proj'
 import ol_interaction_Modify from 'ol/interaction/Modify'
 import {click as ol_events_condition_click} from 'ol/events/condition'
 import ol_interaction_Select from 'ol/interaction/Select'
+import {fromLonLat as ol_proj_fromLonLat} from 'ol/proj'
 
 import 'ol-ext/style/FontAwesomeDef'
 
@@ -251,7 +252,7 @@ RIPart.prototype.initialize = function(options) {
       $('body').addClass("trackingGeorem fullscreenMap");
       var lon = Number($("input.lon", formulaire).val());
       var lat = Number($("input.lat", formulaire).val());
-      self.map.getView().setCenterAtLonlat([ lon, lat ]);
+      self.map.getView().setCenter(ol_proj_fromLonLat([ lon, lat ]));
       self.modifyInteraction.setActive(true);
     } else {
       $('body').removeClass("trackingGeorem fullscreenMap");
@@ -855,7 +856,7 @@ RIPart.prototype.georemShow = function(grem) {
     $(".send", page).show();
   }
   // Centrer la carte
-  this.map.getView().setCenterAtLonlat ([ grem.lon, grem.lat ]);
+  this.map.getView().setCenter (ol_proj_fromLonLat([ grem.lon, grem.lat ]));
   // Select georem
   if (this.onSelect) {
     this.onSelect (grem);
