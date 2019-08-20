@@ -1,3 +1,4 @@
+/* TESTCORDOVAPP */
 import './cordovapp/cordovapp.css'
 import './cordovapp/help.css'
 

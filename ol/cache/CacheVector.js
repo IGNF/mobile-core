@@ -72,7 +72,7 @@ CacheVector.prototype.getLayers = function(guichet) {
     });
   }
 
-  for (var i=0, c; c = this.wapp.wapp.param.vectorCache[i]; i++) {
+  for (var i=0, c; c = this.wapp.param.vectorCache[i]; i++) {
     if (c.id_guichet === guichet.id_groupe) {
       var g = new ol_layer_Group({ 
         title: c.nom, 
