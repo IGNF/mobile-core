@@ -92,7 +92,7 @@ ol_layer_Vector_Webpart.prototype.createSource = function(options, source_option
     for (var i=0, s; s=featureType.style.children[i]; i++) {
       if (typeof(s.condition)==='string') {
         try { s.condition = JSON.parse(s.condition); }
-        catch(e){};
+        catch(e){ /* ok */ }
       }
     }
   }

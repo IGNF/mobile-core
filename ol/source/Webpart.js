@@ -1,4 +1,5 @@
-﻿import proj4 from 'proj4'
+﻿import CordovApp from '../../CordovApp'
+import proj4 from 'proj4'
 import {register as ol_proj_proj4_register} from 'ol/proj/proj4.js';
 
 import ol_Collection from 'ol/Collection'
@@ -199,14 +200,14 @@ ol_source_Vector_Webpart.prototype.reload = function() {
 */
 ol_source_Vector_Webpart.prototype.getSaveActions = function() {
   var self = this;
-  var idName = this.featureType_.idName;
+  // var idName = this.featureType_.idName;
   var geometryAttribute = this.featureType_.geometryName;
   var typeName = this.featureType_.name;
   var actions = [];
   var wkt = new ol_format_WKT();
 
   function getActions (t, state){
-    nb=0;
+    var nb = 0;
     for (var i=0; i<t.length; i++) {
       var f = t[i];
       if (f.getState() == state) {
@@ -321,6 +322,7 @@ ol_source_Vector_Webpart.prototype.onDeleteFeature_ = function(e) {
       break;
     case ol_Feature.State.UPDATE:
       removeFeature (this.update_, e.feature);
+      // falls through
     default:
       this.delete_.push(e.feature);
       break;
@@ -491,7 +493,7 @@ ol_source_Vector_Webpart.prototype.loaderFn_ = function (extent, resolution, pro
     self.isloading_ = false;
     self.dispatchEvent({ type:"loadend", remains: --self.tileloading_ });
     if (data.length == self.maxFeatures_) self.dispatchEvent({ type:"overload" });
-  };
+  }
 
   function onError(jqXHR, status, error) {
     if (status !== 'abort') {
@@ -500,7 +502,7 @@ ol_source_Vector_Webpart.prototype.loaderFn_ = function (extent, resolution, pro
     } else {
       self.dispatchEvent({ type:"loadend", remains:--self.tileloading_ });
     }
-  };
+  }
   
   this.dispatchEvent({type:"loadstart", remains:++this.tileloading_ } );
 
@@ -571,11 +573,10 @@ ol_source_Vector_Webpart.prototype.getDocument = function (id, cback) {
 
 
 /** Gestion des documents
- * @param {file|jQueryInputFile}
+ * @param {File}
  * @param {function} callback
  */
 ol_source_Vector_Webpart.prototype.addDocument = function (file, cback) {
-  if (file instanceof jQuery) file = $(elt).prop('files')[0];	
   var data = new FormData();
   data.append('fileToUpload', file);
   $.ajax({

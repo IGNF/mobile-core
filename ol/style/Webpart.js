@@ -1,4 +1,5 @@
-﻿import {asArray as ol_color_asArray} from 'ol/color'
+﻿import CordovApp from '../../CordovApp'
+import {asArray as ol_color_asArray} from 'ol/color'
 import ol_style_Circle from 'ol/style/Circle'
 import ol_style_Fill from 'ol/style/Fill'
 import ol_style_Icon from 'ol/style/Icon'
@@ -18,7 +19,7 @@ const ol_style_Webpart = {};
 */
 ol_style_Webpart.formatProperties = function (format, feature) {
   if (!format || !format.replace || !feature) return format;
-  var i = format.replace(/.*\$\{([^\}]*)\}.*/, "$1");
+  var i = format.replace(/.*\$\{([^}]*)\}.*/, "$1");
   if (i === format) {
     return format;
   } else {
@@ -104,7 +105,7 @@ ol_style_Webpart.Image = function (fstyle) {
       case "square":
       case "triangle":
       case "x":
-        var graphic = {
+        graphic = {
           cross: [ 4, radius, 0, 0 ],
           square: [ 4, radius, undefined, Math.PI/4 ],
           triangle: [ 3, radius, undefined, 0 ],
@@ -193,65 +194,66 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache) {
   if (!featureType) featureType = {};
   if (featureType.name && ol_style_Webpart[featureType.name]) {
     return ol_style_Webpart[featureType.name](featureType);
-  }
-  else return function(feature, res)
-  {	var style = featureType.style;
-    // Conditionnal style
-    if (featureType.style && featureType.style.children) {
-      for (var i=0, fi; fi=featureType.style.children[i]; i++) {
-        var test = true;
-        for (var k=0, cond; cond = fi.condition[k]; k++) {
-          var val = feature.get(cond.field);
-          switch (cond.operator) {
-            case '>':
-              test = test && (val > cond.value);
-              break;
-            case '>=':
-              test = test && (val >= cond.value);
-              break;
-            case '<':
-              test = test && (val < cond.value);
-              break;
-            case '<=':
-              test = test && (val <= cond.value);
-              break;
-            case '==':
-              test = test && (val == cond.value);
-              break;
-            case '!=':
-              test = test && (val != cond.value);
-              break;
-            default: 
-              test = false; 
-              break;
+  } else {
+    return function(feature) {
+      var style = featureType.style;
+      // Conditionnal style
+      if (featureType.style && featureType.style.children) {
+        for (var i=0, fi; fi=featureType.style.children[i]; i++) {
+          var test = true;
+          for (var k=0, cond; cond = fi.condition[k]; k++) {
+            var val = feature.get(cond.field);
+            switch (cond.operator) {
+              case '>':
+                test = test && (val > cond.value);
+                break;
+              case '>=':
+                test = test && (val >= cond.value);
+                break;
+              case '<':
+                test = test && (val < cond.value);
+                break;
+              case '<=':
+                test = test && (val <= cond.value);
+                break;
+              case '==':
+                test = test && (val == cond.value);
+                break;
+              case '!=':
+                test = test && (val != cond.value);
+                break;
+              default: 
+                test = false; 
+                break;
+            }
+          }
+          if (test) {
+            style = fi;
+            break;
           }
         }
-        if (test) {
-          style = fi;
-          break;
-        }
       }
-    }
 
-    var fstyle = ol_style_Webpart.formatFeatureStyle (style, feature);
-    // Gestion d'une bibliotheque de symboles
-    if (style && style.name && featureType.symbo_attribute) {
-      fstyle.radius = 5;
-      fstyle.graphicName = "x";
-      fstyle.img = ol_style_Webpart.getSymbolURI(
-        featureType,
-        feature.get(featureType.symbo_attribute.name),
-        cache
-      )
+      var fstyle = ol_style_Webpart.formatFeatureStyle (style, feature);
+      // Gestion d'une bibliotheque de symboles
+      if (style && style.name && featureType.symbo_attribute) {
+        fstyle.radius = 5;
+        fstyle.graphicName = "x";
+        fstyle.img = ol_style_Webpart.getSymbolURI(
+          featureType,
+          feature.get(featureType.symbo_attribute.name),
+          cache
+        )
+      }
+      return [	
+        new ol_style_Style ({
+          text: ol_style_Webpart.Text (fstyle),
+          image: ol_style_Webpart.Image (fstyle),
+          fill: ol_style_Webpart.Fill (fstyle),
+          stroke: ol_style_Webpart.Stroke(fstyle)
+        })
+      ];
     }
-    return [	
-      new ol_style_Style ({
-        text: ol_style_Webpart.Text (fstyle),
-        image: ol_style_Webpart.Image (fstyle),
-        fill: ol_style_Webpart.Fill (fstyle),
-        stroke: ol_style_Webpart.Stroke(fstyle)
-      })
-    ];
   }
 };
 
@@ -272,7 +274,7 @@ ol_style_Webpart.getSymbolURI = function (featureType, name, cache) {
       +"?width="+style.graphicWidth
       +"&height="+style.graphicHeight;
     // Save symbol if exist
-    if (wapp.isCordova && !this.symbolCache[cacheName]) {
+    if (window.cordova && !this.symbolCache[cacheName]) {
       CordovApp.File.dowloadFile(
         img,
         'FILE/cache/symbols/'+cacheName,
@@ -295,12 +297,12 @@ ol_style_Webpart.Default = ol_style_Webpart.getFeatureStyleFn()()[0];
 
 /** Objets mort-vivant
 */
-ol_style_Webpart.zombie = function(options) {
+ol_style_Webpart.zombie = function() {
   function getColor(feature, opacity) {
     return ( feature.get('detruit') ? [255,0,0,opacity] : [0,0,255,opacity] );
-  };
+  }
 
-  return function (feature, res) {
+  return function (feature) {
     var fstyle = {						
       strokeColor: getColor(feature, 1),
       strokeWidth: 2,
@@ -319,11 +321,10 @@ ol_style_Webpart.zombie = function(options) {
 
 /** Objets detruits
 */
-ol_style_Webpart.detruit = function(options) {
-  return function (feature, res) {
+ol_style_Webpart.detruit = function() {
+  return function (feature) {
     if (!feature.get('detruit')) return [];
     var fstyle = {						
-      strokeColor: [255,0,0,1],
       strokeWidth: 2,
       strokeColor: [255,0,0,0.5]
     }	
@@ -340,11 +341,10 @@ ol_style_Webpart.detruit = function(options) {
 
 /** Objets vivants
 */
-ol_style_Webpart.vivant = function(options) {
-  return function (feature, res) {
+ol_style_Webpart.vivant = function() {
+  return function (feature) {
     if (feature.get('detruit')) return [];
     var fstyle = {						
-      strokeColor: [0,0,255,1],
       strokeWidth: 2,
       strokeColor: [0,0,255,0.5]
     }	
@@ -405,8 +405,8 @@ ol_style_Webpart.troncon_de_route = function(options) {
         default: return "#D3D3D3";
       }
     }
-    return "#808080";
-  };
+    // return "#808080";
+  }
 
   function getWidth(feature) {
     return Math.max ( Number(feature.get('largeur_de_chaussee'))||2 , 2 );
@@ -414,7 +414,7 @@ ol_style_Webpart.troncon_de_route = function(options) {
     if (feature.get('largeur_de_chaussee')) return Math.max (Number(feature.get('largeur_de_chaussee')),2);
     return 2;
     */
-  };
+  }
 
   function getZindex(feature) {
     if (!feature.get('position_par_rapport_au_sol')) return 100;
@@ -422,10 +422,10 @@ ol_style_Webpart.troncon_de_route = function(options) {
     if (pos>0) return 10 + pos*10 - (Number(feature.get('importance')) || 10);
     else if (pos<0) return Math.max(4 + pos, 0);
     else return 10 - (Number(feature.get('importance')) || 10);
-    return 0;
-  };
+    // return 0;
+  }
 
-  return function (feature, res) {
+  return function (feature) {
     var fstyle = {						
       strokeColor: getColor(feature),
       strokeWidth: getWidth(feature)
@@ -454,7 +454,7 @@ ol_style_Webpart.sens = function(options) {
   function fleche(sens) {
     if (sens == options.direct || sens == options.inverse) return options.glyph;
     return '';
-  };
+  }
   function lrot(sens, geom) {
     if (sens != options.direct && sens != options.inverse) return 0;
     var geo = geom.getCoordinates();
@@ -467,9 +467,9 @@ ol_style_Webpart.sens = function(options) {
     }
     if (sens == options.direct) return -Math.atan2(y,x);
     else return Math.PI-Math.atan2(y,x);
-  };
+  }
 
-  return function (feature, res) {
+  return function (feature) {
     var sens = feature.get(options.attribute)
     var fstyle = {
       label: fleche (sens), 
@@ -529,9 +529,9 @@ ol_style_Webpart.batiment = function(options) {
           default: return [153,51,51,opacity];
         }
     }
-  };
+  }
 
-  function getSymbol(feature, opacity) {
+  function getSymbol(feature) {
     switch ( feature.get('fonction') ) {
       case "Commerciale": return "\uf217";
       case "Sportive": return "\uf1e3";
@@ -540,9 +540,9 @@ ol_style_Webpart.batiment = function(options) {
       case "Industrielle": return "\uf275";
       default: return null;
     }
-  };
+  }
   
-  return function (feature, res) {
+  return function (feature) {
     if (feature.get('detruit')) return [];
     var fstyle = {
       strokeColor: getColor(feature, 1),

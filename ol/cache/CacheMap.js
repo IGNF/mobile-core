@@ -1,3 +1,4 @@
+/*eslint no-constant-condition: ["error", { "checkLoops": false }]*/
 import _T from '../../i18n'
 
 import CordovApp from '../../Cordovapp'
@@ -27,7 +28,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   const map = wapp.map;
 
   // Sort cache on layer order when order change
-  layerGroup.getLayers().on('remove', function(e) {
+  layerGroup.getLayers().on('remove', function() {
     var layers = layerGroup.getLayers().getArray();
     setTimeout(function(){
       wapp.param.cacheMap.sort(function (a,b) {
@@ -101,7 +102,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   })();
 
   // Chargement des cartes lorsque le cacheRoot est OK
-  if (!wapp.param.options.cacheRoot || cordova.platformId==='ios'){
+  if (!wapp.param.options.cacheRoot || (window.cordova && window.cordova.platformId==='ios')) {
     CordovApp.File.getDirectory(options.directory||'FILE', function(d){
       wapp.param.options.cacheRoot = d.nativeURL;
       initCacheMap()
@@ -160,7 +161,7 @@ const CacheMap = function(wapp, layerGroup, options) {
     {	cache.estimateSize (setSize, vmin, vmax, extent);
     }, 100);
 */
-  };
+  }
   $(this.loadPage).on('showpage', function(){
     map.on('moveend', showInfo);
     showInfo();
@@ -170,7 +171,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   })
 
   // Update on show
-  $(this.page).on("showpage", function(e) {
+  $(this.page).on("showpage", function() {
     showWroot();
   });
 
@@ -191,7 +192,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   function showWroot() {
     if (wapp.param.options.cacheRoot) $(".cacheroot", self.page).text(CordovApp.File.getFileName(wapp.param.options.cacheRoot.replace(/\/$/,"")));
     else $(".cacheroot", self.page).text("-");
-  };
+  }
 
   // Carte en cache
   var CacheMap = function (title) {
@@ -224,7 +225,7 @@ const CacheMap = function(wapp, layerGroup, options) {
     var nb = 0;
     var pos = 0;
     // Fin de list
-    cache.on("saveend", function(e) {
+    cache.on("saveend", function() {
       // Suivant
       pos++;
       if (pos<smap.extents.length) {
@@ -249,7 +250,7 @@ const CacheMap = function(wapp, layerGroup, options) {
     });
     // Lancer la recherche
     cache.save(smap.minZoom, smap.maxZoom, smap.extents[pos]);
-  };
+  }
 
   /* Supprimer les fichiers de la carte du cache
   *	@param {CacheMap} smap carte a supprimer
@@ -313,13 +314,14 @@ const CacheMap = function(wapp, layerGroup, options) {
         restoreFiles();
       });
     }, 200);
-  };
+  }
 
   /* Supprimer la carte du cache
   *	@param {CacheMap} smap carte a supprimer
   *	@param {boolean} noprompt pour sauter l'etape de confirmation
   */
   function removeCacheMap(smap, noprompt) {
+    var i;
     wapp.help.hide();
     // Ask for deletion
     if (!noprompt) {
@@ -333,12 +335,12 @@ const CacheMap = function(wapp, layerGroup, options) {
       return;
     }
     // Remove from params
-    for (var i=0; i<wapp.param.cacheMap.length; i++) {
+    for (i=0; i<wapp.param.cacheMap.length; i++) {
       if (wapp.param.cacheMap[i] === smap) wapp.param.cacheMap.splice(i,1);
     }
     // Remove associated list
     var l = $('li', self.listMap);
-    for (var i=0; i<l.length; i++) {
+    for (i=0; i<l.length; i++) {
       if ($(l[i]).data("map")===smap) {
         l[i].remove();
         break;
@@ -353,7 +355,7 @@ const CacheMap = function(wapp, layerGroup, options) {
 
     // Remove associated files
     removeCacheFiles (smap);
-  };
+  }
 
   /* Mettre a jour les info de la carte
   *	@param {CacheMap} smap carte a afficher
@@ -372,7 +374,7 @@ const CacheMap = function(wapp, layerGroup, options) {
       $(".info .dalle", li).text(smap.length);
       $(".info .date", li).text(smap.date);
     }
-  };
+  }
 
   /* Page de chargement
   *	@param {CacheMap} smap carte a charger
@@ -385,7 +387,7 @@ const CacheMap = function(wapp, layerGroup, options) {
     else {
       wapp.alert ($(".nomap",self.listMap.parent()).html(), "Mode hors-ligne");
     }
-  };
+  }
 
   /* Mise a jour d'une carte
   *	@param {CacheMap} smap carte a charger
@@ -411,7 +413,7 @@ const CacheMap = function(wapp, layerGroup, options) {
     } else {
       wapp.alert ($(".nomap",self.listMap.parent()).html(), "Mode hors-ligne");
     }
-  };
+  }
 
 
   /** Chargement d'une liste de fichiers
@@ -448,7 +450,7 @@ const CacheMap = function(wapp, layerGroup, options) {
           // Suivant
           downloadTiles(t, layer, cback, nb, nberr);
         }, 
-        function(e) {
+        function() {
           // console.log(e);
           // Fichier non charge
           nb--;
@@ -468,7 +470,7 @@ const CacheMap = function(wapp, layerGroup, options) {
       }
       cback();
     }
-  };
+  }
 
   /* Chargement 
   */
@@ -480,11 +482,11 @@ const CacheMap = function(wapp, layerGroup, options) {
     // Create dir if doesn't exist
     CordovApp.File.getDirectory (getPath(), null, null, true);
     // Start 
-    cache.on("savestart", function(e) {
+    cache.on("savestart", function() {
       wapp.wait("Chargement...");
     });
     // End => load tiles
-    cache.on("saveend", function(e) {
+    cache.on("saveend", function() {
       currentMap.minZoom = min;
       currentMap.maxZoom = max;
       currentMap.layer = layercache.get("layer");
@@ -585,13 +587,13 @@ const CacheMap = function(wapp, layerGroup, options) {
     }
     content.addClass("loading");
     setTimeout (estimate,500);
-  };
+  }
 
   /* Annule le chargement de carte (ferme la page)
   */
   function cancelLoadMap () {
     wapp.showPage(self.page.attr("id"));
-  };
+  }
 
   /* Procedure de chargement d'une carte
    *	@param {CacheMap} smap carte a charger
@@ -660,8 +662,8 @@ const CacheMap = function(wapp, layerGroup, options) {
   function saveCacheFile() {
     if (window.cordova) {
       var content = CordovApp.template("dialog-savecache");
-      var path = "SD/"+ (cordova.platformId === 'ios' ? "" : "guichet/");
-      function addEntry(entry) {
+      var path = "SD/"+ (window.cordova.platformId === 'ios' ? "" : "guichet/");
+      var addEntry = function (entry) {
         $("<li>").text(entry.name)
         .click(function() {
           loadCacheFile(path+entry.name);
@@ -697,8 +699,8 @@ const CacheMap = function(wapp, layerGroup, options) {
   }
 
   /* Ajoute une carte a l'application : layer / 
-  *	@param {CacheMap|undefined} smap carte a charger sinon en cree un nouvelle
-  */
+   * @param {CacheMap|undefined} smap carte a charger sinon en cree un nouvelle
+   */
   function addCacheMap(smap) {
     // Creer une carte ?
     if (!smap) {
@@ -786,7 +788,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   
     updateCacheMapInfo (smap);
 
-  };
+  }
 
   /** Choix du repertoire de travail 
   *	Le repertoire est stocke dans la variable 'wapp.param.options.cacheRoot'
@@ -809,7 +811,7 @@ const CacheMap = function(wapp, layerGroup, options) {
                   "Répertoire de travail",
                   { ok:"Oui",cancel:"Annuler" },
                   function(button) {
-                    if (button='ok') wapp.param.options.cacheRoot = dir.nativeURL;
+                    if (button === 'ok') wapp.param.options.cacheRoot = dir.nativeURL;
                     showWroot();
                   });
               },

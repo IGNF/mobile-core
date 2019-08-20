@@ -62,9 +62,9 @@ ol_cache_Tile.prototype.write = function(id, url) {
  * @param {ol.extent} e extent to load
  * @param {integer} r resolution
  */
-ol_cache_Tile.prototype.saveResolution = function(e, r) {
-  var tl = this.source.getTileGrid().getTileCoordForCoordAndResolution([e[0],e[1]], r);
-  var br = this.source.getTileGrid().getTileCoordForCoordAndResolution([e[2],e[3]], r);
+ol_cache_Tile.prototype.saveResolution = function(e, res) {
+  var tl = this.source.getTileGrid().getTileCoordForCoordAndResolution([e[0],e[1]], res);
+  var br = this.source.getTileGrid().getTileCoordForCoordAndResolution([e[2],e[3]], res);
   var z = tl[0];
   var r1 = Math.min(tl[1],br[1]);
   var r2 = Math.max(tl[1],br[1]);
@@ -198,9 +198,9 @@ ol_cache_Tile.prototype.getLength = function() {
  * @param {ol.extent} extent
  */
 ol_cache_Tile.prototype.estimateSize = function (callback, minZoom, maxZoom, extent) {
-  var tload, minZoom, maxZoom, extent, tgminZoom, tgmaxZoom;
+  var tload, tgminZoom, tgmaxZoom;
   var nb0 = this.length;
-  if (typeof(minZoom)=="number") {
+  if (typeof(minZoom)==='number') {
     this.estimate = true;
     tload = this.source.getTileLoadFunction();
     tgminZoom = this.source.getTileGrid().minZoom;
@@ -235,7 +235,7 @@ ol_cache_Tile.prototype.estimateSize = function (callback, minZoom, maxZoom, ext
           callback( { length: nb, size: 0 } );
         }
       });
-    } catch(e) { callback( { length: nb, size: 0 } ); };
+    } catch(e) { callback( { length: nb, size: 0 } ); }
   }
   // Restore values
   if (this.estimate) {
