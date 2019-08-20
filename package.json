@@ -1,0 +1,23 @@
+{
+  "name": "cordovapp",
+  "version": "0.0.1",
+  "description": "Lib for Cordova+ol+RIPart",
+  "main": "index.html",
+  "directories": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint --fix src/ || exit 0"
+  },
+  "repository": {},
+  "keywords": [],
+  "author": "sai-mobile@ign.fr",
+  "license": "IGN",
+  "bugs": {
+    "url": "http://sd-redmine.ign.fr/projects/guichet_mobile"
+  },
+  "homepage": "http://gitlab.dockerforge.ign.fr/express/cordovapp",
+  "dependencies": {
+  },
+  "devDependencies": {
+  }
+}
