@@ -232,6 +232,13 @@ CordovApp.prototype.getPage = function() {
   return $("[data-role='page'].visible").attr('id');
 }
 
+/** Get the page element
+* @return {string} id_page id of the page
+*/
+CordovApp.prototype.getPageElement = function(id_page) {
+  return $("#"+id_page).get(0);
+}
+
 /** Show an onglet
 * @param {String|jQuery} the list item to show
 */

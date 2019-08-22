@@ -515,8 +515,8 @@ var RIPart = function(options) {
       post.sketch = this.feature2sketch(params.features, params.proj);
     }
     if (params.id_groupe>0) post.group = params.id_groupe;
-    if (params.themes)
-    {	post.attributes = params.themes;
+    if (params.themes) {
+      post.attributes = params.themes;
       if (params.attributes) post.attributes += params.attributes;
     }
     if (params.insee) post.insee = params.insee;
@@ -524,8 +524,8 @@ var RIPart = function(options) {
     if (params.version) post.version = params.version;
     if (params.photo) post.photo = params.photo;
     // Decode response
-    function decode(resp)
-    {	return getGeorem (resp.find("GEOREM"), { croquis: true });
+    function decode(resp) {
+      return getGeorem (resp.find("GEOREM"), { croquis: true });
     }
     // Send request
     return sendRequest ("georem_post", post, decode, cback);
@@ -655,8 +655,8 @@ var RIPart = function(options) {
 
   /** Save connection parameters to localstorage
   */
-  this.saveParam = function()
-  {	var pwd = this.param.pwd;
+  this.saveParam = function() {
+    var pwd = this.param.pwd;
     // Ne pas sauvegarder les mots de passe 
     // if (!window.cordova) delete this.param.pwd;
     // Ou les encrypter
@@ -668,6 +668,30 @@ var RIPart = function(options) {
     this.param.pwd = pwd;
     this.onUpdate();
   };
+
+  /** Load file from server 
+   * @param {string} url file url
+   * @package {function} callback
+   * @param {string} mimeType 
+   * @api
+   */
+  this.loadDocument = function(url, callback, mimeType) {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url);
+    var hash = btoa(user+":"+pwd);
+    xhr.setRequestHeader("Authorization", "Basic " + hash);
+    xhr.responseType = "arraybuffer";
+    xhr.onload = function () {
+      const arrayBufferView = new Uint8Array(this.response);
+      const blob = new Blob([arrayBufferView], { type: mimeType || 'image/jpeg' });
+      const urlCreator = window.URL || window.webkitURL;
+      callback(urlCreator.createObjectURL(blob));
+    };
+    xhr.onerror = function () {
+    };
+    xhr.send();
+  };
+
 
   if (localStorage['WebApp@ripart']) {
     this.param = JSON.parse(localStorage['WebApp@ripart']);
@@ -707,21 +731,21 @@ RIPart.prototype.getGroupById = function(id) {
 };
 
 /**
-  * Recupere le guichet courant
-  * @return {groupe | null}
-  */
+ * Recupere le guichet courant
+ * @return {groupe | null}
+ */
 RIPart.prototype.getGuichet = function() {
   return this.getGroupById(wapp.ripart.param.guichet);
 };
 
 /** Initialize function 
-* @api
-*/
+ * @api
+ */
 RIPart.prototype.initialize = function(/* options */) {};
 
 /** Samething has changed
-* @api
-*/
+ * @api
+ */
 RIPart.prototype.onUpdate = function() {};
 
 export default RIPart;
