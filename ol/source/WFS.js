@@ -1,4 +1,6 @@
-﻿import ol_source_Vector from 'ol/source/Vector'
+﻿/** @module ol/source/Vector
+ */
+import ol_source_Vector from 'ol/source/Vector'
 import ol_Collection from 'ol/Collection'
 import ol_format_WFS from 'ol/format/WFS'
 import ol_format_GeoJSON from 'ol/format/GeoJSON'

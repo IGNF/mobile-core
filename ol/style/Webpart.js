@@ -1,4 +1,6 @@
-﻿import CordovApp from '../../CordovApp'
+﻿/** @module ol/style/Webpart 
+ */
+import CordovApp from '../../CordovApp'
 import {asArray as ol_color_asArray} from 'ol/color'
 import ol_style_Circle from 'ol/style/Circle'
 import ol_style_Fill from 'ol/style/Fill'

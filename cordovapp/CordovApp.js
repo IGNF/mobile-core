@@ -1,3 +1,5 @@
+/** @module cordovapp/CordovApp
+ */
 /* global cordova */
 /**
   @brief: Cordova web application 

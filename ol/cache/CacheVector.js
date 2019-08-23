@@ -1,3 +1,5 @@
+/** @module ol/cache/CacheVector
+ */
 import CordovApp from '../../Cordovapp'
 import {createEmpty as ol_extent_createEmpty} from 'ol/extent'
 import {extend as ol_extent_extend} from 'ol/extent'
@@ -7,6 +9,7 @@ import ol_source_Vector from 'ol/source/Vector'
 
 /**
  * Classe pour la gestion du cache vecteur
+ * @constructor
  * @param {Cordovapp} wapp
  * @param {*} options 
  *	@param {string} options.page page du cuichet avec les boutons de chargement, "#guichet"

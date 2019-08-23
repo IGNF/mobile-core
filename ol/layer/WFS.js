@@ -1,4 +1,6 @@
-﻿import * as CryptoJS from 'crypto-js';
+﻿/** @module ol/layer/WFS
+ */
+import * as CryptoJS from 'crypto-js';
 import ol_layer_Vector from 'ol/layer/Vector'
 import ol_View from 'ol/View'
 import { ol_ext_inherits } from 'ol-ext/util/ext'

@@ -1,3 +1,5 @@
+/** @module ol/cache/CacheMap
+ */
 /*eslint no-constant-condition: ["error", { "checkLoops": false }]*/
 import _T from '../../i18n'
 
@@ -9,9 +11,12 @@ import ol_source_Vector from 'ol/source/Vector'
 import {createEmpty as ol_extent_createEmpty} from 'ol/extent'
 import {extend as ol_extent_extend} from 'ol/extent'
 
-/** Sauvegarde des tuilles en cache
+/**
+ * @classdesc
+ * Sauvegarde des tuilles en cache
  * Les cartes sont sauvegardees dans wapp.param.cacheMap.
  * Les cartes sont automatiquement ajoutees au LayerGroup name="cache"
+ * @constructor
  * @param {Cordovapp} wapp
  * @param {ol.layer.Group} layerGroup LayerGroup contenant les cartes en cache
  * @param {*} options

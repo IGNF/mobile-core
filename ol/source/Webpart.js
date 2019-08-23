@@ -1,4 +1,6 @@
-﻿import CordovApp from '../../CordovApp'
+﻿/** @module ol/source/Webpart
+ */
+import CordovApp from '../../CordovApp'
 import proj4 from 'proj4'
 import {register as ol_proj_proj4_register} from 'ol/proj/proj4.js';
 

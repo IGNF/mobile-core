@@ -2,6 +2,8 @@
   Copyright IGN (c) 2016 Jean-Marc VIGLINO, 
   Gestion de cache pour des ol.source.Tile 
 */
+/** @module ol/cache/CacheTile
+ */
 
 import ol_Object from 'ol/Object'
 import ol_ext_inherits from 'ol-ext/util/ext'

@@ -1,4 +1,6 @@
-﻿import ol_layer_Vector from 'ol/layer/Vector'
+﻿/** @module ol/layer/Webpart
+ */
+import ol_layer_Vector from 'ol/layer/Vector'
 import ol_View from 'ol/View'
 import ol_source_Vector_Webpart from '../source/Webpart'
 import ol_ext_inherits from 'ol-ext/util/ext'

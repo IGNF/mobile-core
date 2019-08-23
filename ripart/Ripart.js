@@ -1,4 +1,6 @@
-﻿/* global wapp, FileUploadOptions, FileTransfer, FileTransferError */
+﻿/** @module ripart/RIPart
+ */
+/* global wapp, FileUploadOptions, FileTransfer, FileTransferError */
 import * as CryptoJS from 'crypto-js';
 import CordovApp from '../Cordovapp'
 import ol_Feature from 'ol/Feature'

@@ -1,4 +1,6 @@
-﻿/* global wapp */
+﻿/** @module ripart/RIPartForm
+ */
+/* global wapp */
 import _T from '../i18n'
 import CordovApp from '../Cordovapp'
 import RIPart from './Ripart'

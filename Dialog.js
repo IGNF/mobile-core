@@ -1,3 +1,5 @@
+/** @module Dialog
+ */
 import _T from './i18n'
 
 /** 
