@@ -6,7 +6,8 @@
   "directories": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint --fix ./ || exit 0"
+    "lint": "eslint --fix ./ || exit 0",
+    "doc": "jsdoc -c conf.json --destination ./doc"
   },
   "repository": {},
   "keywords": [],
@@ -18,6 +19,7 @@
   "homepage": "http://gitlab.dockerforge.ign.fr/express/cordovapp",
   "dependencies": {},
   "devDependencies": {
-    "eslint": "^6.2.0"
+    "eslint": "^6.2.1",
+    "jsdoc": "^3.6.3"
   }
 }

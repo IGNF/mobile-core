@@ -1,8 +1,9 @@
+/* Gestion de l'aide
+ */
+
 import './help.css'
 import CordovApp from './CordovApp'
 
-/** Gestion de l'aide
-*/
 var helpDiv = $("<div>").attr("id", "help").appendTo("body");
 // Close help on click if no closebox
 helpDiv.on('click', () => {
@@ -21,13 +22,15 @@ $('<link/>', {
   href: './help/help.css'
 }).appendTo('head');	
 
-/** Save app parameters (to localStorage)
-*/
+/* Save app parameters (to localStorage)
+ */
 function saveParam(t) {
   if (t) _param[t] = true;
   localStorage['WebApp@help'] = JSON.stringify(_param);
 }
 
+/* Show next help on the page
+ */
 function nextHelp(s) {
   if (!helpDiv) return;
   if (s) step=s;
@@ -37,6 +40,7 @@ function nextHelp(s) {
   _timeout = setTimeout(function(){ helpDiv.removeClass().addClass('visible step step_'+step).addClass(_current); }, 200);
 }
 
+/* Hide help */
 function hideHelp() {
   if (!helpDiv) return;
   helpDiv.removeClass();
@@ -44,6 +48,8 @@ function hideHelp() {
   _timeout = setTimeout(function(){ helpDiv.hide(); },500);
 }
 
+/* Show help using template
+ */
 function showHelp(template) {
   // Deja fait !
   if (_param[template]) {

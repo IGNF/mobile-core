@@ -4,7 +4,6 @@ import _T from './i18n'
  * @classdesc
  * Dialogues pour l'application 
  * @constructor
- * @private
  */
 function Dialog() {
   var self = this;

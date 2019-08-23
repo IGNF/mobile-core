@@ -7,8 +7,7 @@ import ol_geom_LineString from 'ol/geom/LineString'
 import ol_geom_Polygon from 'ol/geom/Polygon'
 import {transform as ol_proj_transform} from 'ol/proj'
 
-/** 
- * @classdesc 
+/** @class RIPart
  * Recuperation des signalements de l'espace collaboratif.
  * 
  * Documentation : {@link https://espacecollaboratif.ign.fr/api/doc/georem}
@@ -671,7 +670,7 @@ var RIPart = function(options) {
 
   /** Load file from server 
    * @param {string} url file url
-   * @package {function} callback
+   * @param {function} callback
    * @param {string} mimeType 
    * @api
    */

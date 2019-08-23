@@ -9,11 +9,11 @@
 import WebFont from 'webfontloader';
 import _T from '../i18n'
 
-/** Use jQuery as global */
+/* Use jQuery as global */
 import jQuery from 'jquery'
 window.$ = jQuery;
 
-/** Dynamically load cordova */
+/* Dynamically load cordova */
 let scriptCordova = false;
 const script = document.createElement('script');
 script.onload = script.onerror = function() {

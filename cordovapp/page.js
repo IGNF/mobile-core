@@ -161,21 +161,23 @@ CordovApp.prototype.showPage = function(id_page, onglet) {
 /** Get action buttons in the header of the tab
  * @param {String} id_page id of the page
  */
-const getActionBt = CordovApp.prototype.getActionBt = function(id_page) {
+CordovApp.prototype.getActionBt = function(id_page) {
   return  $('[data-role="action-bt"]', '#'+id_page);
 };
 
+const getActionBt = CordovApp.prototype.getActionBt
 export {getActionBt};
 
 /** Show action buttons in the header of the tab
  * @param {String} id_page id of the page
  */
-const showActionBt = CordovApp.prototype.showActionBt = function(id_page, b) {
+CordovApp.prototype.showActionBt = function(id_page, b) {
   if (b!==false) getActionBt(id_page).show();
   else getActionBt(id_page).hide();
 };
 
-export {showActionBt};
+const showActionBt = CordovApp.prototype.showActionBt;
+export { showActionBt};
 
 /** Hide action buttons in the header of the tab
  * @param {String} id_page id of the page

@@ -28,7 +28,7 @@ Date.prototype.toISODateString = function() {
  * @return {Object} an object with a getParams() and a change() method to 
  * 	retrieve param and to reflect changes on values
  */
-const setParamInput = CordovApp.prototype.setParamInput = function(elt, param, onchange) {
+CordovApp.prototype.setParamInput = function(elt, param, onchange) {
   elt = $(elt);
   function setValue (elt, v) {
     var p = elt.data("param");
@@ -155,6 +155,7 @@ const setParamInput = CordovApp.prototype.setParamInput = function(elt, param, o
   }
 };
 
+const setParamInput = CordovApp.prototype.setParamInput;
 export {setParamInput};
 
 /** Set a [data-input="select"] to prompt for values on click
@@ -163,7 +164,7 @@ export {setParamInput};
 *	@param {function} onchange a callback function(val)
 *	@return {String} the selected value
 */
-const selectInput = CordovApp.prototype.selectInput = function(input, value, onchange) {
+CordovApp.prototype.selectInput = function(input, value, onchange) {
   input = $(input);
   var l = $("[data-input-role]", input);
   function setValue (val) {
@@ -203,26 +204,29 @@ const selectInput = CordovApp.prototype.selectInput = function(input, value, onc
   return input.data('val');
 };
 
+const selectInput = CordovApp.prototype.selectInput;
 export {selectInput};
 
 /** Get the [data-input="select"] selected value
 *	@param {selector} input a data-input="select" with data-input-role="option"
 *	@return {String} the selected value
 */
-const selectInputVal = CordovApp.prototype.selectInputVal = function(input) {
+CordovApp.prototype.selectInputVal = function(input) {
   return $("[data-input-role].selected", input).data("val");
 }
 
+const selectInputVal = CordovApp.prototype.selectInputVal;
 export {selectInputVal};
 
 /** Get the [data-input="select"] selected text
 *	@param {selector} input a data-input="select" with data-input-role="option"
 *	@return {String} the selected text
 */
-const selectInputText = CordovApp.prototype.selectInputText = function(input) {
+CordovApp.prototype.selectInputText = function(input) {
   return $("[data-input-role].selected", input).text();
 }
 
+const selectInputText = CordovApp.prototype.selectInputText;
 export {selectInputText};
 
 /** Set data-attr according to a list of attribute value

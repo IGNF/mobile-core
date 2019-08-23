@@ -1,10 +1,4 @@
 ﻿/* global wapp */
-/** @class RIPart
- * @fire changegroup
- * Gestion de connexion avec l'espace collaboratif pour la remontee d'informations
- * Gestion des dialogues dans l'application (connexion, formulaire de saisie d'une remontee)
- * Connexion avec la carte et les elements de l'applicaiton
- */
 import _T from '../i18n'
 import CordovApp from '../Cordovapp'
 import RIPart from './Ripart'
@@ -37,10 +31,12 @@ import {fromLonLat as ol_proj_fromLonLat} from 'ol/proj'
 
 import 'ol-ext/style/FontAwesomeDef'
 
-/**
-@function RIPart.showFormulaire
-@desc Gestion d'un formulaire de saisie 
-
+/** @class RIPartForm
+ * @fire changegroup
+ * @classdesc
+ * Gestion de connexion avec l'espace collaboratif pour la remontee d'informations    
+ * Gestion des dialogues dans l'application (connexion, formulaire de saisie d'une remontee)    
+ * Connexion avec la carte et les elements de l'application    
 ````
                           +---------------------------+
                           |  RIPart:showFormulaire()  |
@@ -69,6 +65,7 @@ import 'ol-ext/style/FontAwesomeDef'
 ````
 _Arbre des appels_
 */
+
 /** 
   Creation du compte > enregistrer les actions
   @fire select, show, locate

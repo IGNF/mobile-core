@@ -12,9 +12,12 @@ import _T from '../i18n'
 /** Application Dialog
 * @member {Dialog}
 */
-const dialog = CordovApp.prototype.dialog = new Dialog();
+CordovApp.prototype.dialog = new Dialog();
+const dialog = CordovApp.prototype.dialog;
 
-/** Internal dialog */
+/* Internal dialog 
+ * @private
+ */
 var _internalDialog = new Dialog();
 
 /** Select dialog
@@ -24,7 +27,7 @@ var _internalDialog = new Dialog();
 * @param {Object} options (dialog options
 *	 @param {boolean} options.search add a search input
 */
-const selectDialog = CordovApp.prototype.selectDialog = function(choice, valdef, cback, options) {
+CordovApp.prototype.selectDialog = function(choice, valdef, cback, options) {
   // Open existing dialog
   if (!choice) {
     if (choice===false) _internalDialog.close;
@@ -87,6 +90,7 @@ const selectDialog = CordovApp.prototype.selectDialog = function(choice, valdef,
   }
   _internalDialog.show(content, options);
 };
+const selectDialog = CordovApp.prototype.selectDialog;
 
 /** Prompt dialog
 * @param {String} Prompt
@@ -94,7 +98,7 @@ const selectDialog = CordovApp.prototype.selectDialog = function(choice, valdef,
 * @param {function} callback function(val) returned value
 * @param {Object} Dialog param
 */
-const promptDlg = CordovApp.prototype.prompt = function(prompt, val, cback, options) {
+CordovApp.prototype.prompt = function(prompt, val, cback, options) {
   if (!options) options = {};
   if (typeof(cback)!="function") cback=function(c){console.log(c);};
   var content = $("<div>");
@@ -111,18 +115,20 @@ const promptDlg = CordovApp.prototype.prompt = function(prompt, val, cback, opti
   _internalDialog.show(content, options);
   input.focus().val(val || "");
 };
+const promptDlg = CordovApp.prototype.prompt;
 
 /** Show an alert
 *	@param {String} message to alert
 *	@param {String} title for the dialod
 */
-const alertDlg = CordovApp.prototype.alert = function (what, titre, classe) {
+CordovApp.prototype.alert = function (what, titre, classe) {
   _internalDialog.show(what||"oops", {
     title: titre||_T("ALERTE"),
     buttons: ["OK"],
     classe: classe||"alert"
   });
 };
+const alertDlg = CordovApp.prototype.alert;
 
 /** Show a message 
 *	@param {String} message to alert
@@ -130,14 +136,15 @@ const alertDlg = CordovApp.prototype.alert = function (what, titre, classe) {
 *	@param {Array<String>} list of button labels
 *	@param {function} callback function with index of pressed button as argument
 */
-const messageDlg = CordovApp.prototype.message = function (message, titre, boutons, callback, classe) {
+CordovApp.prototype.message = function (message, titre, boutons, callback, classe) {
   _internalDialog.show(message||"...", {
     title: titre||_T("MESSAGE"),
     callback: callback,
     buttons: boutons||{ cancel:'ok' },
     classe: classe||"message"
   });
-}
+};
+const messageDlg = CordovApp.prototype.message
 
 /** A dialog is open
 */
@@ -156,8 +163,9 @@ CordovApp.prototype.closeDialog = function() {
 };
 
 
-/** Notification
-*/
+/* Notification
+ * @private
+ */
 var _notification=null;
 var _timeout = null;
 
@@ -166,7 +174,7 @@ var _timeout = null;
 * @param {Number|String} duration (number in ms or a string "1s"/"1000ms") before the notification vanish (0 close the notificatoin), default 3s
 * @param {boolean} noreplace true to avaoid replacing existing notification, default false
 */
-const notification = CordovApp.prototype.notification = function(msg, duration, noreplace) {
+CordovApp.prototype.notification = function(msg, duration, noreplace) {
   if (!_notification) {
     _notification = $("<div>").attr("data-role","notification").appendTo("body");
   }
@@ -195,26 +203,28 @@ const notification = CordovApp.prototype.notification = function(msg, duration, 
     setTimeout (function(){ _notification.hide(); }, 200);
   }, duration);
 };
+const notification = CordovApp.prototype.notification;
 
 /** Check if a notification is visible
-* @return {boolean}
-*/
+ * @return {boolean}
+ */
 CordovApp.prototype.isNotification = function() {
   return _notification.hasClass('visible');
 };
 
-/** Information notification
-*/
+/* Information notification
+ * @private
+ */
 var _notinfo=null;
 
 /** Show notification information on top of the screen
-* @param {String} title notification title
-* @param {String} msg notification
-* @param {} options
-*	- className {string} CSS class name for the notification
-*	- icon {html|undefined}
-*	- onclose {function|undefined} callback function when notification is closed
-*/
+ * @param {String} title notification title
+ * @param {String} msg notification
+ * @param {*} options
+ *	@param {string} options.className CSS class name for the notification
+ *	@param {html|undefined} options.icon
+ *	@param {function|undefined} options.onclose callback function when notification is closed
+ */
 CordovApp.prototype.notinfo = function(title, msg, options) {
   options = options||{};
   if (!_notinfo) {
@@ -237,16 +247,17 @@ CordovApp.prototype.notinfo = function(title, msg, options) {
   setTimeout (function(){ info.addClass('visible'); }, 200);
 }
 
-/** Wait dialog
-*/
+/* Wait dialog
+ * @private
+ */
 var _wait=null, _wback=null, _message=null, _pourcent=null;
 var _wtimeout = null;
 
 /** Wait dialog
-* @param {String|false} message to show or false to hide the dialog
-* @param {boolean} false to prevent animation (to chain dialogs)
-*/
-const waitDlg = CordovApp.prototype.wait = function(msg, options) {
+ * @param {String|false} message to show or false to hide the dialog
+ * @param {boolean} false to prevent animation (to chain dialogs)
+ */
+CordovApp.prototype.wait = function(msg, options) {
   if (options===false) options = { anim:false };
   if (!options) options = {};
   if (!_wait) {
@@ -282,6 +293,7 @@ const waitDlg = CordovApp.prototype.wait = function(msg, options) {
     else _wtimeout = setTimeout (function(){ _wait.hide(); }, 200);
   }
 }
+const waitDlg = CordovApp.prototype.wait;
 
 CordovApp.prototype.isWaiting = function() {
   return _wback ? _wback.css("display")!="none" : false;

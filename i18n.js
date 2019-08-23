@@ -1,4 +1,4 @@
-/** i18n 
+/** i18n : InternationlizatioN tools
  */
 function _T(s) {
   return s;
