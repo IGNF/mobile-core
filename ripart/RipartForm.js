@@ -792,7 +792,7 @@ RIPart.prototype.onUpdate = function() {
     $(".nogeorem", this.listElement).show();
   } else {
     $(".nogeorem", this.listElement).hide();
-    for (var i=0; i<grems.length; i++) {
+    for (var i=grems.length-1; i>=0; i--) {
       var li = $('<li>').html(this.listElementTemplate)
         .addClass(grems[i].statut)
         .appendTo(ul)
