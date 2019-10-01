@@ -1412,7 +1412,7 @@ RIPart.prototype.photo = function() {
     message: this.messagePhoto,
     name: "TMP/photo.jpg",
     buttons: $("img", photoElt).attr("src") ? { del:"supprimer", cancel:"annuler" } : false,
-    className: $("img", photoElt).attr("src") ? "photodel":"",
+    className: $("img", photoElt).attr("src") ? "ripart photo photodel":"ripart photo",
     targetWidth: self.param.imgWidth || 1200,
     targetHeight: self.param.imgHeight || 1200,
     correctOrientation: (self.param.imgOrient!==false)
