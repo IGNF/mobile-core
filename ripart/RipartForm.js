@@ -1366,6 +1366,7 @@ RIPart.prototype.formulaireAttribut = function(valdef, prompt) {
  * @param {string} type submit or cancel
  */
 RIPart.prototype.cancelFormulaire = function(type, georem) {
+  if (!this.formElement.hasClass('formulaire')) return;
   this.formElement.removeClass('formulaire');
   this.overlay.setVisible(false);
   this.selectOverlay.setVisible(false);
