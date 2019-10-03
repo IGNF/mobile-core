@@ -152,7 +152,7 @@ CordovApp.File = {
     if (!success) success = this.success || function(){};
     if (!fail) fail = this.fail;
     if (!window.LocalFileSystem) {
-      fail({code:-1});
+      setTimeout(function() { fail({code:-1}); });
       return;
     }
 
