@@ -45,6 +45,7 @@ var CacheVector = function(wapp, options) {
  */
 CacheVector.prototype.getLayers = function(guichet) {
   var layers = [];
+  var self = this;
 
   function addPostcompose (l, extents) {
     l.on('postcompose', function(e){
@@ -59,8 +60,8 @@ CacheVector.prototype.getLayers = function(guichet) {
       var k, extent, r;
       ctx.beginPath();
         for (k=0, extent; extent=extents[k]; k++) {
-          var p0 = this.map.getPixelFromCoordinate([extent[0], extent[1]]);
-          var p1 = this.map.getPixelFromCoordinate([extent[2], extent[3]]);
+          var p0 = self.map.getPixelFromCoordinate([extent[0], extent[1]]);
+          var p1 = self.map.getPixelFromCoordinate([extent[2], extent[3]]);
           rects.push([p0[0],p0[1],p1[0]-p0[0],p1[1]-p0[1]]);
           ctx.rect(p0[0],p0[1],p1[0]-p0[0],p1[1]-p0[1]);
         }
