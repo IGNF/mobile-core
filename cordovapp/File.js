@@ -367,18 +367,20 @@ CordovApp.File = {
     if (!success) success = this.success;
     if (!fail) fail = this.fail;
     var self = this;
+    var ft = new FileTransfer();
     // Recherche du repertoire
     var dir = this.getDir(name);
     name = this.getFileName(name);
     this.getDirectory (
       dir,
       function(fileEntry) {
-        var ft = new FileTransfer();
         var uri = encodeURI(url);
+				var timeout = (options.timeout) ? setTimeout(function() { ft.abort(); }, options.timeout) : null;
         ft.download (
           uri,
           fileEntry.toURL()+"__"+name,
           function(){
+						if (timeout) clearTimeout(timeout);
             self.moveFile(fileEntry.toURL()+"__"+name, fileEntry.toURL()+name, success, fail);
           },
           fail,
