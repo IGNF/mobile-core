@@ -16,7 +16,7 @@ import { asArray as ol_color_asArray } from 'ol/color'
 
 import ol_source_Vector_WFS from '../source/WFS'
 
-/** ol_layer_Vector_WFS
+/** VectorWFS
  * @constructor
  * @extends {ol.source.Vector}
  * @trigger ready (when source is ready), error (connexion error)
@@ -24,11 +24,11 @@ import ol_source_Vector_WFS from '../source/WFS'
  *  @param {function} authentication function to return authentication in a callback
  * @returns {ol.source.Vector.WFS}
  */
-const ol_layer_Vector_WFS = function(options, cache) {
+const VectorWFS = function(options, cache) {
   if (!options) options = {};
   if (!options.mask) options.mask = {};
   // ** OLD VERSION
-  if (options.minzoom || options.maxzoom) console.error('[ol_layer_Vector_WFS] Use minZoom or maxZoom')
+  if (options.minzoom || options.maxzoom) console.error('[VectorWFS] Use minZoom or maxZoom')
   // **
   var self = this;
   var secret = "WFS Espace Collaboratif IGN";
@@ -135,12 +135,12 @@ const ol_layer_Vector_WFS = function(options, cache) {
 		this.setMaxResolution(v.getResolution());
   }
 };
-ol_ext_inherits(ol_layer_Vector_WFS, ol_layer_Vector);
+ol_ext_inherits(VectorWFS, ol_layer_Vector);
 
 /** FeatureType of the layer
 *	@return {featureType} 
 */
-ol_layer_Vector_WFS.prototype.getFeatureType = function()
+VectorWFS.prototype.getFeatureType = function()
 {	if (this.getSource()) return this.getSource().featureType_;
 	else return false;
 }
@@ -247,4 +247,4 @@ const ol_style_Style_WFS = function(options) {
 }
 /* */ 
 
-export default ol_layer_Vector_WFS
+export default VectorWFS

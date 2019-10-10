@@ -1,3 +1,5 @@
+/** @module ol/source/RIPart
+ */
 import ol_source_Vector from 'ol/source/Vector'
 import ol_Collection from 'ol/Collection'
 import {tile as ol_loadingstrategy_tile} from 'ol/loadingstrategy'
@@ -62,10 +64,13 @@ const georemStyle = function(feature) {
  * @constructor
  * @extends {ol.source.Vector}
  * @trigger loadstart, loadend, overload
- * @param {any}
- * @returns {ol_source_RIPart}
+ * @param {any} options
+ *  @param {module:ripart/RIPart~RIPart} options.ripart 
+ *  @param {string} options.attribution
+ *  @param {boolean} options.wrapX
+ * @returns {RIPartSource}
  */
-const ol_source_RIPart = function(options, cache) {
+const RIPartSource = function(options) {
 
   this._ripart = options.ripart;
 
@@ -87,12 +92,12 @@ const ol_source_RIPart = function(options, cache) {
   });
 
 };
-ol_ext_inherits(ol_source_RIPart, ol_source_Vector);
+ol_ext_inherits(RIPartSource, ol_source_Vector);
 
 /** Load georems from server
  * @private
  */
-ol_source_RIPart.prototype.loaderFn_ = function(extent, resolution, projection) {
+RIPartSource.prototype.loaderFn_ = function(extent, resolution, projection) {
   extent = ol_proj_transformExtent(extent, projection, 'EPSG:4326');
 
   this.dispatchEvent({ type: 'loadstart' });
@@ -120,4 +125,4 @@ ol_source_RIPart.prototype.loaderFn_ = function(extent, resolution, projection) 
 };
 
 export {georemStyle}
-export default ol_source_RIPart
+export default RIPartSource

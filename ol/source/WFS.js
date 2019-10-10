@@ -12,14 +12,14 @@ import Ajax from 'ol-ext/util/Ajax'
 
 import { ol_ext_inherits } from 'ol-ext/util/ext'
 
-/** ol_source_Vector_WFS
+/** VectorWFS
  * @constructor
  * @extends {ol.source.Vector}
  * @trigger loadstart, loadend, overload
  * @param {any}
- * @returns {ol_source_Vector_WFS}
+ * @returns {VectorWFS}
  */
-const ol_source_Vector_WFS = function(options, cache) {
+const VectorWFS = function(options, cache) {
   options = options || {};
   
   // Proxy to load features
@@ -76,10 +76,10 @@ const ol_source_Vector_WFS = function(options, cache) {
   this.set('maxFeatures', options.maxFeatures)
   this.set('format', options.format)
 };
-ol_ext_inherits(ol_source_Vector_WFS, ol_source_Vector);
+ol_ext_inherits(VectorWFS, ol_source_Vector);
 
 /** Set User */
-ol_source_Vector_WFS.prototype.setUser = function(user, pwd) {
+VectorWFS.prototype.setUser = function(user, pwd) {
   this.username = user;
   this.password = pwd;
 };
@@ -88,7 +88,7 @@ ol_source_Vector_WFS.prototype.setUser = function(user, pwd) {
  * Loader
  * @private
  */
-ol_source_Vector_WFS.prototype.loaderFn_ = function(extent, resolution, projection) {
+VectorWFS.prototype.loaderFn_ = function(extent, resolution, projection) {
   // Load once
   if (this._done && this.get('once')) return;
   this._done = true;
@@ -165,7 +165,7 @@ ol_source_Vector_WFS.prototype.loaderFn_ = function(extent, resolution, projecti
 /**
  * Set filter
  */
-ol_source_Vector_WFS.prototype.setFilter = function (filter) {
+VectorWFS.prototype.setFilter = function (filter) {
   if (this.featureFilter_ !== filter) {
     this.featureFilter_ = filter;
     this.clear();
@@ -177,7 +177,7 @@ ol_source_Vector_WFS.prototype.setFilter = function (filter) {
  * @param {ol.extent} extent 
  * @param {Number} resolution 
  */
-ol_source_Vector_WFS.prototype.getCacheFileName = function(/*extent, resolution*/) {
+VectorWFS.prototype.getCacheFileName = function(/*extent, resolution*/) {
   if (this.get('once')) {
     return this.get('cache')+'.cache';
   }
@@ -192,7 +192,7 @@ ol_source_Vector_WFS.prototype.getCacheFileName = function(/*extent, resolution*
  * 	@param {funcion} options.success success callback
  * 	@param {funcion} options.error error callback
  */
-ol_source_Vector_WFS.prototype.loadCache = function(options) {
+VectorWFS.prototype.loadCache = function(options) {
   options.error('nocache');
 };
 
@@ -202,7 +202,7 @@ ol_source_Vector_WFS.prototype.loadCache = function(options) {
  * @param {} extent
  * @param {} resolution
  */
-ol_source_Vector_WFS.prototype.saveCache = function(/*response, extent, resolution*/) {};
+VectorWFS.prototype.saveCache = function(/*response, extent, resolution*/) {};
 
 /**
  * 
@@ -210,7 +210,7 @@ ol_source_Vector_WFS.prototype.saveCache = function(/*response, extent, resoluti
  * @param {*} projection 
  * @private
  */
-ol_source_Vector_WFS.prototype.handleResponse_ = function(response, projection) {
+VectorWFS.prototype.handleResponse_ = function(response, projection) {
   var data;
   switch (this.get('format')) {
     case 'GeoJSON': {
@@ -244,7 +244,7 @@ ol_source_Vector_WFS.prototype.handleResponse_ = function(response, projection) 
  * @param {*} error 
  * @private
  */
-ol_source_Vector_WFS.prototype.handleError_ = function(jqXHR, status, error) {
+VectorWFS.prototype.handleError_ = function(jqXHR, status, error) {
   if (status !== 'abort') {
     // console.log(jqXHR);
     this.dispatchEvent({ type:"loadend", error:error, status:status, remains:--this.tileloading_ });
@@ -258,7 +258,7 @@ ol_source_Vector_WFS.prototype.handleError_ = function(jqXHR, status, error) {
  * @param {ol.Feature} feature
  * @return {boolean} 
  */
-ol_source_Vector_WFS.prototype.hasFeature = function(feature) {
+VectorWFS.prototype.hasFeature = function(feature) {
   var id = feature.get(this.get('id'));
   if (id) {
     var p = feature.getGeometry().getFirstCoordinate();
@@ -276,8 +276,8 @@ ol_source_Vector_WFS.prototype.hasFeature = function(feature) {
  * No Feature type
  * @return {any}
  */
-ol_source_Vector_WFS.prototype.getFeatureType = function() {
+VectorWFS.prototype.getFeatureType = function() {
   return this.featureType_ || {};
 };
 
-export default ol_source_Vector_WFS
+export default VectorWFS

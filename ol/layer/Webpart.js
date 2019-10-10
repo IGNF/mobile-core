@@ -1,4 +1,4 @@
-﻿/** @module ol/layer/Webpart
+﻿/** @module ol/layer/VectorWebpart
  */
 import ol_layer_Vector from 'ol/layer/Vector'
 import ol_View from 'ol/View'
@@ -7,11 +7,11 @@ import ol_ext_inherits from 'ol-ext/util/ext'
 
 import ol_style_Webpart from '../style/Webpart'
 
-/** ol_layer_Vector_Webpart
+/** @class VectorWebpart
  * @constructor
  * @extends {ol.source.Vector}
  * @trigger ready (when source is ready), error (connexion error)
- * @param {olx.layer.Vector.WebpartOptions} 
+ * @param {*} 
  *	@param {string} database datatbase name
  *  @param {string} name featureType name
  *  @param {string|undefined} proxy proxy url
@@ -20,7 +20,7 @@ import ol_style_Webpart from '../style/Webpart'
  *  @param {string} password
  * @returns {ol.source.Vector.Webpart}
  */
-const ol_layer_Vector_Webpart  = function(options, source_options) {
+const VectorWebpart = function(options, source_options) {
   var self = this;
   if (!options) options = {};
   if (!source_options) source_options = {};
@@ -59,14 +59,14 @@ const ol_layer_Vector_Webpart  = function(options, source_options) {
   }
 
 };
-ol_ext_inherits(ol_layer_Vector_Webpart, ol_layer_Vector);
+ol_ext_inherits(VectorWebpart, ol_layer_Vector);
 
 /**
  * Creat the layer source when loaded
  * @param {*} source_options 
  * @param {*} featureType 
  */
-ol_layer_Vector_Webpart.prototype.createSource = function(options, source_options, featureType) {
+VectorWebpart.prototype.createSource = function(options, source_options, featureType) {
   source_options.proxy = this.proxy_;
   source_options.featureType = featureType;
   // Check for source option
@@ -110,14 +110,14 @@ ol_layer_Vector_Webpart.prototype.createSource = function(options, source_option
 /** Is the layer ready
 *	@return {bool} the layer is ready (source is connected)
 */
-ol_layer_Vector_Webpart.prototype.isReady = function() {
+VectorWebpart.prototype.isReady = function() {
   return (this.getSource() && this.getSource().featureType_);
 }
 
 /** FeatureType of the layer
 *	@return {featureType} 
 */
-ol_layer_Vector_Webpart.prototype.getFeatureType = function() {
+VectorWebpart.prototype.getFeatureType = function() {
   if (this.isReady()) return this.getSource().featureType_;
   else return false;
 }
@@ -125,9 +125,9 @@ ol_layer_Vector_Webpart.prototype.getFeatureType = function() {
 /** FeatureType style of the layer
 *	@return {featureStyle} 
 */
-ol_layer_Vector_Webpart.prototype.getFeatureStyle = function() {
+VectorWebpart.prototype.getFeatureStyle = function() {
   if (this.isReady()) return this.getSource().featureType_.style;
   else return {};
 }
 
-export default ol_layer_Vector_Webpart
+export default VectorWebpart

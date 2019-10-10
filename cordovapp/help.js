@@ -65,8 +65,8 @@ function showHelp(template) {
   }
 
   _current = template;
-  helpDiv.html("").removeClass().addClass("visible "+template).append(t).show();
-  $(".close", t).on("click touchstart", function(e) {
+  helpDiv.html('').removeClass().addClass('visible '+template).append(t).show();
+  $('.close', t).on('click touchstart', function(e) {
     e.stopPropagation();
     e.preventDefault();
     hideHelp();
@@ -74,49 +74,53 @@ function showHelp(template) {
   nextHelp(1);
 }
 
-/** @namespace CordovApp.help
-*/
+/** Show help on a specific page.    
+ * Defaut behavior: show help on 'showpage' event, hide on 'hidepage' event or on 'menu' event
+ * @namespace help
+ */
 var help = CordovApp.prototype.help = {
   /** Show help
-  * @function CordovApp.help.showHelp
-  * @param {string} name template name (in ./help directory)
-  */
+   * @function help.showHelp
+   * @param {string} name template name (in ./help directory)
+   */
   show: showHelp,
   /** Hide help
-  * @function CordovApp.help.hideHelp
-  */
+   * @function help.hideHelp
+   */
   hide: hideHelp,
   /** Show next help page
-  * @function CordovApp.help.nextHelp
-  * @param {number} n next help 
-  */
+   * @function help.nextHelp
+   * @param {number} n next help 
+   */
   next: nextHelp,
   /** Reset help
-  * @function CordovApp.help.resetParam
-  */
+   * @function help.reset
+   */
   reset: () => {
     _param={};
     saveParam();
   },
-  /** Fullscreen help */
+  /** Fullscreen help 
+   * @function help.fullscreen
+   */
   fullscreen: (b) => {
     helpDiv.attr('data-fullscreen', b);
   }
 };
 
 // Handle events
-$(document).on("showpage", function(e) {
+$(document).on('showpage', function(e) {
   showHelp(e.page);
 });
-$(document).on("hidepage", function() {
+$(document).on('hidepage', function() {
   hideHelp();
 });
-$(document).on("menu", function(e) {
-  if (e.show) showHelp("menu");
+$(document).on('menu', function(e) {
+  if (e.show) showHelp('menu');
   else hideHelp();
 });
 $( document ).ready(function() {
-  showHelp("main");
+  showHelp('main');
 });
 
 export {help}

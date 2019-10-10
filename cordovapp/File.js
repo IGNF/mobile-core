@@ -13,6 +13,7 @@ import CordovApp from './CordovApp'
 */
 CordovApp.File = {
   /** Test if a path refer to a local path
+   * @function CordovApp.File.isLoacalFile
    * @param {string} path
    * @return {boolean}
    */
@@ -471,6 +472,7 @@ CordovApp.File = {
  * @param {Int} sliceSize to process the byteCharacters
  * @see http://stackoverflow.com/questions/16245767/creating-a-blob-from-a-base64-string-in-javascript
  * @return Blob
+ * @private
  */
 function b64toBlob(b64Data, contentType, sliceSize) {
   contentType = contentType || '';

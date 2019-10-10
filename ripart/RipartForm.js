@@ -1,6 +1,4 @@
-﻿/** @module ripart/RIPartForm
- */
-/* global wapp */
+﻿/* global wapp */
 import _T from '../i18n'
 import CordovApp from '../Cordovapp'
 import RIPart from './Ripart'
@@ -33,9 +31,8 @@ import {fromLonLat as ol_proj_fromLonLat} from 'ol/proj'
 
 import 'ol-ext/style/FontAwesomeDef'
 
-/** @class RIPartForm
- * @fire changegroup
- * @classdesc
+/** @module ripart/RIPartForm
+ * @description
  * Gestion de connexion avec l'espace collaboratif pour la remontee d'informations    
  * Gestion des dialogues dans l'application (connexion, formulaire de saisie d'une remontee)    
  * Connexion avec la carte et les elements de l'application    

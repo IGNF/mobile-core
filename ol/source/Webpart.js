@@ -39,7 +39,7 @@ if (!proj4.defs["EPSG:EPSG:4471"]) proj4.defs("EPSG:4471","+proj=utm +zone=38 +s
 
 ol_proj_proj4_register(proj4);
 
-/** ol_source_Vector_Webpart
+/** VectorWebpart
  * @constructor
  * @extends {ol.source.Vector}
  * @trigger savestart, saveend, loadstart, loadend, overload
@@ -56,9 +56,9 @@ ol_proj_proj4_register(proj4);
  *  @param {ol.Collection} options.preserved collection of objects to preserve when reload
  *  @param {ol.Attribution} options.attribution source attribution
  *  @param {bool} options.wrapX
- * @returns {ol_source_Vector_Webpart}
+ * @returns {VectorWebpart}
  */
-const ol_source_Vector_Webpart = function(opt_options) {
+const VectorWebpart = function(opt_options) {
   var options = opt_options || {};
   
   // Proxy to load features
@@ -132,7 +132,7 @@ const ol_source_Vector_Webpart = function(opt_options) {
   this.update_ = [];
   this.on ('changefeature', this.onUpdateFeature_.bind(this));
 };
-ol_ext_inherits(ol_source_Vector_Webpart, ol_source_Vector);
+ol_ext_inherits(VectorWebpart, ol_source_Vector);
 
 /** Editing states for vector features
 */
@@ -160,20 +160,20 @@ ol_Feature.prototype.setState = function(state) {
 /** Get layer's tile grid
 * @return { ol.tilegrid.TileGrid }
 */
-ol_source_Vector_Webpart.prototype.getTileGrid = function() {
+VectorWebpart.prototype.getTileGrid = function() {
   return this._tileGrid;
 }
 
 /** Get the layer featureType
 * @return { featureType }
 */
-ol_source_Vector_Webpart.prototype.getFeatureType = function() {
+VectorWebpart.prototype.getFeatureType = function() {
   return this.featureType_;
 }
 
 /** Reset edition 
 */
-ol_source_Vector_Webpart.prototype.reset = function() {
+VectorWebpart.prototype.reset = function() {
   this.insert_ = [];
   this.delete_ = [];
   this.update_ = [];
@@ -184,7 +184,7 @@ ol_source_Vector_Webpart.prototype.reset = function() {
 /** Force source reload
 * @warning use this function instead of clear() to avoid delete events on reload
 */
-ol_source_Vector_Webpart.prototype.reload = function() {
+VectorWebpart.prototype.reload = function() {
   this.isloading_ = true;
   this.un ('removefeature', this.onDeleteFeature_bind);
   // Clear without event ???
@@ -200,7 +200,7 @@ ol_source_Vector_Webpart.prototype.reload = function() {
 /** Get save actions
 * @return list of save actions + number of features in each states
 */
-ol_source_Vector_Webpart.prototype.getSaveActions = function() {
+VectorWebpart.prototype.getSaveActions = function() {
   var self = this;
   // var idName = this.featureType_.idName;
   var geometryAttribute = this.featureType_.geometryName;
@@ -240,7 +240,7 @@ ol_source_Vector_Webpart.prototype.getSaveActions = function() {
 
 /** Save changes
 */
-ol_source_Vector_Webpart.prototype.save = function() {
+VectorWebpart.prototype.save = function() {
   var self = this;
   var actions = this.getSaveActions().actions;
   
@@ -289,7 +289,7 @@ ol_source_Vector_Webpart.prototype.save = function() {
  * Triggered when a feature is added / update add actions
  * @param {type} e
  */
-ol_source_Vector_Webpart.prototype.onAddFeature_ = function(e) {
+VectorWebpart.prototype.onAddFeature_ = function(e) {
   if (this.isloading_) return;
   var f = e.feature;
   f.setState(ol_Feature.State.INSERT);
@@ -306,7 +306,7 @@ ol_source_Vector_Webpart.prototype.onAddFeature_ = function(e) {
 * Triggered when a feature is removed / update remove actions
 * @param {type} e
 */
-ol_source_Vector_Webpart.prototype.onDeleteFeature_ = function(e) {
+VectorWebpart.prototype.onDeleteFeature_ = function(e) {
   if (this.isloading_) return;
   
   function removeFeature(features, f) {
@@ -336,7 +336,7 @@ ol_source_Vector_Webpart.prototype.onDeleteFeature_ = function(e) {
  * Triggered when a feature is updated / update update actions
  * @param {type} e
  */
-ol_source_Vector_Webpart.prototype.onUpdateFeature_ = function(e) {
+VectorWebpart.prototype.onUpdateFeature_ = function(e) {
   if (this.isloading_) return;
     
   // if feature has already a state attribute (INSERT),
@@ -352,7 +352,7 @@ ol_source_Vector_Webpart.prototype.onUpdateFeature_ = function(e) {
 *	@param {Array<ol.feature>} an array to search in
 *	@return {ol.feature|null}
 */
-ol_source_Vector_Webpart.prototype.findFeatureByFid = function(fid, features) {
+VectorWebpart.prototype.findFeatureByFid = function(fid, features) {
   var idName = this.featureType_.idName;
   var l = features.length;
   for (var i=0; i<l; i++) {
@@ -367,7 +367,7 @@ ol_source_Vector_Webpart.prototype.findFeatureByFid = function(fid, features) {
 * @param {ol.Feature}
 * @private
 */
-ol_source_Vector_Webpart.prototype.findFeature_ = function(f) {
+VectorWebpart.prototype.findFeature_ = function(f) {
   var idName = this.featureType_.idName;
   var fid = f.get(idName);
 
@@ -407,7 +407,7 @@ ol_source_Vector_Webpart.prototype.findFeature_ = function(f) {
  * @param {ol.extent} extent
  * @param {ol.projection} projection
  */
-ol_source_Vector_Webpart.prototype.getWFSParam = function (extent, projection) {
+VectorWebpart.prototype.getWFSParam = function (extent, projection) {
   var bbox = ol_proj_transformExtent(extent, projection, this.srsName_);
   var bboxStr = bbox.join(',');
 
@@ -430,7 +430,7 @@ ol_source_Vector_Webpart.prototype.getWFSParam = function (extent, projection) {
  * The loader function used to load features
  * @private
  */
-ol_source_Vector_Webpart.prototype.loaderFn_ = function (extent, resolution, projection) {
+VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
   // if (resolution > this.maxResolution_) return;
   var self = this;
 
@@ -546,7 +546,7 @@ ol_source_Vector_Webpart.prototype.loaderFn_ = function (extent, resolution, pro
 *	@param {number} document ID
 *	@return {url} 
 */
-ol_source_Vector_Webpart.prototype.getDocumentUrl = function (id) {
+VectorWebpart.prototype.getDocumentUrl = function (id) {
   return this.featureType_.docURI+"download/"+id;
 }
 
@@ -554,7 +554,7 @@ ol_source_Vector_Webpart.prototype.getDocumentUrl = function (id) {
 *	@param {number} document ID
 *	@param {function} callback
 */
-ol_source_Vector_Webpart.prototype.getDocument = function (id, cback) {
+VectorWebpart.prototype.getDocument = function (id, cback) {
   if (!id) { cback(); }
     
   $.ajax({
@@ -578,7 +578,7 @@ ol_source_Vector_Webpart.prototype.getDocument = function (id, cback) {
  * @param {File}
  * @param {function} callback
  */
-ol_source_Vector_Webpart.prototype.addDocument = function (file, cback) {
+VectorWebpart.prototype.addDocument = function (file, cback) {
   var data = new FormData();
   data.append('fileToUpload', file);
   $.ajax({
@@ -600,7 +600,7 @@ ol_source_Vector_Webpart.prototype.addDocument = function (file, cback) {
  * @param {number} document id
  * @param {function} callback
  */
-ol_source_Vector_Webpart.prototype.deleteDocument = function (id, cback) {
+VectorWebpart.prototype.deleteDocument = function (id, cback) {
   $.ajax({
     url: this.featureType_.docURI+"delete/"+id,
     success: function(results) {
@@ -612,4 +612,4 @@ ol_source_Vector_Webpart.prototype.deleteDocument = function (id, cback) {
   });
 }
 
-export default ol_source_Vector_Webpart
+export default VectorWebpart

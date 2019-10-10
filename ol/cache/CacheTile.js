@@ -23,7 +23,7 @@ import {getCenter as ol_extent_getCenter} from 'ol/extent'
  * 	@param {string} options.authentication basic authentication as btoa("login:pwd") 
  * 	@param {number} options.maxTileLoad Maximum number of tile to load
  */
-var ol_cache_Tile = function (layer, options) {
+var CacheTile = function (layer, options) {
   options = options || {};
   
   ol_Object.call(this);
@@ -41,12 +41,12 @@ var ol_cache_Tile = function (layer, options) {
   this.extent = [];
   this.maxTileLoad = options.maxTileLoad || 20000;
 };
-ol_ext_inherits(ol_cache_Tile, ol_Object);
+ol_ext_inherits(CacheTile, ol_Object);
 
 /** Read a tile
  *	@API 
  */
-ol_cache_Tile.prototype.read = function(tile, callback){
+CacheTile.prototype.read = function(tile, callback){
   callback();
 }
 
@@ -55,7 +55,7 @@ ol_cache_Tile.prototype.read = function(tile, callback){
  *	@param {url} url url of the tile to write
  *	@API 
  */
-ol_cache_Tile.prototype.write = function(id, url) {
+CacheTile.prototype.write = function(id, url) {
   this.dispatchEvent({ type:'save', id:id, url:url });
 }
 
@@ -64,7 +64,7 @@ ol_cache_Tile.prototype.write = function(id, url) {
  * @param {ol.extent} e extent to load
  * @param {integer} r resolution
  */
-ol_cache_Tile.prototype.saveResolution = function(e, res) {
+CacheTile.prototype.saveResolution = function(e, res) {
   var tl = this.source.getTileGrid().getTileCoordForCoordAndResolution([e[0],e[1]], res);
   var br = this.source.getTileGrid().getTileCoordForCoordAndResolution([e[2],e[3]], res);
   var z = tl[0];
@@ -93,7 +93,7 @@ ol_cache_Tile.prototype.saveResolution = function(e, res) {
  * @param {Number} maxZoom
  * @param {ol.extent} extent
  */
-ol_cache_Tile.prototype.save = function (minZoom, maxZoom, extent) {
+CacheTile.prototype.save = function (minZoom, maxZoom, extent) {
   if (typeof(minZoom)=='undefined') return;
   if (!this.estimate) {
     this.minZoom = Math.min (minZoom, this.tgMinZoom);
@@ -137,7 +137,7 @@ ol_cache_Tile.prototype.save = function (minZoom, maxZoom, extent) {
  * @param {Number} maxZoom
  * @param {ol.extent} extent
  */
-ol_cache_Tile.prototype.restore = function (minZoom, maxZoom, extent) {
+CacheTile.prototype.restore = function (minZoom, maxZoom, extent) {
   var self = this;
   this.asyncTileLoad(function(tile,callback) {
     self.read(tile,callback);
@@ -158,7 +158,7 @@ ol_cache_Tile.prototype.restore = function (minZoom, maxZoom, extent) {
  * @param {function} asyncLoadFn function to load tile asynchronously: fn( {id, url}, callback )
  * @api
  */
-ol_cache_Tile.prototype.asyncTileLoad = function (asyncLoadFn) {
+CacheTile.prototype.asyncTileLoad = function (asyncLoadFn) {
   // Change tileloadFunction to load async images //this.getTileLoadFunction();
   var _tileLoadFunction = function(imageTile, src) {
     imageTile.getImage().src = src;
@@ -183,13 +183,13 @@ ol_cache_Tile.prototype.asyncTileLoad = function (asyncLoadFn) {
 /** Get cache extent
  *	@return {ol.extent}
  */
-ol_cache_Tile.prototype.getExtent = function() {
+CacheTile.prototype.getExtent = function() {
   return this.extent;
 }
 
 /** Get nb tiles in cache
  */
-ol_cache_Tile.prototype.getLength = function() {
+CacheTile.prototype.getLength = function() {
   return this.length;
 };
 
@@ -199,7 +199,7 @@ ol_cache_Tile.prototype.getLength = function() {
  * @param {Number} maxZoom
  * @param {ol.extent} extent
  */
-ol_cache_Tile.prototype.estimateSize = function (callback, minZoom, maxZoom, extent) {
+CacheTile.prototype.estimateSize = function (callback, minZoom, maxZoom, extent) {
   var tload, tgminZoom, tgmaxZoom;
   var nb0 = this.length;
   if (typeof(minZoom)==='number') {
@@ -249,4 +249,4 @@ ol_cache_Tile.prototype.estimateSize = function (callback, minZoom, maxZoom, ext
   }
 };
 
-export default ol_cache_Tile
+export default CacheTile
