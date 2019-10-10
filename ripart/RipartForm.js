@@ -315,6 +315,7 @@ RIPart.prototype.initialize = function(options) {
       return true; 
     }
   });
+  this.selectInteraction.setActive(false);
   this.selectOverlay.getSource().on("addfeature", function(e){
     e.feature.layer = this.selectOverlay;
   }.bind(this));
