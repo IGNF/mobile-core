@@ -46,7 +46,6 @@ const symbol = {
     })
   })
 };
-console.log(symbol)
 
 // Gestion des styles
 const georemStyle = function(feature) {

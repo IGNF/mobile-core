@@ -43,7 +43,7 @@ var CordovApp = function(obj) {
 
   /**  Cordova app (or browser) */
   this.isCordova = window.cordova ? true:false;
-  if (this.isCordova) $("body").attr("data-platform",cordova.platformId);
+  if (this.isCordova) $("body").attr("data-platform", cordova.platformId);
   else $("body").attr("data-platform","www");
 
   /** Webapp parameters: localStorage['WebApp@param'] */
@@ -347,4 +347,12 @@ CordovApp.prototype.timer = function(msg) {
   t = new Date();
 };
 
+
+/** Get cordova platform
+ */
+const getPlatformId = CordovApp.prototype.getPlatformId = function() {
+  return (window.cordova ? cordova.platformId : 'www');
+};
+
+export { getPlatformId }
 export default CordovApp;

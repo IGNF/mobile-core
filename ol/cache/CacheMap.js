@@ -107,7 +107,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   })();
 
   // Chargement des cartes lorsque le cacheRoot est OK
-  if (!wapp.param.options.cacheRoot || (window.cordova && window.cordova.platformId==='ios')) {
+  if (!wapp.param.options.cacheRoot || wapp.getPlatformId() === 'ios') {
     CordovApp.File.getDirectory(options.directory||'FILE', function(d){
       wapp.param.options.cacheRoot = d.nativeURL;
       initCacheMap()
@@ -667,7 +667,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   function saveCacheFile() {
     if (window.cordova) {
       var content = CordovApp.template("dialog-savecache");
-      var path = "SD/"+ (window.cordova.platformId === 'ios' ? "" : "guichet/");
+      var path = "SD/"+ (wapp.getPlatformId() === 'ios' ? "" : "guichet/");
       var addEntry = function (entry) {
         $("<li>").text(entry.name)
         .click(function() {
