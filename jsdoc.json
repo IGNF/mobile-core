@@ -1,0 +1,30 @@
+{
+  "plugins": ["plugins/markdown"],
+  "recurseDepth": 10,
+  "source": {
+    "include": ["./", "./cordovapp", "./ol/cache", "./ol/layer", "./ol/source", "./ripart"],
+    "exclude": ["./node_modules/**"],
+    "includePattern": ".+\\.js(doc|x)?$",
+    "excludePattern": "(node_modules|doc)"
+  },
+  "sourceType0": "module",
+  "tags": {
+    "allowUnknownTags": true,
+    "dictionaries": ["jsdoc","closure"]
+  },
+  "opts": {
+    "template": "./node_modules/ink-docstrap/template",
+    "destination": "./doc",
+    "readme": "./doc.md",
+    "recurse": false
+  },
+  "templates": {
+    "cleverLinks": false,
+    "monospaceLinks": false,
+    "systemName": "CordovApp",
+    "theme": "cerulean",
+    "navType": "vertical",
+    "linenums": true,
+    "includeDate": false
+  }
+}
