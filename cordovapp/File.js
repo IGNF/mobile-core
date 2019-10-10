@@ -364,10 +364,10 @@ CordovApp.File = {
    * @param {function} fail callback invoked on error
    */
   dowloadFile: function (url, name, success, fail, options) {
+    options = options || {};
     if (!success) success = this.success;
     if (!fail) fail = this.fail;
     var self = this;
-    var ft = new FileTransfer();
     // Recherche du repertoire
     var dir = this.getDir(name);
     name = this.getFileName(name);
@@ -375,6 +375,7 @@ CordovApp.File = {
       dir,
       function(fileEntry) {
         var uri = encodeURI(url);
+        var ft = new FileTransfer();
 				var timeout = (options.timeout) ? setTimeout(function() { ft.abort(); }, options.timeout) : null;
         ft.download (
           uri,
