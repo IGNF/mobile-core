@@ -370,7 +370,7 @@ CordovApp.prototype.dataAttributes = function (element, attr) {
   $('[data-code]', element).each(function() {
     var att = $(this).data("code");
     if (self.codes[att] && attr[att]) {
-      setAttr($(this), self.codes[att][attr[att]]);
+      setAttr($(this), self.codes[att][attr[att]] || attr[att]);
     }
   });
   // Set class / attributes 
