@@ -47,6 +47,7 @@ CacheVector.prototype.getLayers = function(guichet) {
   var layers = [];
   var self = this;
 
+  // Afficher le contour du cache
   function addPostcompose (l, extents) {
     l.on('postcompose', function(e){
       var canvas = document.createElement('canvas');

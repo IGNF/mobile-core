@@ -101,22 +101,27 @@ const georemStyle = function(feature) {
  *  @param {module:ripart/RIPart~RIPart} options.ripart 
  *  @param {string} options.attribution
  *  @param {boolean} options.wrapX
+ * @param {*} cache 
+ *  @param {function} saveCache a function that takes response, extent, resolution dans save response
+ *  @param {function} loadCache a function that take options: { extent, resolution, success and error collback }
  * @returns {RIPartSource}
  */
-const RIPartSource = function(options) {
+const RIPartSource = function(options, cache) {
 
   this._ripart = options.ripart;
+  this._cache = cache;
+  this._tileGrid = ol_tilegrid_createXYZ({   
+    minZoom: 8, 
+    maxZoom: 8, 
+    tileSize: 512  
+  });
 
   // Inherits
   ol_source_Vector.call(this, {
     // Loader function
     loader: this.loaderFn_,
     // bbox strategy
-    strategy: ol_loadingstrategy_tile(ol_tilegrid_createXYZ({   
-      minZoom: 8, 
-      maxZoom: 8, 
-      tileSize: 512  
-    })),
+    strategy: ol_loadingstrategy_tile(this._tileGrid),
     // Features
     features: new ol_Collection(),
     attributions: options.attribution,
@@ -130,9 +135,24 @@ ol_ext_inherits(RIPartSource, ol_source_Vector);
 /** Load georems from server
  * @private
  */
-RIPartSource.prototype.loaderFn_ = function(extent, resolution, projection) {
-  extent = ol_proj_transformExtent(extent, projection, 'EPSG:4326');
+RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
 
+  const loadFeatures = function (result) {
+    const features = [];
+    result.forEach((r)=> {
+      const p = ol_proj_fromLonLat([r.lon, r.lat]);
+      const f = new ol_Feature(new ol_geom_Point(p));
+      f.setProperties({ ripart: r });
+      features.push(f);
+    });
+    this.addFeatures(features);
+    if (result.length === 500) {
+      this.dispatchEvent({ type: 'overload' });
+    }
+    //console.log(this.getFeatures().length);
+  }.bind(this);
+
+  const extent = ol_proj_transformExtent(extent0, projection, 'EPSG:4326');
   this.dispatchEvent({ type: 'loadstart' });
   this._ripart.getGeorems({
     box: extent.join(','),
@@ -140,19 +160,21 @@ RIPartSource.prototype.loaderFn_ = function(extent, resolution, projection) {
     limit: 500
   }, (result) => {
     this.dispatchEvent({ type: 'loadend' });
+    // Charger le resultat
     if (result) {
-      const features = [];
-      result.forEach((r)=> {
-        const p = ol_proj_fromLonLat([r.lon, r.lat]);
-        const f = new ol_Feature(new ol_geom_Point(p));
-        f.setProperties({ ripart: r });
-        features.push(f);
-      });
-      this.addFeatures(features);
-      if (result.length === 500) {
-        this.dispatchEvent({ type: 'overload' });
+      if (this._cache.saveCache) {
+        this._cache.saveCache(JSON.stringify(result), this._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution));
       }
-      //console.log(this.getFeatures().length);
+      loadFeatures(result);
+    } else {
+      if (this._cache.loadCache) {
+        this._cache.loadCache({
+          tileCoord: this._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution),
+          success: (result) => {
+            loadFeatures(JSON.parse(result));
+          }
+        });
+      }
     }
   });
 };

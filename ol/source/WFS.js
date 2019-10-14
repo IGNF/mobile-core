@@ -16,7 +16,10 @@ import { ol_ext_inherits } from 'ol-ext/util/ext'
  * @constructor
  * @extends {ol.source.Vector}
  * @trigger loadstart, loadend, overload
- * @param {any}
+ * @param {*} options
+ * @param {*} cache
+ *  @param {function} cache.saveCache a function that takes response, extent, resolution and save the response
+ *  @param {function} cache.loadCache a function that takes { extent, resolution, success and error callback }
  * @returns {VectorWFS}
  */
 const VectorWFS = function(options, cache) {
