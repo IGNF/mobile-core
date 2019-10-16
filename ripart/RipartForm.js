@@ -516,8 +516,11 @@ RIPart.prototype.getLocalRems = function() {
 }
 
 /** Post all local rems to server
-*/
-RIPart.prototype.postLocalRems = function() {
+ * @param {*} options
+ *  @param {function} error a function that takes an error and a message on error
+ */
+RIPart.prototype.postLocalRems = function(options) {
+  options = options || {};
   var self = this;
   var nb = this.countLocalRems();
   var n = 0;
@@ -534,7 +537,11 @@ RIPart.prototype.postLocalRems = function() {
       var grem = self.param.georems[i];
       if (!grem.id) {
         n++;
-        self.postLocalRem (i, { info: "Envoi des signalements ("+n+"/"+nb+")", cback: postNext });
+        self.postLocalRem (i, { 
+          info: "Envoi des signalements ("+n+"/"+nb+")", 
+          cback: postNext,
+          error: options.error
+        });
         break;
       }
     }
@@ -588,16 +595,19 @@ RIPart.prototype.postLocalRem = function(i, options) {
             .html("<br/>Erreur : "+e.status+" - "+e.statusText+"</i>")
             .appendTo(msg);
         }
-        wapp.message ( msg, 
-          "Connexion", {
-            ok: "ok", 
-            connect: (e.status===401) ? "Se connecter...":undefined 
-          },
-          function(b) {
-            if (b=="connect") self.connectDialog();
-          });
-        // Post Next
-        if (typeof(options.error)=='function') options.error();
+        if (typeof(options.error)=='function') {
+          options.error(e, msg);
+        } else {
+          wapp.message ( msg, 
+            "Connexion", {
+              ok: "ok", 
+              connect: (e.status===401) ? "Se connecter...":undefined 
+            },
+            function(b) {
+              if (b=="connect") self.connectDialog();
+            }
+          );
+        }
         self.saveParam();
         self.onUpdate();
       } else {
@@ -1391,35 +1401,42 @@ RIPart.prototype.cancelFormulaire = function(type, georem) {
 };
 
 /** Take a photo using the camera
-*/
-RIPart.prototype.photo = function() {
+ * @param {boolean} noFile prevent loading file from SD card
+ */
+RIPart.prototype.photo = function(noFile) {
   var self = this;
-  var photoElt = $(".photo", this.formElement);
-  wapp.getPicture(function(url, button){
-    if (url) {
-      $("img", photoElt).attr("src",url+"?"+new Date().getTime())
-        .data("photo",url)
-        .show();
-      $(".fa-stack", photoElt).hide();
-    } else {
-      if (button=='del') {
-        $("img", photoElt).attr("src","")
-          .data("photo",false)
-          .hide();
-        $(".fa-stack", photoElt).show();
+  var photoElt = $('.photo', this.formElement);
+  var hasPhoto = $('img', photoElt).attr('src');
+  console.log('getPicture')
+  wapp.getPicture(
+    function(url, button) {
+      if (url) {
+        $('img', photoElt).attr('src',url+'?'+new Date().getTime())
+          .data('photo',url)
+          .show();
+        $('.fa-stack', photoElt).hide();
+      } else {
+        if (button=='del') {
+          $('img', photoElt).attr('src','')
+            .data('photo',false)
+            .hide();
+          $('.fa-stack', photoElt).show();
+        }
       }
-    }
-  },
-  null,	{
-    prompt: "Ajouter une photo",
-    message: this.messagePhoto,
-    name: "TMP/photo.jpg",
-    buttons: $("img", photoElt).attr("src") ? { del:"supprimer", cancel:"annuler" } : false,
-    className: $("img", photoElt).attr("src") ? "ripart photo photodel":"ripart photo",
-    targetWidth: self.param.imgWidth || 1200,
-    targetHeight: self.param.imgHeight || 1200,
-    correctOrientation: (self.param.imgOrient!==false)
-  });
+    },
+    null,	
+    {
+      prompt: 'Ajouter une photo',
+      message: this.messagePhoto,
+      name: 'TMP/photo.jpg',
+      buttons: hasPhoto ? { photo:'Caméra', del:'supprimer', cancel:'annuler' } : { photo:'Caméra', cancel:'annuler' },
+      className: hasPhoto ? 'ripart photo photodel' : 'ripart photo',
+      targetWidth: self.param.imgWidth || 1200,
+      targetHeight: self.param.imgHeight || 1200,
+      correctOrientation: (self.param.imgOrient!==false)
+    }, 
+    (hasPhoto || !noFile) ? undefined : Camera.PictureSourceType.CAMERA
+  );
 };
 
 /** Add (or remove) a feature to the signalement

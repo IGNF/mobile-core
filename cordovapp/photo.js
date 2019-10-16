@@ -9,7 +9,7 @@ import CordovApp from './CordovApp'
  * @param {} param parametre de prise de vue
  * 	@param {string} param.name file name ("TMP/img.jpg" ou "DIR/img.jpg") si null renvoie un fichier temporaire
  * 	@param {string} param.prompt prompt pour le choix de la source
- * 	@param {string} param.buttons list of buttons default {cancel:"annuler"} used if no source provided
+ * 	@param {string} param.buttons list of buttons default { photo:'Caméra', album:'Album', cancel: 'annuler' } used if no source provided
  * @param {enum} source Camera.PictureSourceType.SAVEDPHOTOALBUM ou Camera.PictureSourceType.CAMERA
 */
 CordovApp.prototype.getPicture = function (win, fail, param, source) {
@@ -20,18 +20,16 @@ CordovApp.prototype.getPicture = function (win, fail, param, source) {
   if (typeof(param) != "object") param = {};
   var self = this;
   // Default buttons
-  var bouttons = { photo:"Caméra", album:"Album" };
-  if (param.buttons) bouttons = $.extend (bouttons, param.buttons);
-  else bouttons.cancel = "annuler";
+  var bouttons = param.buttons || { photo:'Caméra', album:'Album', cancel: 'annuler' };
   // Ask for the source (if none)
   if (!source) {
-    this.message(param.message || "Chercher un image dans un de vos album ou prendre une nouvelle photo.",
-      (param.prompt || "Caméra"), 
+    this.message(param.message || 'Chercher un image dans un de vos album ou prendre une nouvelle photo.',
+      (param.prompt || 'Caméra'), 
       bouttons,
       function(button) {
         switch (button) {
-          case "photo": self.getPicture(win, fail, param, Camera.PictureSourceType.CAMERA ); break;
-          case "album": self.getPicture(win, fail, param, Camera.PictureSourceType.SAVEDPHOTOALBUM ); break;
+          case 'photo': self.getPicture(win, fail, param, Camera.PictureSourceType.CAMERA ); break;
+          case 'album': self.getPicture(win, fail, param, Camera.PictureSourceType.SAVEDPHOTOALBUM ); break;
           default: win("", button); break;
         }
       },
