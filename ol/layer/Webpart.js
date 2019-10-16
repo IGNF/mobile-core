@@ -41,8 +41,8 @@ const VectorWebpart = function(options, source_options) {
     this.createSource(options, source_options, options.featureType);
   } else {
     var url = this.url_+this.database_+"/feature-type/"+this.name_+".json";
-    $.ajax(
-    {	url: (this.proxy_ || url ),
+    $.ajax({
+      url: (this.proxy_ || url ),
       dataType: 'json', 
       // Authentification
       username: options.username,
@@ -51,8 +51,8 @@ const VectorWebpart = function(options, source_options) {
       success: function (featureType) {
         self.createSource(options, source_options, featureType);
       },
-      error: function(jqXHR, status, error) 
-      {	//console.log(jqXHR)
+      error: function(jqXHR, status, error) {
+        //console.log(jqXHR)
         self.dispatchEvent({ type:"error", error:error, status:jqXHR.status, statusText:status });
       }
     });

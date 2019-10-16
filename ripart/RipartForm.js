@@ -1058,6 +1058,7 @@ RIPart.prototype.setProfil = function(id_groupe) {
       filtre: g.filter,
       groupe: g.nom,
       status: g.status,
+      comment: g.commentaire_georem,
       id_groupe: id_groupe,
       logo: g.logo
     }
@@ -1221,6 +1222,9 @@ RIPart.prototype.showFormulaire = function(grem, select) {
   this.selectTheme(valdef, georem ? georem.attributes:false, nbth!=1);
   if (nbth>1) theme.show();
   else theme.hide();
+
+  // Comment
+  $(".comment", this.formElement).val(this.param.profil.comment);
 
   // Lon / lat
   var lon = Number($("input.lon", this.formElement).val());

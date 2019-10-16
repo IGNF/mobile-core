@@ -314,6 +314,7 @@ var RIPart = function(options) {
           nom: att.find("NOM").first().text(),
           desc: att.find("DESCRIPTION").first().text(),
           id_groupe: Number(att.find("ID_GEOGROUPE").text()),
+          commentaire_georem: att.find("COMMENTAIRE_GEOREM").text(),
           global: (att.find("STATUS").first().text() == "global"),
           status: att.find("STATUS").first().text(),
           active: !!att.find("ACTIVE").first().text(),
