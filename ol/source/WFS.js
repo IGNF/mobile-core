@@ -91,7 +91,7 @@ VectorWFS.prototype.setUser = function(user, pwd) {
  * Loader
  * @private
  */
-VectorWFS.prototype.loaderFn_ = function(extent, resolution, projection) {
+VectorWFS.prototype.loaderFn_ = function(extent0, resolution, projection) {
   // Load once
   if (this._done && this.get('once')) return;
   this._done = true;
@@ -99,7 +99,7 @@ VectorWFS.prototype.loaderFn_ = function(extent, resolution, projection) {
   var self = this;
 
   // WFS parameters
-  extent = ol_proj_transformExtent (extent, projection, this.get('projection'));
+  const extent = ol_proj_transformExtent (extent0, projection, this.get('projection'));
   var parameters = {
     service	: 'WFS',
     request: 'GetFeature',
@@ -116,6 +116,7 @@ VectorWFS.prototype.loaderFn_ = function(extent, resolution, projection) {
   this.dispatchEvent({ type:"loadstart", remains:++this.tileloading_ } );
   // Load Cache
   this.loadCache({
+    tileCoord: this._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution),
     extent: extent, 
     resolution: resolution, 
     // Cache charge
@@ -136,7 +137,7 @@ VectorWFS.prototype.loaderFn_ = function(extent, resolution, projection) {
         auth: self.username ?  btoa(self.username+':'+self.password) : undefined,
         success: function(response) {
           //console.log('loading:', response.length)
-          self.saveCache(response, extent, resolution)
+          self.saveCache(response, extent, resolution, self._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution))
           self.handleResponse_(response, projection);
         },
         // Online fail
@@ -146,6 +147,7 @@ VectorWFS.prototype.loaderFn_ = function(extent, resolution, projection) {
           if (cacheError === 'obsolete') {
             self.loadCache({
               obsolete: true,
+              tileCoord: self._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution),
               extent: extent, 
               resolution: resolution, 
               // Cache charge
@@ -201,11 +203,12 @@ VectorWFS.prototype.loadCache = function(options) {
 
 /**
  * Save cache, default no cache
- * @param {} response something to save
- * @param {} extent
- * @param {} resolution
+ * @param {*} response something to save
+ * @param {ol.extent} extent
+ * @param {number} resolution
+ * @param {Array<number>} tileCoord
  */
-VectorWFS.prototype.saveCache = function(/*response, extent, resolution*/) {};
+VectorWFS.prototype.saveCache = function(/*response, extent, resolution, tileCoord*/) {};
 
 /**
  * 
