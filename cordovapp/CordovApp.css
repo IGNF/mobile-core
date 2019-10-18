@@ -125,6 +125,21 @@ body {
   color:#666;
 }
 
+body[data-platform] .www,
+body[data-platform] .ios,
+body[data-platform] .android {
+  display: none;
+}
+body[data-platform="www"] .www {
+  display: inherit;
+}
+body[data-platform="ios"] .ios {
+  display: inherit;
+}
+body[data-platform="android"] .android {
+  display: inherit;
+}
+
 .warning {
   color: #f90;
   font-weight: bold;
