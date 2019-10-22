@@ -28,7 +28,7 @@ const VectorWFS = function(options, cache) {
   if (!options) options = {};
   if (!options.mask) options.mask = {};
   // ** OLD VERSION
-  if (options.minzoom || options.maxzoom) console.error('[VectorWFS] Use minZoom or maxZoom')
+  if (!options.once && (options.minzoom || options.maxzoom)) console.error('[VectorWFS] Use minZoom or maxZoom')
   // **
   var self = this;
   var secret = "WFS Espace Collaboratif IGN";
@@ -193,7 +193,7 @@ const ol_style_Style_WFS = function(options) {
       style.size = feature.get(attr('symb@pWidth'));
       style.spacing = feature.get(attr('symb@pSpace'));
 
-      var fillColor = ol_color_asArray(feature.get(attr('symb@fColor'))) || 'rgba(255,255,255,0.4)';
+      var fillColor = ol_color_asArray(feature.get(attr('symb@fColor')) || 'rgba(255,255,255,0.4)');
       if (style.pattern) {
         pattern = new ol_style_FillPattern({
           pattern: style.pattern,
@@ -222,6 +222,7 @@ const ol_style_Style_WFS = function(options) {
         });
       }
       var dash = feature.get(attr('symb@sDash')) ? feature.get(attr('symb@sDash')).split(',') : [];
+      console.log(feature.get(attr('symb@sWidth')))
 			const wfstyle = [
         new ol_style_Style({
           image: new ol_style_Circle({

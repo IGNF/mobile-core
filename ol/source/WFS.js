@@ -3,6 +3,8 @@
 import ol_source_Vector from 'ol/source/Vector'
 import ol_Collection from 'ol/Collection'
 import ol_format_WFS from 'ol/format/WFS'
+import ol_format_GML3 from 'ol/format/GML3'
+import ol_format_GML2 from 'ol/format/GML2'
 import ol_format_GeoJSON from 'ol/format/GeoJSON'
 import { tile as ol_loadingstrategy_tile } from 'ol/loadingstrategy'
 import { bbox as ol_loadingstrategy_bbox } from 'ol/loadingstrategy'
@@ -32,7 +34,7 @@ const VectorWFS = function(options, cache) {
   this.username = options.username;
   this.password = options.password;
 
-  this.featureFilter_ = options.filter || {};
+  this.featureFilter_ = options.filter;
   
   // Strategy for loading source (custom or bbox or tile)
   var strategy = options.strategy;
@@ -76,8 +78,8 @@ const VectorWFS = function(options, cache) {
   this.set('version', options.version);
   this.set('projection', options.srs||'EPSG:4326');
   this.set('id', options.mask ? options.mask.id : -1);
-  this.set('maxFeatures', options.maxFeatures)
-  this.set('format', options.format)
+  this.set('maxFeatures', options.maxFeatures);
+  this.set('format', options.format);
 };
 ol_ext_inherits(VectorWFS, ol_source_Vector);
 
@@ -103,9 +105,9 @@ VectorWFS.prototype.loaderFn_ = function(extent0, resolution, projection) {
   var parameters = {
     service	: 'WFS',
     request: 'GetFeature',
-		outputFormat: this.get('format'),
+    outputFormat: this.get('format'),
     typeName: this.get('typename'),
-		bbox: extent.join(','),             // WFS standard ?
+		bbox: this.get('once') ? undefined : extent.join(','),             // WFS standard ?
 //    boundedBy: extent.join(','),      // ??? sylvamap ???
     maxFeatures: this.get('maxFeature'),
     filter: this.featureFilter_,
@@ -116,7 +118,7 @@ VectorWFS.prototype.loaderFn_ = function(extent0, resolution, projection) {
   this.dispatchEvent({ type:"loadstart", remains:++this.tileloading_ } );
   // Load Cache
   this.loadCache({
-    tileCoord: this._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution),
+    tileCoord: this._tileGrid ? this._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution) : null,
     extent: extent, 
     resolution: resolution, 
     // Cache charge
@@ -125,8 +127,9 @@ VectorWFS.prototype.loaderFn_ = function(extent0, resolution, projection) {
     },
     // On error => load online
     error: function(cacheError) {
+      const tcoord = self._tileGrid ? self._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution) : null;
       Ajax.get({
-        url: self.get('url'),
+        url: self.get('url').replace(/\?$/,''),
         headers : { "cache-control": "no-cache" },
         cache: false,
         dataType: "text",
@@ -137,7 +140,7 @@ VectorWFS.prototype.loaderFn_ = function(extent0, resolution, projection) {
         auth: self.username ?  btoa(self.username+':'+self.password) : undefined,
         success: function(response) {
           //console.log('loading:', response.length)
-          self.saveCache(response, extent, resolution, self._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution))
+          self.saveCache(response, extent, resolution, tcoord)
           self.handleResponse_(response, projection);
         },
         // Online fail
@@ -147,7 +150,7 @@ VectorWFS.prototype.loaderFn_ = function(extent0, resolution, projection) {
           if (cacheError === 'obsolete') {
             self.loadCache({
               obsolete: true,
-              tileCoord: self._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution),
+              tileCoord: tcoord,
               extent: extent, 
               resolution: resolution, 
               // Cache charge
@@ -224,7 +227,12 @@ VectorWFS.prototype.handleResponse_ = function(response, projection) {
       break;
     }
     default: {
-      data = (new ol_format_WFS()).readFeatures(response);
+      var format = new ol_format_WFS({ gmlFormat: new ol_format_GML3() });
+      data = format.readFeatures(response);
+      if (data.length && !data[0].getGeometry()) {
+        format = new ol_format_WFS({ gmlFormat: new ol_format_GML2() });
+        data = format.readFeatures(response);
+      }
       break;
     }
   }
