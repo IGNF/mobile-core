@@ -222,7 +222,6 @@ const ol_style_Style_WFS = function(options) {
         });
       }
       var dash = feature.get(attr('symb@sDash')) ? feature.get(attr('symb@sDash')).split(',') : [];
-      console.log(feature.get(attr('symb@sWidth')))
 			const wfstyle = [
         new ol_style_Style({
           image: new ol_style_Circle({
