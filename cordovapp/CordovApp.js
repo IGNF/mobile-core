@@ -41,11 +41,6 @@ if (!window.cancelAnimationFrame && window.webkitCancelRequestAnimationFrame) {
 var CordovApp = function(obj) {
   var self = this;
 
-  /**  Cordova app (or browser) */
-  this.isCordova = window.cordova ? true:false;
-  if (this.isCordova) $("body").attr("data-platform", cordova.platformId);
-  else $("body").attr("data-platform","www");
-
   /** Webapp parameters: localStorage['WebApp@param'] */
   this.param = {};
 
@@ -79,7 +74,7 @@ var CordovApp = function(obj) {
     }
   }
   
-  /** Constructor: call when application is initilized
+  /** Constructor: call when application is initialized
   * @api
   */
   this.initialize = function() {};
@@ -109,6 +104,11 @@ var CordovApp = function(obj) {
   * @private
   */
   function _init() {
+    /**  Cordova app (or browser) */
+    self.isCordova = window.cordova ? true:false;
+    if (self.isCordova) $("body").attr("data-platform", cordova.platformId);
+    else $("body").attr("data-platform","www");
+
     // Minimize latences (si fastclick.js)...
     if (window.FastClick) {
       window.FastClick.attach(document.body);
