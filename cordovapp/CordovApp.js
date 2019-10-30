@@ -106,8 +106,7 @@ var CordovApp = function(obj) {
   function _init() {
     /**  Cordova app (or browser) */
     self.isCordova = window.cordova ? true:false;
-    if (self.isCordova) $("body").attr("data-platform", cordova.platformId);
-    else $("body").attr("data-platform","www");
+    $("body").attr("data-platform", getPlatformId());
 
     // Minimize latences (si fastclick.js)...
     if (window.FastClick) {
