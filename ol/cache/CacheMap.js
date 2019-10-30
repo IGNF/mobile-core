@@ -211,11 +211,11 @@ const CacheMap = function(wapp, layerGroup, options) {
   };
 
   /* Recupere un liste des id-fichier de la carte
-  *	@param {CacheMap} smap la carte 
-  *	@param {function} callback fonction qui renvoie la liste et le nombre de fichiers concernes
-  *	@param {} list a modifier, default liste vide
-  *	@param {boolean} remove si true supprime les fichiers de la liste, default false
-  */
+   *  @param {CacheMap} smap la carte 
+   *  @param {function} callback fonction qui renvoie la liste et le nombre de fichiers concernes
+   *  @param {} list a modifier, default liste vide
+   *  @param {boolean} remove si true supprime les fichiers de la liste, default false
+   */
   function getCacheFiles(smap, callback, list, remove) {
     // File list
     var lfile = {};
@@ -258,8 +258,8 @@ const CacheMap = function(wapp, layerGroup, options) {
   }
 
   /* Supprimer les fichiers de la carte du cache
-  *	@param {CacheMap} smap carte a supprimer
-  */
+   *	@param {CacheMap} smap carte a supprimer
+   */
   function removeCacheFiles(smap) {
     // Carte non chargee
     if (!smap.length) return;
@@ -613,8 +613,11 @@ const CacheMap = function(wapp, layerGroup, options) {
       // Lecture du cache
       var cache = new ol_cache_Tile (layercache, {
         read: function(tile, callback) {
-          if (wapp.isCordova) callback (getPath()+smap.layer+"/"+tile.id);
-          else callback(tile.src);
+          if (wapp.isCordova) {
+            callback (getPath()+smap.layer+"/"+tile.id);
+          } else {
+            callback(tile.src);
+          }
         },
         authentication: authentication
       });
@@ -623,8 +626,8 @@ const CacheMap = function(wapp, layerGroup, options) {
   }
 
   /* Recuperation d'une carte par son nom
-  *	@param {string} name
-  */
+   *	@param {string} name
+   */
   function getCacheMapByName(name) {
     for (var i=0, c; c=wapp.param.cacheMap[i]; i++) {
       if (c.nom == name) return c;
@@ -633,8 +636,8 @@ const CacheMap = function(wapp, layerGroup, options) {
   }
 
   /* Recuperation d'une carte par son id
-  *	@param {string} id
-  */
+   *	@param {string} id
+   */
   function getCacheMapById(id) {
     if (wapp.param.cacheMap) { 
       for (var i=0, c; c=wapp.param.cacheMap[i]; i++) {
