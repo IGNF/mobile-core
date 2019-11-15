@@ -194,7 +194,7 @@ VectorWebpart.prototype.reload = function() {
   this.on ('removefeature', this.onDeleteFeature_bind);
   this.isloading_ = false;
   this.dispatchEvent({ type:"reload", maxreload: this.maxReload_ });
-  console.log('reload'+this.getProperties());
+  // console.log('reload',this.getProperties());
 }
 
 /** Get save actions
@@ -389,7 +389,7 @@ VectorWebpart.prototype.findFeature_ = function(f) {
     if (find(this.getFeaturesInExtent([p[0]-0.1, p[1]-0.1, p[0]+0.1, p[1]+0.1]))) {
       return null;
     }
-    return f;
+    //return f;
   }
   // Search deleted feature
   if (find(this.delete_)) return null;

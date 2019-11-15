@@ -38,6 +38,7 @@ const VectorWebpart = function(options, source_options) {
 
   if (options.cacheUrl) {
     source_options.cacheUrl = options.cacheUrl;
+    this.set('cache', true);
     this.createSource(options, source_options, options.featureType);
   } else {
     var url = this.url_+this.database_+"/feature-type/"+this.name_+".json";
