@@ -116,8 +116,10 @@ const VectorWebpart = function(opt_options) {
     useSpatialIndex: true, // force to true for loading strategy tile
     wrapX: options.wrapX
   });
-    
-  this.set('cacheUrl', options.cacheUrl);
+  
+  // Lecture en cache
+  this._cacheUrl = options.cacheUrl;
+  this._formatWKT = new ol_format_WKT();
   
   // Collection of feature we want to preserve when reloaded
   this.preserved_ = options.preserved || new ol_Collection();
@@ -131,8 +133,51 @@ const VectorWebpart = function(opt_options) {
   // Modified features
   this.update_ = [];
   this.on ('changefeature', this.onUpdateFeature_.bind(this));
+
+  // Read editions
+
 };
 ol_ext_inherits(VectorWebpart, ol_source_Vector);
+
+
+/** Read changes in a file
+ * 
+ */
+ol_Feature.prototype.readChange = function() {
+  const url = this._cacheUrl + 'editions.txt';
+  CordovApp.File.read(
+    url, 
+    // Success
+    (data) => {
+      console.log(data);
+    },
+    // Error
+    () => {
+      // Create fil if not exit
+      // CordovApp.File.write(url,'');
+    }
+  );
+};
+
+/** Save new change in a file
+ * 
+ */
+ol_Feature.prototype.writeChange = function(feature, state) {
+  const url = this._cacheUrl + 'editions.txt';
+  const prop = feature.getProperties();
+  prop.geometry
+  const data = { 
+    op: operation,
+    feature: JSON.stringify(this.getFeatureAction(feature, state))
+  };
+  CordovApp.File.write(
+    url, 
+    data,
+    () => {},
+    () => {},
+    true
+  );
+};
 
 /** Editing states for vector features
 */
@@ -197,28 +242,44 @@ VectorWebpart.prototype.reload = function() {
   // console.log('reload',this.getProperties());
 }
 
+/** Get an action
+ * @param {string} state
+ * @param {ol.Feature} f
+ * @return {*}
+ */
+VectorWebpart.prototype.getFeatureAction = function(f, state) {
+  var a = { feature: f.getProperties(), state: state, typeName: this.featureType_.name };
+  var g = a.feature.geometry.clone();
+  g.transform (this.projection_, this.srsName_);
+  delete a.feature.geometry;
+  // delete a.feature._id;
+  a.feature[geometryAttribute] = this._formatWKT.writeGeometry(g);
+  return a;
+};
+
 /** Get save actions
-* @return list of save actions + number of features in each states
-*/
+ * @return list of save actions + number of features in each states
+ */
 VectorWebpart.prototype.getSaveActions = function() {
   var self = this;
   // var idName = this.featureType_.idName;
-  var geometryAttribute = this.featureType_.geometryName;
-  var typeName = this.featureType_.name;
+  // var geometryAttribute = this.featureType_.geometryName;
   var actions = [];
-  var wkt = new ol_format_WKT();
 
   function getActions (t, state){
     var nb = 0;
     for (var i=0; i<t.length; i++) {
       var f = t[i];
       if (f.getState() == state) {
+        const a = self.getFeatureAction(f, state, typeName);
+        /*
         var a = { feature: f.getProperties(), state: f.getState(), typeName: typeName };
         var g = a.feature.geometry.clone();
         g.transform (self.projection_, self.srsName_);
         delete a.feature.geometry;
         // delete a.feature._id;
         a.feature[geometryAttribute] = wkt.writeGeometry(g);
+        */
         actions.push(a);
         nb++;
       }
@@ -339,6 +400,9 @@ VectorWebpart.prototype.onDeleteFeature_ = function(e) {
 VectorWebpart.prototype.onUpdateFeature_ = function(e) {
   if (this.isloading_) return;
     
+  // Save change 
+  this.writeChange(e.feature, e.feature.getState());
+
   // if feature has already a state attribute (INSERT),
   // we don't need to add it in this.update_
   if (e.feature.getState() != ol_Feature.State.UNKNOWN) return;
@@ -509,8 +573,8 @@ VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
   this.dispatchEvent({type:"loadstart", remains:++this.tileloading_ } );
 
   // Read in cache
-  if (this.get('cacheUrl')) {
-    var url = this.get('cacheUrl');
+  if (this._cacheUrl) {
+    var url = this._cacheUrl;
     var tgrid = this.getTileGrid();
     var tcoord = tgrid.getTileCoordForCoordAndResolution(ol_extent_getCenter(extent), resolution);
     url += tcoord.join('-');
