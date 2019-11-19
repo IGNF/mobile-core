@@ -235,7 +235,7 @@ CordovApp.File.getDirectory = function (path, success, fail, create) {
  * @param {function} success callback that is passed a FileEntry objects
  * @param {function} fail callback invoked on error
  */
-CordovApp.File.write = function(name, data, success, fail) {
+CordovApp.File.write = function(name, data, success, fail, append) {
   if (!success) success = this.success;
   if (!fail) fail = this.fail;
   // Recherche du repertoire
@@ -243,14 +243,15 @@ CordovApp.File.write = function(name, data, success, fail) {
   name = name.substring(name.lastIndexOf("/")+1);
   this.getDirectory (
     dir,
-    function(dirEntry){
+    function(dirEntry) {
       dirEntry.getFile(
-        name, {create: true, exclusive: false}, 
+        name, { create: true, exclusive: false }, 
         function (fileEntry) {
           fileEntry.createWriter (
-            function gotFileWriter(writer) {
+            function (writer) {
               writer.onwrite = function() { success(fileEntry); };
               writer.onerror = fail;
+              if (append) writer.seek(writer.length);
               writer.write(data);
             },
             fail
