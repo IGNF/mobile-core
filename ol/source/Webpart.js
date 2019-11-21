@@ -139,46 +139,6 @@ const VectorWebpart = function(opt_options) {
 };
 ol_ext_inherits(VectorWebpart, ol_source_Vector);
 
-
-/** Read changes in a file
- * 
- */
-ol_Feature.prototype.readChange = function() {
-  const url = this._cacheUrl + 'editions.txt';
-  CordovApp.File.read(
-    url, 
-    // Success
-    (data) => {
-      console.log(data);
-    },
-    // Error
-    () => {
-      // Create fil if not exit
-      // CordovApp.File.write(url,'');
-    }
-  );
-};
-
-/** Save new change in a file
- * 
- */
-ol_Feature.prototype.writeChange = function(feature, state) {
-  const url = this._cacheUrl + 'editions.txt';
-  const prop = feature.getProperties();
-  prop.geometry
-  const data = { 
-    op: operation,
-    feature: JSON.stringify(this.getFeatureAction(feature, state))
-  };
-  CordovApp.File.write(
-    url, 
-    data,
-    () => {},
-    () => {},
-    true
-  );
-};
-
 /** Editing states for vector features
 */
 ol_Feature.State = {
@@ -201,6 +161,58 @@ ol_Feature.prototype.getState = function() {
 ol_Feature.prototype.setState = function(state) {
   this.state_ = state;
 }
+
+
+/** Read changes in a file
+ * 
+ */
+VectorWebpart.prototype.readChange = function() {
+  const url = this._cacheUrl + 'editions.txt';
+  CordovApp.File.read(
+    url, 
+    // Success
+    (data) => {
+      console.log(data);
+    },
+    // Error
+    () => {
+      // Create fil if not exit
+      // CordovApp.File.write(url,'');
+    }
+  );
+};
+
+/** Save new change in a file
+ * 
+ */
+VectorWebpart.prototype.writeChange = function(feature, state, force) {
+//  if (!this._cacheUrl) return;
+  if (!feature._update) feature._update = 0;
+  if (!force) {
+    feature._update++;
+    setTimeout(() => { this.writeChange(feature, state, true); });
+    return;
+  } else {
+    feature._update--;
+    if (feature._update>0) return;
+  }
+  feature._update = 0;
+  console.log('writeChange', force, feature._update)
+  const url = this._cacheUrl + 'editions.txt';
+  const prop = feature.getProperties();
+  prop.geometry
+  const data = { 
+    state: state,
+    feature: JSON.stringify(this.getFeatureAction(feature, state))
+  };
+  CordovApp.File.write(
+    url, 
+    data,
+    () => {},
+    () => {},
+    true
+  );
+};
 
 /** Get layer's tile grid
 * @return { ol.tilegrid.TileGrid }
@@ -253,6 +265,7 @@ VectorWebpart.prototype.getFeatureAction = function(f, state) {
   g.transform (this.projection_, this.srsName_);
   delete a.feature.geometry;
   // delete a.feature._id;
+  var geometryAttribute = this.featureType_.geometryName;
   a.feature[geometryAttribute] = this._formatWKT.writeGeometry(g);
   return a;
 };
