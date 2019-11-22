@@ -10,6 +10,7 @@
 */
 import WebFont from 'webfontloader';
 import _T from '../i18n'
+import checkInfo from './checkInfo'
 
 /* Use jQuery as global */
 import jQuery from 'jquery'
@@ -38,7 +39,7 @@ if (!window.cancelAnimationFrame && window.webkitCancelRequestAnimationFrame) {
  * @param {Object} options 
  * 
  */
-var CordovApp = function(obj) {
+var CordovApp = function(options) {
   var self = this;
 
   /** Webapp parameters: localStorage['WebApp@param'] */
@@ -158,6 +159,9 @@ var CordovApp = function(obj) {
 
     // Close splashscreen (if any)
     if (navigator.splashscreen) navigator.splashscreen.hide();
+
+    // Check server info
+    checkInfo();
   }
 
 
@@ -249,7 +253,7 @@ var CordovApp = function(obj) {
   }
   
   // Extend user class
-  $.extend(this, obj);
+  $.extend(this, options);
 
   // Run when ready
   function load() {
