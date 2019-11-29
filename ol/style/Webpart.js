@@ -82,16 +82,39 @@ ol_style_Webpart.Fill = function (fstyle) {
   return fill;
 };
 
+/** Image cache */
+const imageCache = {};
+
 /** Get Image style from featureType.style
 *	@param {featureType.style |  undefined}
 *	@return ol.style.Image
 */
-ol_style_Webpart.Image = function (fstyle) {
-  var image;
+ol_style_Webpart.setImage = function (olStyle, fstyle) {
+  var image, img;
   if (fstyle.img) {
-    image = new ol_style_Icon ({
-      src: fstyle.img
-    });
+    img = fstyle.img
+  } else if (fstyle.externalGraphic && fstyle.externalGraphic!=='undefined') {
+    img = 'https://espacecollaboratif.ign.fr/gcms/style/image/'+fstyle.externalGraphic+'?width='+fstyle.graphicWidth+'&height='+fstyle.graphicWidth;
+  }
+  if (img) {
+    if (imageCache[img]) {
+      image = imageCache[img];
+    } else {
+      image = new ol_style_Icon ({ src: img });
+      // Save cache Image
+      image.getImage().addEventListener('load', () => {
+        imageCache[img] = image;
+      });
+      // On error show default icon
+      image.getImage().addEventListener('error', () => {
+        imageCache[img] = new ol_style_Circle({
+          radius: 8,
+          stroke: new ol_style_Stroke({ color: '#fff', width: 1.5 }),
+          fill: new ol_style_Fill({ color: 'rgba(255,0,0,.5)' })
+        });
+        olStyle.setImage(imageCache[img]);
+      });
+    }
   } else {
     var radius = Number(fstyle.pointRadius) || 5;
     var graphic = {
@@ -133,7 +156,7 @@ ol_style_Webpart.Image = function (fstyle) {
         break;
     }
   }
-  return image;
+  olStyle.setImage(image);
 };
 
 /** Get Text style from featureType.style
@@ -172,7 +195,7 @@ ol_style_Webpart.symbolCache = null;
 /** Load symbol cache
  */
 ol_style_Webpart.loadSymbolCache = function() {
-  if (typeof(CordovApp)!=='undefined' && !this.symbolCache) {
+  if (!this.symbolCache && window.cordova) {
     this.symbolCache = {}
     CordovApp.File.listDirectory(
       'FILE/cache/symbols', 
@@ -190,16 +213,16 @@ ol_style_Webpart.loadSymbolCache = function() {
 * @return { ol.style.function | undefined }
 */
 ol_style_Webpart.getFeatureStyleFn = function(featureType, cache) {
-  // Chargement du cache des images
-  this.loadSymbolCache();
   // Fonction de style
   if (!featureType) featureType = {};
   if (featureType.name && ol_style_Webpart[featureType.name]) {
     return ol_style_Webpart[featureType.name](featureType);
   } else {
     return function(feature) {
-      var style = featureType.style;
+      // Chargement du cache des images
+      ol_style_Webpart.loadSymbolCache();
       // Conditionnal style
+      var style = featureType.style;
       if (featureType.style && featureType.style.children) {
         for (var i=0, fi; fi=featureType.style.children[i]; i++) {
           var test = true;
@@ -238,23 +261,34 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache) {
 
       var fstyle = ol_style_Webpart.formatFeatureStyle (style, feature);
       // Gestion d'une bibliotheque de symboles
-      if (style && style.name && featureType.symbo_attribute) {
-        fstyle.radius = 5;
-        fstyle.graphicName = "x";
-        fstyle.img = ol_style_Webpart.getSymbolURI(
-          featureType,
-          feature.get(featureType.symbo_attribute.name),
-          cache
-        )
+      if (style && style.name) {
+        if (featureType.symbo_attribute) {
+          fstyle.radius = 5;
+          fstyle.img = ol_style_Webpart.getSymbolURI(
+            featureType,
+            featureType.style.name+'/'+feature.get(featureType.symbo_attribute.name),
+            featureType.style.graphicWidth,
+            featureType.style.graphicHeight,
+            cache
+          )
+        } else if (style.externalGraphic) {
+          fstyle.radius = 5;
+          fstyle.img = ol_style_Webpart.getSymbolURI(
+            featureType,
+            style.externalGraphic,
+            style.graphicWidth,
+            style.graphicHeight,
+            cache
+          )
+        }
       }
-      return [	
-        new ol_style_Style ({
-          text: ol_style_Webpart.Text (fstyle),
-          image: ol_style_Webpart.Image (fstyle),
-          fill: ol_style_Webpart.Fill (fstyle),
-          stroke: ol_style_Webpart.Stroke(fstyle)
-        })
-      ];
+      const olStyle = new ol_style_Style ({});
+      olStyle.setText(ol_style_Webpart.Text (fstyle));
+      //olStyle.setImage(ol_style_Webpart.Image (fstyle));
+      ol_style_Webpart.setImage(olStyle, fstyle);
+      olStyle.setFill(ol_style_Webpart.Fill (fstyle));
+      olStyle.setStroke(ol_style_Webpart.Stroke (fstyle));
+      return olStyle;
     }
   }
 };
@@ -262,19 +296,19 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache) {
 /** Get image uri and save it if not allready saved 
  * 
  */
-ol_style_Webpart.getSymbolURI = function (featureType, name, cache) {
+ol_style_Webpart.getSymbolURI = function (featureType, name, width, height, cache) {
   var img;
-  var style= featureType.style;
-  var cacheName = style.name+'_'+name+'_'+style.graphicWidth+'x'+style.graphicHeight;
-  if (cache) {
+  var cacheName = name.replace(/\//g,'_')+'_'+width+'x'+height;
+  // Allready in cache
+  if (cache && this.symbolCache[cacheName]) {
     img = this.symbolCache[cacheName];
   } else {
+    // Load Image from server
     img = featureType.uri.replace(/gcms\/.*/,"")
-      + "gcms/style/image/"
-      + featureType.style.name
-      + "/" + name
-      +"?width="+style.graphicWidth
-      +"&height="+style.graphicHeight;
+      + 'gcms/style/image/'
+      + name
+      +'?width='+width
+      +'&height='+height;
     // Save symbol if exist
     if (window.cordova && !this.symbolCache[cacheName]) {
       CordovApp.File.dowloadFile(

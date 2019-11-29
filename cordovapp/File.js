@@ -167,7 +167,6 @@ CordovApp.File.getDirectory = function (path, success, fail, create) {
     setTimeout(function() { fail({code:-1}); });
     return;
   }
-
   // File systhem URL
   if (this.isLoacalFile(path)) {
     // Create directory if doesn't exist
@@ -178,54 +177,39 @@ CordovApp.File.getDirectory = function (path, success, fail, create) {
       window.resolveLocalFileSystemURL (
         path,
         function(dir) {
-          dir.getDirectory(name, {create: true, exclusive: false}, success, fail);
+          dir.getDirectory(name, { create: true, exclusive: false }, 
+            success, 
+            fail
+          )
         },
         fail
       );
     } else {
       window.resolveLocalFileSystemURL (path, success, fail);
     }
-    return;
-  }
-
-  // Translate directory using 
-  var croot = cordova.file.externalRootDirectory;
-  var lup = [
-      [/^TMP\/?/, cordova.file.externalDataDirectory||cordova.file.dataDirectory],
-      [/^SDFILE\/?/, cordova.file.externalDataDirectory||cordova.file.dataDirectory],
-      [/^SDCACHE\/?/, cordova.file.externalCacheDirectory||cordova.file.cacheDirectory],
-      [/^SD\/?/, cordova.file.externalRootDirectory||cordova.file.documentsDirectory],
-      [/^ASSET\/?/, cordova.file.applicationDirectory],
-      [/^CACHE\/?/, cordova.file.cacheDirectory],
-      [/^FILE\/?/, cordova.file.dataDirectory],
-      [/^APP\/?/, cordova.file.applicationStorageDirectory]
-    ]
-  // Look for path
-  for (var i=0; i<lup.length; i++) {
-    if (lup[i][0].test(path)) {
-      path = path.replace(lup[i][0],"");
-      croot = lup[i][1];
-      break;
+  } else {
+    // Translate directory using lookup table
+    var croot = cordova.file.externalRootDirectory;
+    var lup = [
+        [/^TMP\/?/, cordova.file.externalDataDirectory || cordova.file.dataDirectory],
+        [/^SDFILE\/?/, cordova.file.externalDataDirectory || cordova.file.dataDirectory],
+        [/^SDCACHE\/?/, cordova.file.externalCacheDirectory || cordova.file.cacheDirectory],
+        [/^SD\/?/, cordova.file.externalRootDirectory || cordova.file.documentsDirectory],
+        [/^ASSET\/?/, cordova.file.applicationDirectory],
+        [/^CACHE\/?/, cordova.file.cacheDirectory],
+        [/^FILE\/?/, cordova.file.dataDirectory],
+        [/^APP\/?/, cordova.file.applicationStorageDirectory]
+      ]
+    // Look for path
+    for (var i=0; i<lup.length; i++) {
+      if (lup[i][0].test(path)) {
+        path = path.replace(lup[i][0],"");
+        croot = lup[i][1];
+        break;
+      }
     }
+    this.getDirectory (croot+path, success, fail, create);
   }
-  this.getDirectory (croot+path,success, fail, create);
-  
-  /* OLD VERION
-  var lfs = LocalFileSystem.PERSISTENT;
-  if (/^TMP\/?/.test(path))
-  {	path = path.replace(/^TMP\/?/,"");
-    lfs = LocalFileSystem.TEMPORARY;
-  }
-  // Recherche dans un repertoire
-  window.requestFileSystem
-  (	lfs, 0, 
-    function(fileSystem)
-    {	if (!path) success (fileSystem.root);
-      else fileSystem.root.getDirectory(path, {create: (create!==false), exclusive: false}, success, fail);
-    }
-    , fail
-  );
-  */
 };
 
 /** Write a file

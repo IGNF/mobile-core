@@ -86,7 +86,8 @@ CacheVector.prototype.getLayers = function(guichet) {
       });
       var l;
       for (var k=0; l=c.layers[k]; k++) if (l.featureType) {
-        l = this.wapp.layerWebpart(l, this.getCacheFileName(c,k)+'/');
+        console.log(c)
+        l = this.wapp.layerWebpart(l, this.getCacheFileName(c,k)+'/', c.extent);
         if (c.layers.length===1) l.set('displayInLayerSwitcher',false);
         g.getLayers().push(l);
         // Marquer le layer sur l'objet
@@ -130,8 +131,9 @@ CacheVector.prototype.showList = function() {
   if (!this.wapp.param.vectorCache) return;
   var self = this;
   var guichet = this.getCurrentGuichet();
-  for (var i=0, cache; cache=this.wapp.param.vectorCache[i]; i++) {
-    if (cache.id_guichet !== guichet.id_groupe) continue;
+  //for (var i=0, cache; cache=this.wapp.param.vectorCache[i]; i++) 
+  this.wapp.param.vectorCache.forEach((cache) => {
+    if (cache.id_guichet !== guichet.id_groupe) return;
     var li = $("<li>").html(tmp.html())
       .data('cache', cache)
       .appendTo(ul);
@@ -160,7 +162,23 @@ CacheVector.prototype.showList = function() {
     $('.fa-trash', li).click(function(){
       self.removeCache($(this).parent().parent().data('cache'));
     });
-  }
+
+    // Comptage des objets dans le cache
+    let nb = 0;
+    $('.nb', li).hide();
+    for (var k=0, l; l=cache.layers[k]; k++) {
+      const url = this.getCacheFileName(cache,k) + '/editions.txt';
+      CordovApp.File.read(
+        url, 
+        // Success
+        (data) => { 
+          data = JSON.parse(data);
+          nb += data.Insert + data.Update + data.Delete;
+          $('.nb', li).html(nb).show();
+        }
+      );
+    }
+  });
 };
 
 /**
@@ -230,16 +248,19 @@ CacheVector.prototype.uploadLayers = function(cache, layers) {
   var guichet = this.getCurrentGuichet();
   if (!layers) {
     layers = [];
-    for (i=0; l = cache.layers[i]; i++) {
+    //for (i=0; l = cache.layers[i]; i++)
+    cache.layers.forEach((l) => {
       var wp = this.wapp.layerWebpart(l);
       layers.push(wp);
-      wp.on('ready', function(){ self.uploadLayers(cache, layers); });
-      wp.on("error", function(e){
+      wp.on('ready', () => { 
+        this.uploadLayers(cache, layers); 
+      });
+      wp.on("error", (e) => {
         this.wapp.alert ("Impossible de charger la couche <i>"
-          +(this.get('name')||this.get('title'))
+          +(wp.get('name')||wp.get('title'))
           +"</i>.<i class='error'><br/>"+e.status+" - "+e.error+"</i>");
       });
-    }
+    });
   } else {
     var ready = true;
     for (i=0; l=layers[i]; i++) {
@@ -312,8 +333,6 @@ CacheVector.prototype.getCacheFileName = function(cache, id_layer, tileCoord) {
               + l.nom 
             );
   if (!tileCoord) return dir+'/'+base;
-  // Create dir if doesn't exist
-  CordovApp.File.getDirectory (dir, null, null, true);
   // Filename
   return dir+'/'+base+'/'+tileCoord.join('-');
 };
@@ -353,28 +372,42 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
       for (var k in parameters) p += (p?'&':'?') +k+'='+parameters[k];
       // Chargement
       var url = (t.source.proxy_ || t.source.featureType_.wfs) + p;
-      var fileName = this.getCacheFileName(cache, t.id_layer, tcoord)
-      CordovApp.File.dowloadFile(
-        url,
-        fileName,
-        function() {
-          // Go on loading
-          self.uploadTiles(cache, tiles, pos, size, error);
+
+      var fileName = this.getCacheFileName(cache, t.id_layer, tcoord);
+      // Create dir if not exist
+      CordovApp.File.getDirectory(
+        this.getCacheFileName(cache),
+        () => {
+          CordovApp.File.dowloadFile(
+            url,
+            fileName,
+            function() {
+              // Go on loading
+              self.uploadTiles(cache, tiles, pos, size, error);
+            },
+            function() {
+              error++;
+              self.uploadTiles(cache, tiles, pos, size, error);
+            }
+          );
         },
-        function(){
+        function() {
           error++;
           self.uploadTiles(cache, tiles, pos, size, error);
-        }
+        },
+        true
       );
       return;
     }
   }
   // Alert on error
   if (error) {
-    this.wapp.alert(error+ ' / ' + size + ' fichier(s) en erreur...', 'Chargement')
+    this.wapp.alert(error+ ' / ' + size + ' fichier(s) en erreur...', 'Chargement');
   } else {
-    this.wapp.message(size + ' fichier(s) chargé(s).', 'Chargement')
+    this.wapp.message(size + ' fichier(s) chargé(s).', 'Chargement');
   }
+  // Reload Guichet
+  this.getLayers(this.getCurrentGuichet());
   //getTileCoordExtent + getWFSParam
   this.wapp.wait(false);
 };

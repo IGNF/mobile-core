@@ -136,7 +136,7 @@ ol_ext_inherits(RIPartSource, ol_source_Vector);
  * @private
  */
 RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
-
+console.log('LOAD RIPART')
   const loadFeatures = function (result) {
     const features = [];
     result.forEach((r)=> {
