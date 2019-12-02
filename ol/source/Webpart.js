@@ -162,6 +162,37 @@ ol_Feature.prototype.setState = function(state) {
   this.state_ = state;
 };
 
+/** Get list of properties updated on a feature */
+ol_Feature.prototype.getUpdates = function() {
+  if (!this._updates) this._updates = {};
+  return this._updates;
+};
+
+/** Set list of properties updated on a feature */
+ol_Feature.prototype.setUpdates = function(updates) {
+  this._updates = updates;
+}
+
+/** Set an object property 
+ */
+const olFeatureSet = ol_Feature.prototype.set;
+ol_Feature.prototype.set = function(key) {
+  olFeatureSet.apply(this, arguments);
+  if (this.layer) {
+    this.getUpdates()[key] = true;
+  }
+};
+
+/** Unset an object property
+ */
+const olFeatureUnset = ol_Feature.prototype.unset;
+ol_Feature.prototype.unset = function(key) {
+  olFeatureUnset.apply(this, arguments);
+  if (this.layer) {
+    this.getUpdates()[key] = true;
+  }
+};
+
 /** Get number of modif in the source
  */
 VectorWebpart.prototype.nbModifications = function() {
@@ -192,6 +223,7 @@ VectorWebpart.prototype.readChanges = function() {
         delete action.feature[geometryAttribute];
         f.setProperties(action.feature)
         f.setState(action.state);
+        f.setUpdates(action.updates);
         // Add feature in the lists
         switch (action.state) {
           case ol_Feature.State.INSERT: {
@@ -227,7 +259,7 @@ VectorWebpart.prototype.readChanges = function() {
  */
 VectorWebpart.prototype.writeChanges = function(force) {
   // Write in cache
-  if (!this._cacheUrl) return;
+//  if (!this._cacheUrl) return;
   if (!this._writeUpdate) this._writeUpdate = 0;
   // Prevent many update at once
   if (!force) {
@@ -241,7 +273,10 @@ VectorWebpart.prototype.writeChanges = function(force) {
   this._writeUpdate = 0;
 
   const url = this._cacheUrl + 'editions.txt';
-  var actions = this.getSaveActions();
+  var actions = this.getSaveActions(true);
+
+console.log('ACTIONS',actions)
+if (!this._cacheUrl) return;
 
   CordovApp.File.write(
     url, 
@@ -273,6 +308,7 @@ VectorWebpart.prototype.reset = function() {
   this.update_ = [];
   this.preserved_.clear();
   this.reload();
+  this.writeChanges();
 }
 
 /** Force source reload
@@ -293,32 +329,51 @@ VectorWebpart.prototype.reload = function() {
 
 /** Get an action
  * @param {ol.Feature} f
- * @param {boolean} coord true to get geometry as coordinates, default false: get geom as WKT
+ * @param {boolean} full true to get full feature, default false
  * @return {*}
  */
-VectorWebpart.prototype.getFeatureAction = function(f, coord) {
-  var a = { feature: f.getProperties(), state: f.getState(), typeName: this.featureType_.name };
-  var geometryAttribute = this.featureType_.geometryName;
-  if (!coord) {
-    a.feature[geometryAttribute] = {
-      type: a.feature.geometry.getType(),
-      coordinates: a.feature.geometry.getCoordinates()
-    };
+VectorWebpart.prototype.getFeatureAction = function(f, full) {
+  const updates = f.getUpdates();
+  const a = { feature: {}, state: f.getState(), typeName: this.featureType_.name };
+  if (full) {
+    // Get all properties
+    a.feature = f.getProperties();
+    delete a.feature.geometry;
+    a.updates = updates;
   } else {
-    var g = a.feature.geometry.clone();
-    g.transform (this.projection_, this.srsName_);
-    a.feature[geometryAttribute] = this._formatWKT.writeGeometry(g);
+    // Id
+    const idName = this.featureType_.idName;
+    a.feature[idName] = f.get(idName);
+    // Get changed properties
+    for (let i in f.getProperties()) {
+      if (updates[i]) {
+        a.feature[i] = f.get(i);
+      }
+    }
   }
-  delete a.feature.geometry;
-  // delete a.feature._id;
+  // Get geometry
+  if (full || updates.geometry) {
+    const geometryAttribute = this.featureType_.geometryName;
+    const geom = f.getGeometry();
+    if (full) {
+      a.feature[geometryAttribute] = {
+        type: geom.getType(),
+        coordinates: geom.getCoordinates()
+      };
+    } else {
+      const g = geom.getGeometry().clone();
+      g.transform (this.projection_, this.srsName_);
+      a.feature[geometryAttribute] = this._formatWKT.writeGeometry(g);
+    }
+  }
   return a;
 };
 
 /** Get save actions
- * @param {boolean} coord true to get coordinates, default false: get geom as WKT
+ * @param {boolean} full true to get full feature, default false
  * @return list of save actions + number of features in each states
  */
-VectorWebpart.prototype.getSaveActions = function(coord) {
+VectorWebpart.prototype.getSaveActions = function(full) {
   var self = this;
   // var idName = this.featureType_.idName;
   // var geometryAttribute = this.featureType_.geometryName;
@@ -329,7 +384,7 @@ VectorWebpart.prototype.getSaveActions = function(coord) {
     for (var i=0; i<t.length; i++) {
       var f = t[i];
       if (f.getState() == state) {
-        const a = self.getFeatureAction(f, coord);
+        const a = self.getFeatureAction(f, full);
         actions.push(a);
         nb++;
       }
@@ -366,28 +421,34 @@ VectorWebpart.prototype.save = function() {
   var param = {
     "actions": JSON.stringify(actions), 
     "databases": '{"'+this.featureType_.database+'":["'+this.featureType_.name+'"]}',
-    "typeName": this.featureType_.name,
-    "url": this.featureType_.wfs+"transaction/"	
+    "typeName": this.featureType_.name
+//    "url": this.featureType_.wfs+"transaction/"	
   };
-  var url = this.featureType_.wfstransaction;
+
+  //var url = this.featureType_.wfstransaction.replace(/\/$/,'');
+  var url = this.featureType_.wfs_transactions;
   
   if (this.proxy_) param.url = url;
   $.ajax({
     url: this.proxy_ || url,
     method: 'POST',
     data: param,
+    dataType: ('xml'),
 
     // Authentification
     username: this.username_,
     password: this.password_,
 
-    success: function(data) {
-      if (data == "success") {
+    success: function(wfs) {
+      const info = $(wfs).find('wfs\\:Message').text();
+      console.log(info)
+      if ($(wfs).find('wfs\\:SUCCESS').length) {
         // Clear history
         self.reset();
-        self.dispatchEvent({ type:"saveend" });
+        self.dispatchEvent({ type:"saveend", error: info });
+      } else {
+        self.dispatchEvent({ type:"saveend", error: info });
       }
-      else self.dispatchEvent({ type:"saveend", error: data });
     },
     error: function(jqXHR, status, error) {
       console.log(error)
@@ -401,8 +462,11 @@ VectorWebpart.prototype.save = function() {
  * @param {type} e
  */
 VectorWebpart.prototype.onAddFeature_ = function(e) {
-  if (this.isloading_) return;
   var f = e.feature;
+  f.getGeometry().on('change', () => {
+    f.getUpdates().geometry = true;
+  });
+  if (this.isloading_) return;
   f.setState(ol_Feature.State.INSERT);
   // Add attributes according to featureType
   var atts = this.getFeatureType().attributes;
