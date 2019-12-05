@@ -77,9 +77,7 @@ const VectorWebpart = function(opt_options) {
   this.featureType_ 	= options.featureType;
 
   // Document uri
-    this.featureType_.docURI = this.featureType_.wfs.replace(/\/gcms\/.*/,"/document/");
-  // Url pour les transactions
-    this.featureType_.wfstransaction = this.featureType_.wfs.replace(/\/wfs\/.*/,"/wfstransactions/");
+  this.featureType_.docURI = this.featureType_.wfs.replace(/\/gcms\/.*/,"/document/");
 
   this.maxFeatures_	= options.maxFeatures || 5000;
   
@@ -104,7 +102,7 @@ const VectorWebpart = function(opt_options) {
   if (this.tiled_) this.maxReload_ = options.maxReload;
 
   ol_source_Vector.call(this, {
-    // Loader function
+    // Loader function => added when changes are loaded
 //    loader: this.loaderFn_,
     // bbox strategy
     strategy: strategy,
@@ -176,10 +174,12 @@ ol_Feature.prototype.setUpdates = function(updates) {
 /** Set an object property 
  */
 const olFeatureSet = ol_Feature.prototype.set;
-ol_Feature.prototype.set = function(key) {
-  olFeatureSet.apply(this, arguments);
-  if (this.layer) {
-    this.getUpdates()[key] = true;
+ol_Feature.prototype.set = function(key, val) {
+  if (this.get(key) !== val) {
+    olFeatureSet.apply(this, arguments);
+    if (this.layer) {
+      this.getUpdates()[key] = true;
+    }
   }
 };
 
@@ -406,7 +406,7 @@ VectorWebpart.prototype.getSaveActions = function(full) {
 
 /** Save changes
 */
-VectorWebpart.prototype.save = function() {
+VectorWebpart.prototype.save = function(onSuccess, onError) {
   var self = this;
   var actions = this.getSaveActions().actions;
   
@@ -441,18 +441,20 @@ VectorWebpart.prototype.save = function() {
 
     success: function(wfs) {
       const info = $(wfs).find('wfs\\:Message').text();
-      console.log(info)
       if ($(wfs).find('wfs\\:SUCCESS').length) {
         // Clear history
         self.reset();
         self.dispatchEvent({ type:"saveend", error: info });
+        if (onSuccess) onSuccess(info);
       } else {
         self.dispatchEvent({ type:"saveend", error: info });
+        if (onError) onError(info);
       }
     },
     error: function(jqXHR, status, error) {
       console.log(error)
       self.dispatchEvent({ type:"saveend", status:status, error:error });
+      if (onError) onError(error);
     }
   });
 }

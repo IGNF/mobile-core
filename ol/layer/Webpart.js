@@ -21,7 +21,6 @@ import ol_style_Webpart from '../style/Webpart'
  * @returns {ol.source.Vector.Webpart}
  */
 const VectorWebpart = function(options, source_options) {
-  var self = this;
   if (!options) options = {};
   if (!source_options) source_options = {};
   this.url_ = options.url.replace("/wfs","/database/") || "https://espacecollaboratif.ign.fr/gcms/database/"; // Ancien wpart "http://webpart.ign.fr/gcms/database/";
@@ -34,14 +33,15 @@ const VectorWebpart = function(options, source_options) {
 
   options.renderMode = options.renderMode || 'image';
   ol_layer_Vector.call(this, options);
-  this.set("name", options.database+":"+options.name);
+  this.set('name', options.database+':'+options.name);
 
   if (options.cacheUrl) {
     source_options.cacheUrl = options.cacheUrl;
     this.set('cache', true);
     this.createSource(options, source_options, options.featureType);
+    this.setZIndex(options.featureType.position);
   } else {
-    var url = this.url_+this.database_+"/feature-type/"+this.name_+".json";
+    const url = this.url_+this.database_+'/feature-type/'+this.name_+'.json';
     $.ajax({
       url: (this.proxy_ || url ),
       dataType: 'json', 
@@ -49,12 +49,13 @@ const VectorWebpart = function(options, source_options) {
       username: options.username,
       password: options.password,
       data: { url: this.proxy_ ? url : undefined },
-      success: function (featureType) {
-        self.createSource(options, source_options, featureType);
+      success: (featureType) => {
+        this.createSource(options, source_options, featureType);
+        this.setZIndex(featureType.position);
       },
-      error: function(jqXHR, status, error) {
+      error: (jqXHR, status, error) => {
         //console.log(jqXHR)
-        self.dispatchEvent({ type:"error", error:error, status:jqXHR.status, statusText:status });
+        this.dispatchEvent({ type: 'error', error: error, status: jqXHR.status, statusText: status });
       }
     });
   }

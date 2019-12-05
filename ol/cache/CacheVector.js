@@ -82,6 +82,7 @@ CacheVector.prototype.getLayers = function(guichet) {
       var g = new ol_layer_Group({ 
         title: c.nom, 
         name: c.id_guichet+'-'+c.id, 
+        vectorCache: c,
         baseLayer: true 
       });
       var l;
@@ -129,9 +130,8 @@ CacheVector.prototype.showList = function() {
   var tmp = $('[data-role="template"]', ul);
   ul.html('').append(tmp);
   if (!this.wapp.param.vectorCache) return;
-  var self = this;
   var guichet = this.getCurrentGuichet();
-  //for (var i=0, cache; cache=this.wapp.param.vectorCache[i]; i++) 
+  // Cache list
   this.wapp.param.vectorCache.forEach((cache) => {
     if (cache.id_guichet !== guichet.id_groupe) return;
     var li = $("<li>").html(tmp.html())
@@ -146,21 +146,21 @@ CacheVector.prototype.showList = function() {
     $(".info .date", li).text(cache.date);
     // Input
     $('input', li).val(cache.nom)
-      .on('change', function(){
-        $(this).parent().data('cache').nom = this.value;
+      .on('change', () => {
+        cache.nom = this.value;
       });
     // Buttons
-    $('.fa-map-o', li).click(function(){
-      self.loadCache($(this).parent().parent().data('cache'));
+    $('.fa-map-o', li).click(() => {
+      this.loadCache(cache);
     });
-    $('.tools-locate', li).click(function(){
-      self.locateCache($(this).parent().parent().data('cache'));
+    $('.tools-locate', li).click(() => {
+      this.locateCache(cache);
     });
-    $('.fa-refresh', li).click(function(){
-      self.updateCache($(this).parent().parent().data('cache'));
+    $('.fa-refresh', li).click(() => {
+      this.updateCache(cache);
     });
-    $('.fa-trash', li).click(function(){
-      self.removeCache($(this).parent().parent().data('cache'));
+    $('.fa-trash', li).click(() => {
+      this.removeCache(cache);
     });
 
     // Comptage des objets dans le cache
@@ -204,12 +204,38 @@ CacheVector.prototype.removeCache = function(cache) {
   if (this.wapp.getIdGuichet()===guichet.id_groupe) this.wapp.setGuichet(guichet);
 };
 
+/**  */
+CacheVector.prototype.saveLayer = function(layers, cache) {
+  console.log('LOADING', cache, this.wapp.ripart.getGroupById(cache.id_guichet))
+  this.setCurrentGuichet(this.wapp.ripart.getGroupById(cache.id_guichet));
+  const l = layers.pop();
+  if (l) {
+    if (l.get('cache') && l.getSource().nbModifications()) {
+      this.wapp.wait('Sauvegarde des modifications...<br/>'+l.get('title'))
+      l.getSource().save((info)=>{
+        this.wapp.notification(l.get('title')+' sauvagardé...');
+        // Next
+        this.saveLayer(layers,cache);
+      }, (error) => {
+        this.wait(false);
+        this.wapp.alert('Impossible de sauvegarder '+l.get('title')+'<br/>'+error);
+      });
+    } else {
+      // Next
+      this.saveLayer(layers,cache);
+    }
+  } else {
+    // Recharger le cache
+    this.uploadLayers(cache);
+  }
+};
+
 /**
  * Mettre a jour le cache
  * @param {*} cache 
  */
 CacheVector.prototype.updateCache = function(cache) {
-  this.wapp.wait("Chargement...");
+  this.wapp.wait('Chargement...');
   this.uploadLayers(cache);
 };
 
@@ -279,9 +305,13 @@ CacheVector.prototype.uploadLayers = function(cache, layers) {
        })
       }
       this.uploadTiles(cache, tiles);
-      if (this.wapp.getIdGuichet()===guichet.id_groupe) this.wapp.setGuichet(guichet);
+      /*
+      if (this.wapp.getIdGuichet() === cache.id_guichet) {
+        this.wapp.setGuichet(cache.id_guichet);
+      }
+      */
       this.wapp.saveParam();
-      this.showList();
+      if (guichet) this.showList();
     }
   }
 };
@@ -407,7 +437,9 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
     this.wapp.message(size + ' fichier(s) chargé(s).', 'Chargement');
   }
   // Reload Guichet
-  this.getLayers(this.getCurrentGuichet());
+  if (this.wapp.getIdGuichet() === cache.id_guichet) {
+    this.wapp.setGuichet(cache.id_guichet);
+  }
   //getTileCoordExtent + getWFSParam
   this.wapp.wait(false);
 };
