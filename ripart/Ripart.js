@@ -3,6 +3,7 @@
 /* global wapp, FileUploadOptions, FileTransfer, FileTransferError */
 import * as CryptoJS from 'crypto-js';
 import CordovApp from '../Cordovapp'
+import { wappStorage } from '../cordovapp/CordovApp'
 import ol_Feature from 'ol/Feature'
 import ol_geom_Point from 'ol/geom/Point'
 import ol_geom_LineString from 'ol/geom/LineString'
@@ -655,7 +656,7 @@ var RIPart = function(options) {
     }
   }
 
-  /** Save connection parameters to localstorage
+  /** Save connection parameters to wappStorage
   */
   this.saveParam = function() {
     var pwd = this.param.pwd;
@@ -664,7 +665,7 @@ var RIPart = function(options) {
     // Ou les encrypter
     cryptPwd (this.param.groupes, true);
     // Enregistrer
-    localStorage['WebApp@ripart'] = JSON.stringify(this.param);
+    wappStorage('ripart', this.param);
     // Decrypter
     cryptPwd (this.param.groupes, false);
     this.param.pwd = pwd;
@@ -694,14 +695,7 @@ var RIPart = function(options) {
     xhr.send();
   };
 
-
-  if (localStorage['WebApp@ripart']) {
-    this.param = JSON.parse(localStorage['WebApp@ripart']);
-    // Decrypter les mots de passe
-    cryptPwd (this.param.groupes, false);
-  }
-  else this.param = { georems:[], nbrem:0 };
-
+  this.param = wappStorage('ripart') || { georems:[], nbrem:0 };
   this.initialize(options);
 };
 

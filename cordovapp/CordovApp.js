@@ -34,15 +34,20 @@ if (!window.cancelAnimationFrame && window.webkitCancelRequestAnimationFrame) {
 /** 
  * @classdesc
  * Web application pour Cordova 
- *
  * @constructor
  * @param {Object} options 
- * 
+ *  @param {function} options.initialize function called when ready
+ *  @param {function} options.onMenu function called when menu is shown
+ *  @param {function} options.onMenuButton function called when menu button is hit, default toggle menu
+ *  @param {function} options.onBackButton function called when back button is hit, default quit on 2d hit before 2s
+ *  @param {function} options.pause function called when app is paused
+ *  @param {function} options.resume function called when app is resumed
+ *  @param {function} options.pageBack function called page back button is clicked, default hide the current page
  */
 var CordovApp = function(options) {
   var self = this;
 
-  /** Webapp parameters: localStorage['WebApp@param'] */
+  /** Webapp parameters */
   this.param = {};
 
   /** Show an alert
@@ -85,17 +90,17 @@ var CordovApp = function(options) {
   */
   this.onMenuButton = function() { this.toggleMenu(); };
   
-  /** Pause: fires when app is paused (save parameters)
+  /** Fires when app is paused (save parameters)
   * @api
   */
   this.pause = function() {};
 
-  /** Resume: fires when app resume after pause (restaure parameters)
+  /** Fires when app resume after pause (restaure parameters)
   * @api
   */
   this.resume = function() {};
 
-  /** Resume: fires page back button is click
+  /** Fires page back button is click
   * @param {String} id the page ID
   * @api
   */
@@ -162,8 +167,7 @@ var CordovApp = function(options) {
 
     // Check server info
     checkInfo();
-  }
-
+  };
 
   /* Load page templates asynchronously
   *	@param {function} callback function when pages are ready
@@ -328,28 +332,47 @@ CordovApp.prototype.quit = function() {
   if (navigator.app) navigator.app.exitApp();
 };
 
-/** Save app parameters (to localStorage)
+/** Save app parameters (to wappStorage)
 */
 CordovApp.prototype.saveParam = function() {
-  localStorage['WebApp@param'] = JSON.stringify(this.param);
+  wappStorage('param', this.param);
 };
   
-/** Reset app parameters (load from localStorage)
+/** Reset app parameters (load from wappStorage)
 */
 CordovApp.prototype.resetParam = function() {
-  if (localStorage['WebApp@param']) this.param = JSON.parse(localStorage['WebApp@param']);
-  else this.param = {};
+  this.param = wappStorage('param') || {};
 };
 
-var t = new Date();
+/** Save or retrieve application storage 
+ * @param {string} key
+ * @param {*} value if not set return the stored value
+ */
+const wappStorage = function(key, value) {
+  if (value === undefined) {
+    try {
+      return JSON.parse(localStorage['WebApp@'+key]);
+    } catch(e) {
+      return localStorage['WebApp@'+key];
+    }
+  } else {
+    localStorage['WebApp@'+key] = JSON.stringify(value);
+  }
+};
+
 /** Show a timer in the console between two calls
 * @param {bool | string} msg Message to log / true to start timer
 */
-CordovApp.prototype.timer = function(msg) {
-  if (msg !== true) console.log ((new Date() - t) +" : "+ msg||"");
+let t = new Date();
+const timerTest = function(msg) {
+  let d = 0;
+  if (msg !== true) {
+    d = (new Date() - t);
+    console.warn (d +" : "+ msg || "");
+  }
   t = new Date();
+  return d;
 };
-
 
 /** Get cordova platform
  */
@@ -357,5 +380,7 @@ const getPlatformId = CordovApp.prototype.getPlatformId = function() {
   return (window.cordova ? cordova.platformId : 'www');
 };
 
+export { wappStorage }
+export { timerTest }
 export { getPlatformId }
 export default CordovApp;

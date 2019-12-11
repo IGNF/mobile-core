@@ -738,7 +738,8 @@ const CacheMap = function(wapp, layerGroup, options) {
     }
 
     // Visible ?
-    var isVisible = (typeof(smap.id)!="undefined") ? $.inArray("cache_"+smap.id, wapp.param.layers)>=0 : true;
+    //var isVisible = (typeof(smap.id)!="undefined") ? $.inArray("cache_"+smap.id, wapp.param.layers)>=0 : true;
+    var isVisible = (typeof(smap.id)!="undefined") ? (wapp.param.hidden.indexOf("cache_"+smap.id) < 0) : true;
     smap.id = currentId++;
 
     // Ajouter un layer a la carte (juste avant les layers vecteur)

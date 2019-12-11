@@ -3,6 +3,7 @@
 
 import './help.css'
 import CordovApp from './CordovApp'
+import { wappStorage } from './CordovApp'
 
 var helpDiv = $("<div>").attr("id", "help").appendTo("body");
 // Close help on click if no closebox
@@ -14,7 +15,7 @@ helpDiv.on('click', () => {
 var step = 0;
 var _timeout;
 var _current = "";
-var _param = JSON.parse(localStorage['WebApp@help']||"{}");
+var _param = wappStorage('help') || {};
 
 // Add associated css
 $('<link/>', {
@@ -22,11 +23,11 @@ $('<link/>', {
   href: './help/help.css'
 }).appendTo('head');	
 
-/* Save app parameters (to localStorage)
+/* Save app parameters (to wappStorage)
  */
 function saveParam(t) {
   if (t) _param[t] = true;
-  localStorage['WebApp@help'] = JSON.stringify(_param);
+  wappStorage('help', _param);
 }
 
 /* Show next help on the page
