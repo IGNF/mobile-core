@@ -66,7 +66,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   var loadPage = this.loadPage = $(options.loadPage);
 
   var vector = new ol_layer_Vector({ 
-    name:"Emprises", 
+    name: 'Emprises', 
     source: new ol_source_Vector(),
     displayInLayerSwitcher: false
   });
@@ -123,6 +123,8 @@ const CacheMap = function(wapp, layerGroup, options) {
     if (!loadPage.hasClass('noTile')) loadMapDlg();
   });
   $('.cancel', this.loadPage).click(cancelLoadMap);
+
+console.warn('[DEPRECATED] cachemap page');
   $('.addmap', this.page).click(function() { addCacheMap(); });
   $('.savemap', this.page).click(saveCacheFile);
 
@@ -325,7 +327,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   *	@param {CacheMap} smap carte a supprimer
   *	@param {boolean} noprompt pour sauter l'etape de confirmation
   */
-  function removeCacheMap(smap, noprompt) {
+  var removeCacheMap = this.removeCacheMap = function (smap, noprompt) {
     var i;
     wapp.help.hide();
     // Ask for deletion
@@ -384,7 +386,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   /* Page de chargement
   *	@param {CacheMap} smap carte a charger
   */
-  function loadCacheMap(smap)	{	
+  var loadCacheMap = this.loadCacheMap = function(smap)	{	
     if (wapp.ripart.param.offline) {
       currentMap = smap;
       wapp.showPage(self.loadPage.attr('id'));
@@ -397,7 +399,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   /* Mise a jour d'une carte
   *	@param {CacheMap} smap carte a charger
   */
-  function refreshCacheMap(smap)	{	
+  var refreshCacheMap = this.refreshCacheMap = function (smap)	{	
     if (wapp.ripart.param.offline) {
       wapp.wait("Mise à jour...");
       setTimeout (function() {
@@ -709,7 +711,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   /* Ajoute une carte a l'application : layer / 
    * @param {CacheMap|undefined} smap carte a charger sinon en cree un nouvelle
    */
-  function addCacheMap(smap) {
+  var addCacheMap = this.addCacheMap = function (smap) {
     // Creer une carte ?
     if (!smap) {
       var c = wapp.param.cacheMap.length;
@@ -738,8 +740,7 @@ const CacheMap = function(wapp, layerGroup, options) {
     }
 
     // Visible ?
-    //var isVisible = (typeof(smap.id)!="undefined") ? $.inArray("cache_"+smap.id, wapp.param.layers)>=0 : true;
-    var isVisible = (typeof(smap.id)!="undefined") ? (wapp.param.hidden.indexOf("cache_"+smap.id) < 0) : true;
+    var isVisible = (typeof(smap.id)!="undefined") ? (wapp.param.visibleLayers["cache_"+smap.id]) : true;
     smap.id = currentId++;
 
     // Ajouter un layer a la carte (juste avant les layers vecteur)
@@ -749,9 +750,12 @@ const CacheMap = function(wapp, layerGroup, options) {
     });
     layercache.set('title', smap.nom);
     layercache.set('name', 'cache_'+smap.id);
+    layercache.set('cacheMap', smap);
     layerGroup.getLayers().push(layercache);
     setLayerCache (smap);
-  
+
+console.warn('[DEPRECATED] cache list');
+
     // Page d'info
     var li = $("<li>").html(self.liTemplate)
         .data("map", smap)

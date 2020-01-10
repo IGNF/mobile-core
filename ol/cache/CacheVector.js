@@ -126,6 +126,7 @@ CacheVector.prototype.getCurrentGuichet = function() {
 /** Afficher les cartes en cache
  */
 CacheVector.prototype.showList = function() {
+  console.warn('[DEPRECATED] showlist')
   var ul = $('.offline ul.cartes', this.page);
   var tmp = $('[data-role="template"]', ul);
   ul.html('').append(tmp);
