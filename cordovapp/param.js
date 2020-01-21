@@ -248,7 +248,10 @@ CordovApp.prototype.dataAttributes = function (element, attr) {
       }
     } else if (a) {
       // Conditionnal display
-      if (obj.data("nnull")) {
+      if (obj.data['true']) {
+        if (a==='true') obj.show();
+        else obj.hide();
+      } else if (obj.data("nnull")) {
         if (obj instanceof Array) {
           if (obj.length) obj.show();
           else obj.hide();
@@ -353,7 +356,7 @@ CordovApp.prototype.dataAttributes = function (element, attr) {
   // Set src
   $('img[data-src]', element).each(function() {
     if (attr[$(this).data('src')]) {
-      var src = attr[src];
+      var src = attr[$(this).data('src')];
       if (!/\?/.test(src)) src += "?"+(new Date());
       $(this).attr("src", src);
       $(this).attr("src", attr[src]).show();

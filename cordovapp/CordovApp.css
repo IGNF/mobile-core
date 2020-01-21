@@ -478,6 +478,9 @@ i.backArrowBt:before
 {	float:right;
   cursor:pointer;
 }
+[data-role=dialog] .buttons  {
+  clear: both;
+}
 [data-role=dialogBt] 
 {	float: right;
   color: #39c;
