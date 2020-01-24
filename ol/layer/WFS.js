@@ -34,7 +34,8 @@ const VectorWFS = function(options, cache) {
   var secret = "WFS Espace Collaboratif IGN";
 
   this.crypt = function(pwd) {
-    return CryptoJS.AES.encrypt(pwd, secret).toString();
+    // Encrypt in the saveparam function
+    return pwd; //CryptoJS.AES.encrypt(pwd, secret).toString();
   };
 
   if (!options.url) return;
@@ -74,7 +75,7 @@ const VectorWFS = function(options, cache) {
       $.ajax({
         url: options.url,
         username: options.username, // G.Site - gestion10
-        password: options.password ? CryptoJS.AES.decrypt(options.password, secret).toString(CryptoJS.enc.Utf8) : undefined, 
+        password: options.password, // ? CryptoJS.AES.decrypt(options.password, secret).toString(CryptoJS.enc.Utf8) : undefined, 
         timeout: 10000,
         data: {
           service: 'WFS',
@@ -91,7 +92,7 @@ const VectorWFS = function(options, cache) {
               if (login) {
                 options.username = login;
                 self.set('authentication', options.username);
-                options.password = CryptoJS.AES.encrypt(pwd, secret).toString();
+                options.password = pwd; //CryptoJS.AES.encrypt(pwd, secret).toString();
                 // try again
                 getCapabilities();
               } else {

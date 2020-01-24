@@ -463,8 +463,10 @@ console.warn('[DEPRECATED] cachemap page');
         wapp.message(nb+" fichiers chargés.\n"
           +nberr+" fichier(s) en erreur ou hors zone...",
           "Chargement", ["OK"]);
+          layerGroup.changed();
       } else {
         wapp.notification(nb+" fichiers chargés.");
+        layerGroup.changed();
       }
       cback();
     }
@@ -590,7 +592,9 @@ console.warn('[DEPRECATED] cachemap page');
   /* Annule le chargement de carte (ferme la page)
   */
   function cancelLoadMap () {
-    wapp.showPage(self.page.attr("id"));
+//    wapp.showPage(self.page.attr("id"));
+    wapp.showPage('layer-geoportail')
+//    wapp.hidePage();
   };
 
   /* Procedure de chargement d'une carte

@@ -643,21 +643,36 @@ var RIPart = function(options) {
   };
 
 
-  //
+  /** Encrypt password in groupes object
+   * @param {*} list of groupes with password key
+   * @param {boolean} crypt true: encrypt, false: decrypt
+   */
   function cryptPwd (groupes, crypt) {
     if (!groupes) return;
     for (var i=0, g; g=groupes[i]; i++) {
       for (var j=0, l; l=g.layers[j]; j++) {
         if (l.password) {
-          if (crypt) l.password = CryptoJS.AES.encrypt(l.password, secret).toString();
-          else l.password = CryptoJS.AES.decrypt(l.password, secret).toString(CryptoJS.enc.Utf8);
+          if (crypt) {
+            l.password = CryptoJS.AES.encrypt(l.password, secret).toString();
+          } else {
+            l.password = CryptoJS.AES.decrypt(l.password, secret).toString(CryptoJS.enc.Utf8);
+          }
         }
       }
     }
-  }
+  };
+
+  /** Load connection parameters to wappStorage
+   * + decrypt password
+   */
+  this.loadParam = function() {
+    this.param = wappStorage('ripart') || { georems:[], nbrem:0 };
+    cryptPwd (this.param.groupes, false);
+  };
 
   /** Save connection parameters to wappStorage
-  */
+   * + encrypt password
+   */
   this.saveParam = function() {
     var pwd = this.param.pwd;
     // Ne pas sauvegarder les mots de passe 
@@ -695,7 +710,7 @@ var RIPart = function(options) {
     xhr.send();
   };
 
-  this.param = wappStorage('ripart') || { georems:[], nbrem:0 };
+  this.loadParam();
   this.initialize(options);
 };
 

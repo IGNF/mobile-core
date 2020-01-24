@@ -278,6 +278,18 @@ CordovApp.prototype.isWaiting = function() {
   //return _wait.hasClass('visible');
 }
 
+/** Show a dialog
+ *  @param {string} name  
+ */
+CordovApp.prototype.showDialog = function(name, options) {
+  options = options || {};
+  wapp.dialog.show (CordovApp.template(name), {
+    title: options.title, 
+    buttons: options.buttons || { cancel:'ok' },
+    callback: options.callback
+  });
+};
+
 export {dialog}
 export {selectDialog}
 export {promptDlg};
