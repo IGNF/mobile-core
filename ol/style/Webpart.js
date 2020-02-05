@@ -208,6 +208,9 @@ ol_style_Webpart.loadSymbolCache = function() {
   }
 };
 
+
+import mongo from 'mongo-parse'
+
 /** Get ol.style.function as defined in featureType
 * @param {featureType}
 * @return { ol.style.function | undefined }
@@ -224,35 +227,13 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache) {
       // Conditionnal style
       var style = featureType.style;
       if (featureType.style && featureType.style.children) {
+        var p = feature.getProperties();
+        delete p.geometry;
         for (var i=0, fi; fi=featureType.style.children[i]; i++) {
-          var test = true;
-          for (var k=0, cond; cond = fi.condition[k]; k++) {
-            var val = feature.get(cond.field);
-            switch (cond.operator) {
-              case '>':
-                test = test && (val > cond.value);
-                break;
-              case '>=':
-                test = test && (val >= cond.value);
-                break;
-              case '<':
-                test = test && (val < cond.value);
-                break;
-              case '<=':
-                test = test && (val <= cond.value);
-                break;
-              case '==':
-                test = test && (val == cond.value);
-                break;
-              case '!=':
-                test = test && (val != cond.value);
-                break;
-              default: 
-                test = false; 
-                break;
-            }
+          if (!fi.mongo || !fi.mongo.matches) {
+            fi.mongo = mongo.parse(fi.condition)
           }
-          if (test) {
+          if (fi.mongo.matches(p)) {
             style = fi;
             break;
           }
