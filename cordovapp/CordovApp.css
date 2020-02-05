@@ -91,6 +91,11 @@ select {
   padding-right: 1em;
   background: transparent;
 }
+
+i.fa-valign {
+  vertical-align: middle;
+}
+
 i.selectArrow {
   display: inline-block;
   height: 1em;
@@ -890,13 +895,20 @@ ul[data-role="list"] li:first-child
 }
 
 /* Toggle button */
-label.toggle {
+label[class^="toggle-"] {
   position: relative;
 }
-label.toggle span {
+label[class^="toggle-"] input {
+  position: absolute;
+  width: 0;
+} 
+label.toggle-right span {
   padding-right: 3em;
 }
-label.toggle span:before {
+label.toggle-left span {
+  padding-left: 3em;
+}
+label[class^="toggle-"] span:before {
   content: "";
   position: absolute;
   right: .25em;
@@ -909,7 +921,7 @@ label.toggle span:before {
   -webkit-transition: .4s;
   transition: .4s;
 }
-label.toggle span:after {
+label[class^="toggle-"] span:after {
   content: "";
   position: absolute;
   right: .5em;
@@ -922,9 +934,20 @@ label.toggle span:after {
   -webkit-transition: .4s;
   transition: .4s;
 }
-label.toggle input:checked + span:before {
+label[class^="toggle-"] input:checked + span:before {
   background-color: #09c;
 }
-label.toggle input:checked + span:after {
+label[class^="toggle-"] input:checked + span:after {
   right: 1.5em;
+}
+label.toggle-left span:before {
+  right: auto; 
+  left: .25em;
+}
+label.toggle-left span:after {
+  right: auto;
+  left: .5em;
+}
+label.toggle-left input:checked + span:after {
+  left: 1.5em;
 }

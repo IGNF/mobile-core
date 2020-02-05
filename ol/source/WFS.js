@@ -38,7 +38,7 @@ const VectorWFS = function(options, cache) {
   
   // Strategy for loading source (custom or bbox or tile)
   var strategy = options.strategy;
-  if (!strategy && options.minZoom) {
+  if (!strategy && options.tileZoom) {
     var tileZoom = options.tileZoom || (options.minZoom+2);
     this.tiled_ = true;
     this._tileGrid = ol_tilegrid_createXYZ({ minZoom: tileZoom, maxZoom: tileZoom, tileSize:options.tileSize||256  }),
