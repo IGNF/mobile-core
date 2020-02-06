@@ -1318,7 +1318,7 @@ RIPart.prototype.formulaireAttribut = function(valdef, prompt) {
       }
     }
     for (i=0; a = att[i]; i++) {
-      vals[a.att] = (valdef ? valdef[a.att] : (att.defaultVal || a.val[0]));
+      vals[a.att] = (valdef ? valdef[a.att] : (att[i].defaultVal || a.val[0]));
       switch (a.type) {
         case 'list': {
           li = $("<li data-input='select'>").attr('data-param',a.att).appendTo(content);
@@ -1349,6 +1349,7 @@ RIPart.prototype.formulaireAttribut = function(valdef, prompt) {
       }
     }
     if (!valdef && input.data("vals")) vals = $.extend({}, input.data("vals"));
+    console.log(vals)
     wapp.setParamInput(content, vals);
     const showInfo = function() {
       input.data("vals", $.extend({}, vals));

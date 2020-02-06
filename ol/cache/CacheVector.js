@@ -87,7 +87,6 @@ CacheVector.prototype.getLayers = function(guichet) {
       });
       var l;
       for (var k=0; l=c.layers[k]; k++) if (l.featureType) {
-        console.log(c)
         l = this.wapp.layerWebpart(l, this.getCacheFileName(c,k)+'/', c.extent);
         if (c.layers.length===1) l.set('displayInLayerSwitcher',false);
         g.getLayers().push(l);

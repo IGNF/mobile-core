@@ -52,10 +52,10 @@ CordovApp.prototype.setParamInput = function(elt, param, onchange) {
         break;
       }
       case "date": {
-        if (typeof(v)=="undefined") v = elt.data('default');
-        var d = v.split('/');
-        d = d[2]+"-"+d[1]+"-"+d[0];
-        $("input", elt).val(d);
+        if (typeof(v)=="undefined") v = elt.data('default') || new Date().toISOString().split('T')[0];
+        //var d = v.split('-');
+        //v = d[2]+"-"+d[1]+"-"+d[0];
+        $("input", elt).val(v);
         break;
       }
       case "number": 
@@ -120,8 +120,11 @@ CordovApp.prototype.setParamInput = function(elt, param, onchange) {
           if (!$("input", $this).val()) {
             param[p] = "";
           } else {
+            /*
             var v = $("input", $this).val().split('-');
             param[p] = v[2]+"/"+v[1]+"/"+v[0];
+            */
+            param[p] = $("input", $this).val();
           }
           break;
         }
