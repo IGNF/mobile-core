@@ -30,7 +30,8 @@ var CacheVector = function(wapp, options) {
   });
 
   $('.cancel', this.loadPage).click(function(){
-    wapp.showPage(self.page.attr('id'));
+    // wapp.showPage(self.page.attr('id'));
+    wapp.hidePage();
   });
   $('.ok', this.loadPage).click(function(){
     self.uploadCache();
@@ -485,7 +486,7 @@ CacheVector.prototype.addCache = function(name, layers) {
 
 /** Dialogue d'ajout de carte
  */
-CacheVector.prototype.addDialog = function() {
+CacheVector.prototype.addDialog = function(cback) {
   var self = this;
   var guichet = this.getCurrentGuichet();
   var content = CordovApp.template('dialog-guichet');
@@ -519,6 +520,7 @@ CacheVector.prototype.addDialog = function() {
           if ($(this).hasClass('selected')) layers.push($.extend({},l));
         });
         self.addCache(name, layers);
+        if (cback) cback();
       }
     }
   });
