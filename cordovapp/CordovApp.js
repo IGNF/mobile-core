@@ -36,6 +36,7 @@ if (!window.cancelAnimationFrame && window.webkitCancelRequestAnimationFrame) {
  * Web application pour Cordova 
  * @constructor
  * @param {Object} options 
+ *  @param {*} options.fonts list of custom fonts to load (using WebFontloader custom syntax)
  *  @param {function} options.initialize function called when ready
  *  @param {function} options.onMenu function called when menu is shown
  *  @param {function} options.onMenuButton function called when menu button is hit, default toggle menu
@@ -146,7 +147,7 @@ var CordovApp = function(options) {
     
     // Initialize app when fonts are loaded
     WebFont.load({
-      custom: {
+      custom: options.fonts || {
         families: ['FontAwesome', 'tools'],
         urls: ['./fonts/font-awesome.min.css','./fonts/font-tools.css'],
         testStrings: { 'FontAwesome': '\uf240' }
