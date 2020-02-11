@@ -285,6 +285,7 @@ CordovApp.prototype.showDialog = function(name, options) {
   options = options || {};
   wapp.dialog.show (CordovApp.template(name), {
     title: options.title, 
+    className: options.className,
     buttons: options.buttons || { cancel:'ok' },
     callback: options.callback
   });
