@@ -12,6 +12,9 @@ import WebFont from 'webfontloader';
 import _T from '../i18n'
 import checkInfo from './checkInfo'
 
+/* Singleton WebApplication */
+let wapp;
+
 /* Use jQuery as global */
 import jQuery from 'jquery'
 window.$ = jQuery;
@@ -46,7 +49,11 @@ if (!window.cancelAnimationFrame && window.webkitCancelRequestAnimationFrame) {
  *  @param {function} options.pageBack function called page back button is clicked, default hide the current page
  */
 var CordovApp = function(options) {
-  var self = this;
+  if (wapp) {
+    if (options) console.warn('[CordovApp:Singleton] call with options, options will be ignored...');
+    return wapp;
+  }
+  var self = wapp = this;
 
   /** Webapp parameters */
   this.param = {};
