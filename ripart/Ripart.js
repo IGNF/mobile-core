@@ -9,6 +9,7 @@ import ol_geom_Point from 'ol/geom/Point'
 import ol_geom_LineString from 'ol/geom/LineString'
 import ol_geom_Polygon from 'ol/geom/Polygon'
 import {transform as ol_proj_transform} from 'ol/proj'
+import ol_format_GeoJSON from 'ol/format/GeoJSON'
 
 /** @class RIPart
  * Recuperation des signalements de l'espace collaboratif.
@@ -586,6 +587,7 @@ var RIPart = function(options) {
   this.feature2sketch = function(f , proj) {
     if (!f) return "";
     if (!(f instanceof Array)) f = [f];
+    const format = new ol_format_GeoJSON();
     var croquis = "";
     var symb = "<symbole><graphicName>circle</graphicName><diam>2</diam><frontcolor>#FFAA00;1</frontcolor><backcolor>#FFAA00;0.5</backcolor></symbole>";
     var pt = f[0].getGeometry().getFirstCoordinate();
@@ -597,10 +599,13 @@ var RIPart = function(options) {
     for (var i=0; i<f.length; i++) {
       var t=""; 
       var geo="", g = f[i].getGeometry().clone();
+      var att = f[i].getProperties();
+      delete att.geometry;
       if (proj) {
         g.transform(proj, 'EPSG:4326');
-        g = g.getCoordinates();
       }
+      if (g.getLayout()==='XYZM') att.geom = format.writeGeometry(g);
+      g = g.getCoordinates();
       // Geometry
       switch (f[i].getGeometry().getType()) {
         case 'Point': 
@@ -622,9 +627,7 @@ var RIPart = function(options) {
           break;
       }
       // Attributes
-      var att = f[i].getProperties();
       var a, attr = "";
-      delete att.geometry;
       for (a  in att) {
         attr += '<attribut name="'+a.replace('"',"_")+'">'
           + String(att[a]).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") 
@@ -634,7 +637,11 @@ var RIPart = function(options) {
       // Write!
       if (t) {
         var coords="";
-        for (var k=0; k<g.length; k++) coords += (k>0?" ":"") + g[k][0].toFixed(7) +","+ g[k][1].toFixed(7);
+        for (var k=0; k<g.length; k++) {
+          coords += ( k>0 ? ' ' : '') 
+            + g[k][0].toFixed(7) +','
+            + g[k][1].toFixed(7);
+        }
         croquis += "<objet type='"+t+"'><nom></nom>" + symb + attr + geo.replace('COORDS', coords) + "</objet>";
       }
     }
