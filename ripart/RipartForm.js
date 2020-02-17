@@ -910,11 +910,11 @@ RIPart.prototype.connectDialog = function (options) {
       buttons: { cancel:"Annuler", deconnect: "Déconnexion", submit:"Connexion"},
       callback: function(bt) {
         if (bt == "submit") {
-          if (self.param.user != nom.val()) {
+          if (self.param.user != nom.val().trim()) {
             self.param.profil = null;
           }
           wapp.wait("Connexion au serveur...");
-          self.setUser (nom.val(), pwd.val(), true);
+          self.setUser (nom.val().trim(), pwd.val().trim(), true);
           self.checkUserInfo ( 
             options.onConnect, 
             (typeof (options.onError) == "function") ? options.onError : null,
