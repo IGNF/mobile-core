@@ -1331,6 +1331,9 @@ RIPart.prototype.formulaireAttribut = function(valdef, prompt) {
         case 'checkbox': {
           li = $("<li data-input='check'>").attr('data-param',a.att).appendTo(content);
           $("<label>").text(a.att).appendTo(li);
+          // Check boolean
+          if (vals[a.att] === "1") vals[a.att] = true;
+          else if (vals[a.att] === "0") vals[a.att] = false;
           break;
         }
         case 'date': {
