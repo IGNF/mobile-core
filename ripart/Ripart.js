@@ -211,13 +211,16 @@ var RIPart = function(options) {
           trOptions.headers = { 'Authorization': "Basic "+hash };
           // Transfert
           var ft = new FileTransfer();
+          var timeout = setTimeout(function() { ft.abort(); }, 30000);
           ft.upload (
             fileEntry.toURL(), 
             url+"georem/"+action+".xml", 
             function(r) {
+              if (timeout) clearTimeout(timeout);
               win(r.response); 
             },
             function(r) {
+              if (timeout) clearTimeout(timeout);
               r.status = r.http_status;
               if (r.status == 401) {
                 r.statusText = "Unauthenticated"; 
