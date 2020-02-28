@@ -5,6 +5,8 @@
   
   @require: JQuery
 */
+/* global wapp */
+
 import CordovApp from './CordovApp'
 import Dialog from '../Dialog'
 import _T from '../i18n'

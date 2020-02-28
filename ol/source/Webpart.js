@@ -282,7 +282,7 @@ if (!this._cacheUrl) return;
     url, 
     JSON.stringify(actions),
     () => {},
-    () => { console.log('ERROR: writeChanges on layer...'); },
+    () => { console.log('ERROR: writeChanges on layer...'); }
   );
 };
 

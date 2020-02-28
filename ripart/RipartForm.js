@@ -1,4 +1,5 @@
 ﻿/* global wapp */
+/* global Camera */
 import _T from '../i18n'
 import CordovApp from '../Cordovapp'
 import RIPart from './Ripart'

@@ -670,7 +670,7 @@ var RIPart = function(options) {
         }
       }
     }
-  };
+  }
 
   /** Load connection parameters to wappStorage
    * + decrypt password

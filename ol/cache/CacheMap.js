@@ -169,7 +169,7 @@ console.warn('[DEPRECATED] cachemap page');
     {	cache.estimateSize (setSize, vmin, vmax, extent);
     }, 100);
 */
-  };
+  }
   $(this.loadPage).on('showpage', function(){
     map.on('moveend', showInfo);
     showInfo();
@@ -188,7 +188,7 @@ console.warn('[DEPRECATED] cachemap page');
   function showWroot() {
     if (wapp.param.options.cacheRoot) $(".cacheroot", self.page).text(CordovApp.File.getFileName(wapp.param.options.cacheRoot.replace(/\/$/,"")));
     else $(".cacheroot", self.page).text("-");
-  };
+  }
 
   // Carte en cache
   var CacheMap = function (title) {
@@ -246,7 +246,7 @@ console.warn('[DEPRECATED] cachemap page');
     });
     // Lancer la recherche
     cache.save(smap.minZoom, smap.maxZoom, smap.extents[pos]);
-  };
+  }
 
   /* Supprimer les fichiers de la carte du cache
    *	@param {CacheMap} smap carte a supprimer
@@ -310,7 +310,7 @@ console.warn('[DEPRECATED] cachemap page');
         restoreFiles();
       });
     }, 200);
-  };
+  }
 
   /* Supprimer la carte du cache
   *	@param {CacheMap} smap carte a supprimer
@@ -351,7 +351,7 @@ console.warn('[DEPRECATED] cachemap page');
 
     // Remove associated files
     removeCacheFiles (smap);
-  };
+  }
   this.removeCacheMap = removeCacheMap;
 
   /* Mettre a jour les info de la carte
@@ -371,7 +371,7 @@ console.warn('[DEPRECATED] cachemap page');
       $(".info .dalle", li).text(smap.length);
       $(".info .date", li).text(smap.date);
     }
-  };
+  }
 
   /* Page de chargement
   *	@param {CacheMap} smap carte a charger
@@ -384,7 +384,7 @@ console.warn('[DEPRECATED] cachemap page');
     else {
       wapp.alert ($(".nomap",self.listMap.parent()).html(), "Mode hors-ligne");
     }
-  };
+  }
   this.loadCacheMap = loadCacheMap; 
 
   /* Mise a jour d'une carte
@@ -411,7 +411,7 @@ console.warn('[DEPRECATED] cachemap page');
     } else {
       wapp.alert ($(".nomap",self.listMap.parent()).html(), "Mode hors-ligne");
     }
-  };
+  }
   this.refreshCacheMap = refreshCacheMap;
 
   /** Chargement d'une liste de fichiers
@@ -470,7 +470,7 @@ console.warn('[DEPRECATED] cachemap page');
       }
       cback();
     }
-  };
+  }
 
   /* Chargement 
   */
@@ -511,7 +511,7 @@ console.warn('[DEPRECATED] cachemap page');
 
     // Start loading
     cache.save(min, max, extent);
-  };
+  }
 
   /* Dialogue de chargement d'une carte
   */
@@ -587,7 +587,7 @@ console.warn('[DEPRECATED] cachemap page');
     }
     content.addClass("loading");
     setTimeout (estimate,500);
-  };
+  }
 
   /* Annule le chargement de carte (ferme la page)
   */
@@ -595,7 +595,7 @@ console.warn('[DEPRECATED] cachemap page');
 //    wapp.showPage(self.page.attr("id"));
     wapp.showPage('layer-geoportail')
 //    wapp.hidePage();
-  };
+  }
 
   /* Procedure de chargement d'une carte
    *	@param {CacheMap} smap carte a charger
@@ -620,7 +620,7 @@ console.warn('[DEPRECATED] cachemap page');
       });
       cache.restore (smap.minZoom, smap.maxZoom, smap.extent);
     }
-  };
+  }
 
   /* Recuperation d'une carte par son nom
    *	@param {string} name
@@ -630,7 +630,7 @@ console.warn('[DEPRECATED] cachemap page');
       if (c.nom == name) return c;
     }
     return null;
-  };
+  }
 
   /* Recuperation d'une carte par son id
    *	@param {string} id
@@ -642,7 +642,7 @@ console.warn('[DEPRECATED] cachemap page');
       }
     }
     return null;
-  };
+  }
 
   /** Charger un fichier de cache */
   function loadCacheFile(name) {
@@ -660,7 +660,7 @@ console.warn('[DEPRECATED] cachemap page');
     }, function(){
       wapp.alert("Impossible de charger l'emprise...");
     })
-  };
+  }
 
   /** Enregistrer les fichiers de cache sur l'appareil
    */
@@ -701,7 +701,7 @@ console.warn('[DEPRECATED] cachemap page');
         }
       });
     }
-  };
+  }
 
   /* Ajoute une carte a l'application : layer / 
    * @param {CacheMap|undefined} smap carte a charger sinon en cree un nouvelle
@@ -732,7 +732,7 @@ console.warn('[DEPRECATED] cachemap page');
         }
       });
       return;
-    };
+    }
 
     // Visible ?
     var isVisible = (typeof(smap.id)!="undefined") ? (wapp.param.visibleLayers["cache_"+smap.id]) : true;
@@ -796,7 +796,7 @@ console.warn('[DEPRECATED] cache list');
   
     updateCacheMapInfo (smap);
 
-  };
+  }
   this.addCacheMap = addCacheMap;
 
   /**
@@ -808,7 +808,7 @@ console.warn('[DEPRECATED] cache list');
       var cmap = wapp.param.cacheMap[i];
       addCacheMap(cmap);
     }
-  };
+  }
 
   /** Choix du repertoire de travail 
   *	Le repertoire est stocke dans la variable 'wapp.param.options.cacheRoot'

@@ -1,6 +1,5 @@
 ﻿/** @module ol/layer/WFS
  */
-import * as CryptoJS from 'crypto-js';
 import ol_layer_Vector from 'ol/layer/Vector'
 import ol_View from 'ol/View'
 import { ol_ext_inherits } from 'ol-ext/util/ext'
@@ -31,7 +30,7 @@ const VectorWFS = function(options, cache) {
   if (!options.once && (options.minzoom || options.maxzoom)) console.error('[VectorWFS] Use minZoom or maxZoom')
   // **
   var self = this;
-  var secret = "WFS Espace Collaboratif IGN";
+//  var secret = "WFS Espace Collaboratif IGN";
 
   this.crypt = function(pwd) {
     // Encrypt in the saveparam function

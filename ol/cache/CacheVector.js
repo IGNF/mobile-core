@@ -142,7 +142,9 @@ console.warn('[DEPRECATED] showlist')
     if (ddate > 15*24*60*60*1000) li.addClass('err');
     else if (ddate > 7*24*60*60*1000) li.addClass('warn');
     var layerName = '';
-    for (var k=0, l; l=cache.layers[k]; k++) layerName += (layerName ? ' - ':'') + l.nom;
+    cache.layers.forEach((l) => {
+      layerName += (layerName ? ' - ':'') + l.nom;
+    });
     $(".info .layer", li).text(layerName);
     $(".info .date", li).text(cache.date);
     // Input
@@ -167,7 +169,7 @@ console.warn('[DEPRECATED] showlist')
     // Comptage des objets dans le cache
     let nb = 0;
     $('.nb', li).hide();
-    for (var k=0, l; l=cache.layers[k]; k++) {
+    for (var k=0; k<cache.layers.length; k++) {
       const url = this.getCacheFileName(cache,k) + '/editions.txt';
       CordovApp.File.read(
         url, 
@@ -213,7 +215,7 @@ CacheVector.prototype.saveLayer = function(layers, cache) {
   if (l) {
     if (l.get('cache') && l.getSource().nbModifications()) {
       this.wapp.wait('Sauvegarde des modifications...<br/>'+l.get('title'))
-      l.getSource().save((info)=>{
+      l.getSource().save(()=>{
         this.wapp.notification(l.get('title')+' sauvagardé...');
         // Next
         this.saveLayer(layers,cache);
@@ -271,7 +273,6 @@ CacheVector.prototype.uploadCache = function() {
 CacheVector.prototype.uploadLayers = function(cache, layers) {
   cache.date = (new Date()).toISODateString();
   var i, l;
-  var self = this;
   var guichet = this.getCurrentGuichet();
   if (!layers) {
     layers = [];

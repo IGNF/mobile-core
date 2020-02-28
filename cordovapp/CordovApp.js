@@ -175,7 +175,7 @@ var CordovApp = function(options) {
 
     // Check server info
     checkInfo();
-  };
+  }
 
   /* Load page templates asynchronously
   *	@param {function} callback function when pages are ready
