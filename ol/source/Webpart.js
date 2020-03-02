@@ -88,8 +88,16 @@ const VectorWebpart = function(opt_options) {
   if (!proj4.defs[this.srsName_]) {
     console.error('PROJECTION INCONNUE', this.srsName_);
   }
-        
+  
+  // Filter
   this.featureFilter_ = options.filter || {};
+  // Filter / deleted objects
+  if (this.featureType_.attributes.detruit) {
+    this.featureFilter_ = { detruit : false };
+  } else if (this.featureType_.attributes.gcms_detruit) {
+    this.featureFilter_ = { gcms_detruit : false };
+  }
+
   
   // Strategy for loading source (bbox or tile)
   var strategy = options.strategy || ol_loadingstrategy_bbox;
@@ -427,7 +435,7 @@ VectorWebpart.prototype.save = function(onSuccess, onError) {
 
   //var url = this.featureType_.wfstransaction.replace(/\/$/,'');
   var url = this.featureType_.wfs_transactions;
-  
+    
   if (this.proxy_) param.url = url;
   $.ajax({
     url: this.proxy_ || url,
