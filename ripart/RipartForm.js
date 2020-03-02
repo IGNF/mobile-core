@@ -415,23 +415,31 @@ RIPart.prototype.saveFormulaire = function(form) {
     georem.theme = wapp.selectInputText($('[data-input="select"][data-param="theme"]', this.formElement));
   }
   georem.id_groupe = this.param.profil.id_groupe;
+
   // Attributs
-  var isok = true;
   var attr = $('.attributes', this.formElement).data("vals");
+  // Gestion des attributs obligatoires
+  var obligatoire = '';
+  $('.attributes', this.formElement).data("attributes").forEach((a) => {
+    if (a.obligatoire) {
+      if (attr[a.att]===undefined || attr[a.att]==='') {
+        obligatoire = a.att;
+      }
+    } 
+  });
+  if (obligatoire) {
+    wapp.alert('Vous devez renseigner l\'attribut <b><i>"'+obligatoire+'"</i></b> dans la liste des attributs.')
+    return;
+  }
+
+  // Remplissage des attributs
   georem.attributes = "";
   for (var i in attr) {
     var a = attr[i];
     a = (typeof(attr[i])=="boolean") ?  (a?"1":"0") : a.replace(/"/g,"''");
-    if (attr.obligatoire && a==='') {
-      wapp.alert ('Attribut obligatoire');
-      isok = false;
-    }
     georem.attributes += ',"'+theme+"::"+i+'"=>"'+a+'"';
   }
   georem.attText =  $('.attributes [data-input-role="info"]', this.formElement).text();
-
-  // 
-  if(!isok) return;
 
   // Ajout des features
   var features = this.selectOverlay.getSource().getFeatures();
@@ -440,13 +448,15 @@ RIPart.prototype.saveFormulaire = function(form) {
   }
 
   // Formatage utilisateur
-  isok = this.formatGeorem.call (this, georem, form);
+  var isok = this.formatGeorem.call (this, georem, form);
 
+  // oops
   if (isNaN(georem.lon) || isNaN(georem.lat)) {
     isok = false;
     wapp.alert ("aucune coordonnée...");
   }
 
+  //
   if (isok) {
     // Forcer la date au moment de la remontee
     georem.date = (new Date()).toISODateString();
@@ -1080,7 +1090,7 @@ RIPart.prototype.checkUserInfo = function(success, fail, allways) {
   */
 RIPart.prototype.setProfil = function(id_groupe) {
   const g = this.getGroupById(id_groupe);
-  if (!g || !g.active) return;
+//  if (!g || !g.active) return;
   if (g) {
     this.param.profil = {
       filtre: g.filter,

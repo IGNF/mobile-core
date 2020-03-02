@@ -136,9 +136,8 @@ ol_ext_inherits(RIPartSource, ol_source_Vector);
  * @private
  */
 RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
-console.log('LOAD RIPART')
   const loadFeatures = function (result) {
-    if (!result) return;
+    if (!result || !result.length) return;
     const features = [];
     result.forEach((r)=> {
       const p = ol_proj_fromLonLat([r.lon, r.lat]);
