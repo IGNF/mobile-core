@@ -234,8 +234,9 @@ var _wait=null, _wback=null, _message=null, _pourcent=null;
 var _wtimeout = null;
 
 /** Wait dialog
- * @param {String|false} message to show or false to hide the dialog
- * @param {boolean} false to prevent animation (to chain dialogs)
+ * @param {String|false} msg message to show or false to hide the dialog
+ * @param {*} options
+ *  @param {boolean} options.anim false to prevent animation (to chain dialogs), default true
  */
 CordovApp.prototype.wait = function(msg, options) {
   if (options===false) options = { anim:false };
@@ -288,6 +289,7 @@ CordovApp.prototype.showDialog = function(name, options) {
   wapp.dialog.show (CordovApp.template(name), {
     title: options.title, 
     className: options.className,
+    anim: options.anim,
     buttons: options.buttons || { cancel:'ok' },
     callback: options.callback
   });

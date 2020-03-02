@@ -416,14 +416,22 @@ RIPart.prototype.saveFormulaire = function(form) {
   }
   georem.id_groupe = this.param.profil.id_groupe;
   // Attributs
+  var isok = true;
   var attr = $('.attributes', this.formElement).data("vals");
   georem.attributes = "";
   for (var i in attr) {
     var a = attr[i];
-    a = (typeof(attr[i])=="boolean") ?  (a?"1":"0") : a.replace(/"/g,"''")
+    a = (typeof(attr[i])=="boolean") ?  (a?"1":"0") : a.replace(/"/g,"''");
+    if (attr.obligatoire && a==='') {
+      wapp.alert ('Attribut obligatoire');
+      isok = false;
+    }
     georem.attributes += ',"'+theme+"::"+i+'"=>"'+a+'"';
   }
   georem.attText =  $('.attributes [data-input-role="info"]', this.formElement).text();
+
+  // 
+  if(!isok) return;
 
   // Ajout des features
   var features = this.selectOverlay.getSource().getFeatures();
@@ -432,7 +440,7 @@ RIPart.prototype.saveFormulaire = function(form) {
   }
 
   // Formatage utilisateur
-  var isok = this.formatGeorem.call (this, georem, form);
+  isok = this.formatGeorem.call (this, georem, form);
 
   if (isNaN(georem.lon) || isNaN(georem.lat)) {
     isok = false;
@@ -581,7 +589,16 @@ RIPart.prototype.postLocalRem = function(i, options) {
         } else if (e.status===401) {
           msg += "Vous devez être connecté...";
         } else {
-          msg = $('<div>').html(msg+"Vérifiez votre connexion.");
+          switch (e.status) {
+            case '400': {
+              msg = $('<div>').html(msg+"Erreur dans la remontée...");
+              break;
+            }
+            default: {
+              msg = $('<div>').html(msg+"Vérifiez votre connexion.");
+              break;
+            }
+          }
           $('<i>').addClass('fa fa-info-circle')
             .css({	position: "absolute",
                 top: 0,
@@ -1235,7 +1252,7 @@ RIPart.prototype.showFormulaire = function(grem, select) {
   else theme.hide();
 
   // Comment
-  $(".comment", this.formElement).val(this.param.profil.comment);
+  if (!georem) $(".comment", this.formElement).val(this.param.profil.comment);
 
   // Lon / lat
   var lon = Number($("input.lon", this.formElement).val());
@@ -1283,7 +1300,9 @@ RIPart.prototype.selectTheme = function(th, atts, prompt) {
     $(".attributes", this.formElement).show()
       .data('attributes', theme.attributs)
       .unbind("click")
-      .click(function(){ self.formulaireAttribut(); });
+      .click(function(){ 
+        self.formulaireAttribut(); 
+      });
     this.formulaireAttribut(atts, prompt);
   } else {
     $(".attributes", this.formElement).hide();
@@ -1291,7 +1310,7 @@ RIPart.prototype.selectTheme = function(th, atts, prompt) {
 };
 
 /** Remise a zero du formulaire
-  */
+*/
 RIPart.prototype.resetFormulaireAttribut = function() {
   var input = $(".attributes", this.formElement).data("vals", false);
   $('[data-input-role="info"]', input).text("");
@@ -1351,9 +1370,10 @@ RIPart.prototype.formulaireAttribut = function(valdef, prompt) {
           break;
         }
       }
+      if (a.obligatoire) li.addClass('obligatoire');
     }
     if (!valdef && input.data("vals")) vals = $.extend({}, input.data("vals"));
-    console.log(vals)
+//    console.log(vals)
     wapp.setParamInput(content, vals);
     const showInfo = function() {
       input.data("vals", $.extend({}, vals));
@@ -1361,16 +1381,30 @@ RIPart.prototype.formulaireAttribut = function(valdef, prompt) {
     }
     showInfo();
     // First time ask for attributes
-    if (!valdef && prompt!==false) dialog.show(content, {
-      buttons: { ok:"ok",cancel:"Annuler" },
-      title: "Attributs",
-      className: "attributes",
-      callback: function(b) {
-        if (b=='ok') {
-          showInfo();
+    if (!valdef && prompt!==false) {
+      dialog.show(content, {
+        buttons: { ok:"ok", cancel:"Annuler" },
+        title: "Attributs",
+        className: "attributes",
+        callback: function(b) {
+          if (b=='ok') {
+            var obligatoire = '';
+            // Check oligatoire
+            $('.obligatoire', content).each(function() {
+              if (!$('input', this).val()) {
+                obligatoire = $('label', content).text();
+              }
+            })
+            if (obligatoire) {
+              wapp.dialog.show(null, { anim: false });
+              wapp.alert('L\'attribut <b><i>"'+obligatoire+'"</i></b> est obligatoire.')
+            } else {
+              showInfo();
+            }
+          }
         }
-      }
-    });
+      });
+    }
   }
   // Reset form values
   else {

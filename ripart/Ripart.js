@@ -386,6 +386,7 @@ var RIPart = function(options) {
                 defaultVal: $(this).find('DEFAULTVAL').text(),
                 val: []
               };
+              if ($(this).find('OBLIGATOIRE').length > 0) att.obligatoire = true;
               $(this).find('VAL').each(function()
               {	att.val.push($(this).text());
               });

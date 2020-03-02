@@ -55,11 +55,11 @@ function Dialog() {
   * @method Dialog.show
   * @param {html} content a jQuery objet that contents the dialog
   * @param {options} options
-  *	@param {bool} options.closeBox has a close box
-  *	@param {string} options.title title of the dialog
-  *	@param {Array<String>} options.buttons list of button to show 
-  *	@param {function} options.callback callback function with index of pressed button as argument
-  *	@param {String} options.className dialog class for css 
+  *	 @param {bool} options.closeBox has a close box
+  *	 @param {string} options.title title of the dialog
+  *	 @param {Array<String>} options.buttons list of button to show 
+  *	 @param {function} options.callback callback function with index of pressed button as argument
+  *	 @param {String} options.className dialog class for css 
   */
   this.show = function (content, options) {
     if (!options) options={};
@@ -116,6 +116,10 @@ function Dialog() {
         .click(function() { $(".error", _content).toggle(); })
         .insertBefore($('.error', _content));
     }
+
+    if (options.anim === false) _dlg.addClass('noanim visible');
+    else _dlg.removeClass('noanim');
+
     // Show dialog
     _dlg.show();
     _timeout = setTimeout (function(){ _dlg.addClass('visible'); }, 200);
