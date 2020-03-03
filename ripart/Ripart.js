@@ -25,17 +25,18 @@ import ol_format_GeoJSON from 'ol/format/GeoJSON'
 var RIPart = function(options) {
   options = options || {};
   // 
-  var secret = "Espace Collaboratif IGN";
+  var secret = 'Espace Collaboratif IGN';
+  var defaultUrl = 'https://espacecollaboratif.ign.fr/api/'
   // Url du service
-  var url = options.url || "https://espacecollaboratif.ign.fr/api/";
+  var url = options.url || defaultUrl;
   var user, pwd;
   this.param = {};
 
   /** Changement de l'url du service
-  * @param {String} url du service
+  * @param {String} u url du service
   */
   this.setServiceUrl = function(u) {
-    url = u;
+    url = u || defaultUrl;
   };
 
   /** Recupere l'url du service
@@ -43,6 +44,14 @@ var RIPart = function(options) {
   */
   this.getServiceUrl = function() {
     return url;
+  };
+
+  /** Check the service url
+   * @param {String} u url du service
+   * @return {boolean}
+   */
+  this.isService = function(u) {
+    return (u || defaultUrl) !== this.getServiceUrl();
   };
   
   /** Changement d'utilisateur
