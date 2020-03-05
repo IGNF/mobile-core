@@ -1353,8 +1353,8 @@ RIPart.prototype.formulaireAttribut = function(valdef, prompt) {
         case 'list': {
           li = $("<li data-input='select'>").attr('data-param',a.att).appendTo(content);
           $("<label>").text(a.att).appendTo(li);
-          for (k=0; k<a.val.length; k++) {
-            $("<div data-input-role='option' data-val='"+a.val[k]+"'>").html(a.val[k]||"<i>sans</i>").appendTo(li);
+          for (k in a.val) {
+            $("<div data-input-role='option' data-val='"+k+"'>").html(a.val[k]||"<i>sans</i>").appendTo(li);
           }
           break;
         }

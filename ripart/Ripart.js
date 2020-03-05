@@ -393,14 +393,15 @@ var RIPart = function(options) {
                 att: $(this).find('ATT').text(),
                 type: $(this).find('TYPE').text(),
                 defaultVal: $(this).find('DEFAULTVAL').text(),
-                val: []
+                val: {}
               };
               if ($(this).find('OBLIGATOIRE').length > 0) att.obligatoire = true;
-              $(this).find('VAL').each(function()
-              {	att.val.push($(this).text());
+              $(this).find('VAL').each(function() {
+                var val = $(this).text();
+                att.val[val] = $(this).attr('display') || val;
               });
-              switch(att.type)
-              {	case 'checkbox':
+              switch(att.type) {
+                case 'checkbox':
                   att.val = [(att.val[0] == 1)];
                   att.defaultVal = (att.defaultVal == 1);
                 break;

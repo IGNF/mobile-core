@@ -314,7 +314,7 @@ var CordovApp = function(options) {
     if (self.isCordova && $(this).attr("target") == "_system") {
       e.stopPropagation();
       e.preventDefault();
-      navigator.app.loadUrl($(this).attr("href"), { openExternal:true });
+      window.open('$(this).attr("href")', '_system'); 
     }
   });
     
