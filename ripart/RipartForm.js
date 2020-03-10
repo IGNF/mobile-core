@@ -1393,16 +1393,17 @@ RIPart.prototype.formulaireAttribut = function(valdef, prompt) {
     // First time ask for attributes
     if (!valdef && prompt!==false) {
       dialog.show(content, {
-        buttons: { ok:"ok", cancel:"Annuler" },
+        buttons: { submit:"ok", cancel:"Annuler" },
         title: "Attributs",
         className: "attributes",
         callback: function(b) {
-          if (b=='ok') {
+          if (b=='submit') {
             var obligatoire = '';
             // Check oligatoire
             $('.obligatoire', content).each(function() {
+              console.log(content, this)
               if (!$('input', this).val()) {
-                obligatoire = $('label', content).text();
+                obligatoire = $('label', this).text();
               }
             })
             if (obligatoire) {
