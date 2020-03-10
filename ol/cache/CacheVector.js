@@ -509,11 +509,11 @@ CacheVector.prototype.addDialog = function(cback) {
   }
 
   this.wapp.dialog.show (content, {
-    title: "Ajouter une carte", 
-    buttons: { ajouter:"Ajouter...", cancel:"Annuler" },
+    title: "Définir une zone d'édition", 
+    buttons: { valid:"Valider", cancel:"Annuler" },
     className: "attributes guichet",
     callback: function(b) {
-      if (b=='ajouter') {
+      if (b=='valid') {
         var name = $('input',content).val() || 'Sans titre';
         var layers = [];
         $("li", ul).each(function() {
