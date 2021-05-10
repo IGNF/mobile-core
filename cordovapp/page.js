@@ -1,5 +1,6 @@
 /* global wapp */
 import CordovApp from './CordovApp'
+import {i18n} from '../i18n'
 
 /**
  * jQuery object of the menu: $("[data-role='menu']")
@@ -16,14 +17,11 @@ var templates = {};
 *	@api
 */
 CordovApp.template = function (tmp, async) {
-  if (typeof(tmp) != "string") return "";
+  if (typeof(tmp) != 'string') return '';
 
   function getData () {
-    var data = $( $(templates[tmp]) || "" );
-    if (window.i18n) $("[data-i18n]", data).each(function() {
-      var $this = $(this);
-      $this.html(window.i18n.T($this.attr("data-i18n")));
-    });
+    var data = $( $(templates[tmp]) || '' );
+    i18n.template(data);
     return data;
   }
 
@@ -118,12 +116,13 @@ CordovApp.prototype.isMenu = function() {
 };
 
 /** Show a page
-* @param {String|Array} id_page id or array of ids of the page(s) to show
-* @param {String} onglet the list item to show
-*/
+ * @param {String|Array} id_page id or array of ids of the page(s) to show
+ * @param {String} onglet the list item to show
+ * @return {DOMElement}
+ */
 CordovApp.prototype.showPage = function(id_page, onglet) {
   if (!id_page) return;
-  if (typeof(id_page) == "string") id_page=[id_page];
+  if (typeof(id_page) === "string") id_page=[id_page];
   if (!id_page.length) return;
   
   // New page is shown
@@ -156,6 +155,7 @@ CordovApp.prototype.showPage = function(id_page, onglet) {
     show (self);
     if (onglet) wapp.showOnglet($('[data-role="onglet-bt"] [data-list="'+onglet+'"]', self))
   }
+  return $("#"+id_page[0]);
 };
 
 /** Get action buttons in the header of the tab
@@ -253,7 +253,7 @@ CordovApp.prototype.showOnglet = function(item) {
   var onglet = $(item).data("list");
   $(item).addClass('select');
   $("[data-role='onglet-li'][data-list="+onglet+"]", parent)
-    .trigger({ type:'showonglet' })
+    .trigger({ type:'showonglet', onglet: onglet })
     .show();
 };
 
@@ -340,5 +340,15 @@ CordovApp.prototype.hideFullscreen = function() {
     setTimeout(function(){fs.hide();},300);
   }
 }
+
+const template = CordovApp.template;
+export { template }
+
+const fullscreenImg = {
+  show : CordovApp.fullscreen,
+  hide: CordovApp.hideFullscreen,
+  visible: CordovApp.isFullscreen
+};
+export { fullscreenImg }
 
 export default CordovApp

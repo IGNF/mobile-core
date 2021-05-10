@@ -14,7 +14,8 @@ import CordovApp from './CordovApp'
 */
 CordovApp.prototype.getPicture = function (win, fail, param, source) {
   if (!window.Camera) {
-    wapp.alert ("Impossible d'accéder aux photos...")
+    if (fail) fail('NOCAMERA');
+    else wapp.alert ("Impossible d'accéder aux photos...")
     return;
   }
   if (typeof(param) != "object") param = {};

@@ -1,11 +1,10 @@
 /**
   @brief: Cordova web application 
   @author: Jean-Marc Viglino (ign.fr)
-  @copyright: 2015
+  @copyright: 2015-2020
   
   @require: JQuery
 */
-/* global wapp */
 
 import CordovApp from './CordovApp'
 import Dialog from '../Dialog'
@@ -95,11 +94,11 @@ CordovApp.prototype.selectDialog = function(choice, valdef, cback, options) {
 const selectDialog = CordovApp.prototype.selectDialog;
 
 /** Prompt dialog
-* @param {String} Prompt
-* @param {String} default value
-* @param {function} callback function(val) returned value
-* @param {Object} Dialog param
-*/
+ * @param {String} Prompt
+ * @param {String} default value
+ * @param {function} callback function(val) returned value
+ * @param {Object} Dialog param
+ */
 CordovApp.prototype.prompt = function(prompt, val, cback, options) {
   if (!options) options = {};
   if (typeof(cback)!="function") cback=function(c){console.log(c);};
@@ -118,6 +117,121 @@ CordovApp.prototype.prompt = function(prompt, val, cback, options) {
   input.focus().val(val || "");
 };
 const promptDlg = CordovApp.prototype.prompt;
+
+/** Prompt dialog
+ * @param {String} Prompt
+ * @param {String} default value
+ * @param {function} callback function(val) returned value
+ * @param {Object} Dialog param
+ */
+CordovApp.prototype.dateDlg = function(prompt, val, cback, options) {
+  const date = val ? new Date(val) : new Date();
+
+  const getDate = function() {
+    let d;
+    const h = $('li', dday).outerHeight()
+    // Check date
+    var date = new Date();
+    date.setFullYear(Math.round(dyear.scrollTop() / h)+1900);
+    date.setMonth(Math.round(dmonth.scrollTop() / h));
+    // Show date / month / year
+    $('li', dday).show();
+    date.setDate(29);
+    if (date.getMonth() !== Math.round(dmonth.scrollTop() / h)) {
+      $('li', dday)[28].style.display = 'none'
+      $('li', dday)[29].style.display = 'none'
+      $('li', dday)[30].style.display = 'none'
+    } else {
+      date.setDate(30);
+      if (date.getMonth() !== Math.round(dmonth.scrollTop() / h)) {
+        $('li', dday)[29].style.display = 'none'
+        $('li', dday)[30].style.display = 'none'
+      } else {
+        date.setDate(31);
+        if (date.getMonth() !== Math.round(dmonth.scrollTop() / h)) {
+          $('li', dday)[30].style.display = 'none'
+        }
+      }
+    }
+    // get Date
+    date.setFullYear(Math.round(dyear.scrollTop() / h)+1900);
+    date.setMonth(Math.round(dmonth.scrollTop() / h));
+    date.setDate(Math.round(dday.scrollTop() / h)+1);
+    return date;
+  }
+
+  const onscroll = function(div) {
+    const h = $('li', div).outerHeight()
+    const dt = Math.round(div.scrollTop() / h);
+    div.scrollTop(dt * h);
+    getDate();
+  }
+  const setVal = function(div, val) {
+    setTimeout(() => {
+      const h = $('li', div).outerHeight()
+      div.scrollTop((val-1) * h);
+    }, 100);
+  }
+
+  if (typeof(cback)!="function") cback = function(c){ console.log(c); };
+  const content = $("<div>").addClass('dateDlg');
+  const delay = 300;
+
+  // Day
+  var dday = $('<ul>').addClass('day').appendTo(content);
+  let scrollDay;
+  dday.on('scroll', () => {
+    window.clearTimeout( scrollDay );
+    scrollDay = setTimeout(() => { onscroll(dday) }, delay);
+  })
+  dday.on('touchend', () => { 
+    onscroll(dday);
+  });
+  for (let k=1; k<=31; k++) {
+    $('<li>').text(k).appendTo(dday);
+  }
+  setVal(dday, date.getDate());
+
+  // Month
+  var dmonth = $('<ul>').addClass('month').appendTo(content);
+  let scrollMonth;
+  dmonth.on('scroll', () => {
+    window.clearTimeout( scrollMonth );
+    scrollMonth = setTimeout(() => { onscroll(dmonth) }, delay);
+  });
+  dmonth.on('touchend', () => { 
+    onscroll(dmonth);
+  });
+  ['JAN','FEV','MARS','AVR','MAI','JUIN', 'JUIL', 'AOUT', 'SEPT', 'OCT', 'NOV', 'DEC'].forEach((a) => {
+    $('<li>').text(a).appendTo(dmonth);
+  });
+  setVal(dmonth, date.getMonth()+1);
+
+  // Year
+  var dyear = $('<ul>').addClass('year').appendTo(content);
+  let scrollYear;
+  dyear.on('scroll', () => {
+    window.clearTimeout( scrollYear );
+    scrollYear = setTimeout(() => { onscroll(dyear) }, delay);
+  });
+  dyear.on('touchend', () => { 
+    onscroll(dyear);
+  });
+  for (let k=1900; k<=2020; k++) {
+    $('<li>').text(k).appendTo(dyear);
+  }
+  setVal(dyear, date.getFullYear() - 1899);
+
+  if (!options) options = {};
+  options.title = prompt;
+  options.buttons = { cancel:"Annuler", submit:"OK" };
+  options.callback = function(b) {
+    if (b=="submit") cback(getDate());
+    else cback(val);
+  }
+  _internalDialog.show(content, options);
+};
+const dateDlg = CordovApp.prototype.dateDlg;
 
 /** Show an alert
 *	@param {String} message to alert
@@ -151,7 +265,7 @@ const messageDlg = CordovApp.prototype.message
 /** A dialog is open
 */
 CordovApp.prototype.hasDialog = function() {
-  return ( this.dialog.isOpen() || _internalDialog.isOpen() );
+  return ( dialog.isOpen() || _internalDialog.isOpen() );
 };
 
 /** Close first open dialog
@@ -160,7 +274,7 @@ CordovApp.prototype.closeDialog = function() {
   if (_internalDialog.isOpen()) {
     return _internalDialog.close();
   } else {
-    return this.dialog.close();
+    return dialog.close();
   }
 };
 
@@ -214,7 +328,6 @@ CordovApp.prototype.isNotification = function() {
   return _notification.hasClass('visible');
 };
 
-
 import notinfo from'./notinfo'
 
 /** Show notification information on top of the screen
@@ -230,31 +343,42 @@ CordovApp.prototype.notinfo = notinfo;
 /* Wait dialog
  * @private
  */
-var _wait=null, _wback=null, _message=null, _pourcent=null;
+var _wait=null, _wback=null, _message=null, _pourcent=null, _waitButtons=null;
 var _wtimeout = null;
 
 /** Wait dialog
- * @param {String|false} msg message to show or false to hide the dialog
+ * @param {String|boolean|*} msg message to show or false to hide the dialog or options to set new options
  * @param {*} options
  *  @param {boolean} options.anim false to prevent animation (to chain dialogs), default true
+ *  @param {string} option.className
+ *  @param {number} options.pourcent
+ *  @param {*} options.buttons a list a key / action
  */
 CordovApp.prototype.wait = function(msg, options) {
   if (options===false) options = { anim:false };
-  if (!options) options = {};
+  if (!options) {
+    if (msg !== false && typeof(msg) !== 'string') {
+      options = msg || {};
+      msg = '';
+    } else {
+      options = {};
+    }
+  }
   if (!_wait) {
-    _wback = $("<div>").attr("data-role","backDialog").appendTo("body");
-    _wait = $("<div>").attr("id","wait").attr("data-role","dialog").appendTo("body");
-    var spin = $("<i>").addClass("fa fa-spinner fa-pulse")
+    _wback = $('<div>').attr('data-role','backDialog').appendTo('body');
+    _wait = $('<div>').attr('id','wait').attr('data-role','dialog').appendTo('body');
+    var spin = $('<i>').addClass("fa fa-spinner fa-pulse")
             .appendTo(_wait);
-    _message = $("<div>").insertAfter(spin);
-    var pc = $("<div class='pourcent'>").appendTo(_wait);
-    _pourcent = $("<div>").appendTo(pc);
+    _message = $('<div>').addClass('message').insertAfter(spin);
+    var pc = $('<div>').addClass('pourcent').appendTo(_wait);
+    _pourcent = $('<div>').appendTo(pc);
+    _waitButtons = $('<div>').addClass('buttons').appendTo(_wait)
   }
   if (_wtimeout) clearTimeout(_wtimeout);
   if (msg !== false) {
     _wback.show();
     _wait.show();
-    _message.html(msg);
+    if (msg) _message.html(msg);
     if (!_wait.hasClass('visible')) {
       _wait.removeClass();
       if (options.anim===false) _wait.addClass('visible noanim');
@@ -262,9 +386,17 @@ CordovApp.prototype.wait = function(msg, options) {
     }
     else _wait.removeClass().addClass('visible');
     if (options.pourcent!==undefined) {
-      _pourcent.css("width",options.pourcent+"%").parent().show();
+      _pourcent.css('width',options.pourcent+'%').parent().show();
     } else {
       _pourcent.parent().hide();
+    }
+    if (msg || options.buttons) {
+      _waitButtons.html('');
+      if (options.buttons) {
+        for (let b in options.buttons) {
+          $('<button>').text(b).click(options.buttons[b]).appendTo(_waitButtons);
+        }
+      }
     }
     if (options.className) _wait.addClass(options.className);
   } else  {
@@ -276,6 +408,7 @@ CordovApp.prototype.wait = function(msg, options) {
 }
 const waitDlg = CordovApp.prototype.wait;
 
+/** Wait is on */
 CordovApp.prototype.isWaiting = function() {
   return _wback ? _wback.css("display")!="none" : false;
   //return _wait.hasClass('visible');
@@ -286,7 +419,7 @@ CordovApp.prototype.isWaiting = function() {
  */
 CordovApp.prototype.showDialog = function(name, options) {
   options = options || {};
-  wapp.dialog.show (CordovApp.template(name), {
+  return dialog.show (CordovApp.template(name), {
     title: options.title, 
     className: options.className,
     anim: options.anim,
@@ -298,9 +431,15 @@ CordovApp.prototype.showDialog = function(name, options) {
 export {dialog}
 export {selectDialog}
 export {promptDlg};
+export {dateDlg};
 export {alertDlg};
 export {messageDlg};
 export {waitDlg};
 export {notification};
+
+const hasDialog = CordovApp.prototype.hasDialog;
+export { hasDialog }
+const closeDialog = CordovApp.prototype.closeDialog;
+export { closeDialog }
 
 export default Dialog;

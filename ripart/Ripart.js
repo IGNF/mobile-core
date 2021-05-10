@@ -10,6 +10,7 @@ import ol_geom_LineString from 'ol/geom/LineString'
 import ol_geom_Polygon from 'ol/geom/Polygon'
 import {transform as ol_proj_transform} from 'ol/proj'
 import ol_format_GeoJSON from 'ol/format/GeoJSON'
+import Feature from 'ol/Feature';
 
 /** @class RIPart
  * Recuperation des signalements de l'espace collaboratif.
@@ -60,6 +61,9 @@ var RIPart = function(options) {
   * @param {boolean} crypt encrypted password or not
   */
   this.setUser = function(u, p, cryp) {
+    if (user && user !== u) {
+      this.deconnect();
+    }
     user = u;
     if (!p) return;
     // Pass
@@ -80,6 +84,12 @@ var RIPart = function(options) {
   this.getUser = function(b) {
     if (b) return pwd;
     else return user;
+  };
+
+  /** Get user hash 
+   */
+  this.getHash = function() {
+    return btoa(user + ":" + pwd)
   };
 
   /* Decode l'erreur */
@@ -111,12 +121,29 @@ var RIPart = function(options) {
 
   /* Formater les attributs en texte (pour affichage)
   * @param {Object} vals a list of key/values
+  * @param {Object} infos a list of key/values with infos on attributes
   * @return {string} formated attributes
   */
-  var formatAttributString = this.formatAttributString = function(vals) {
+  var formatAttributString = this.formatAttributString = function(vals, infos) {
     var v = "";
-    if (vals) for (var i in vals) {
-      if (vals[i] || vals[i]===false) v += i+": "+(vals[i]===false ? "0" : (vals[i]===true ? "1":vals[i]))+"\n"
+    if (vals) {
+      for (var i in vals) {
+        // if (infos && !infos[i]) console.log('ERROR:', i, infos)
+        if (vals[i] || vals[i]===false) {
+          if (infos && infos[i]) {
+            var val;
+            if (infos[i].type === 'list') {
+              val = infos[i].val[vals[i]] || vals[i];
+            } else {
+              val = (vals[i]===false ? "0" : (vals[i]===true ? "1":vals[i]));
+            }
+            v += (infos[i].title || i)+": "+val+"\n"
+
+          } else {
+            v += i+": "+(vals[i]===false ? "0" : (vals[i]===true ? "1":vals[i]))+"\n"
+          }
+        }
+      }
     }
     return v;
   };
@@ -125,9 +152,10 @@ var RIPart = function(options) {
    * @param {XMLNode} rem signalement (XML) a decoder
    * @param {any} options 
    * 	@param {boolean} options.croquis extraire les croquis
+   * @param {Array<*>} groupes list des groupes
    * @return {} le signalement en json
    */
-  function getGeorem (rem, options) {
+  function getGeorem (rem, options, groupes) {
     var r = {};
     for (var i in georemAttr) {
       r[i] = rem.find("> "+georemAttr[i]).first().text();
@@ -155,7 +183,20 @@ var RIPart = function(options) {
         nb++;
       });
       if (nb) th.attribut = attribut;
-      r.attText += formatAttributString(attribut);
+      // Get attributes info
+      var infos;
+      var groupe = groupes ? groupes.find((g)=> g.id_groupe == th.id_groupe) : null;
+      if (groupe) {
+        var gtheme = groupe.themes.find((t) => t.nom === th.nom);
+        if (gtheme) {
+          gtheme.attributs.forEach(a => {
+            if (!infos) infos = {};
+            infos[a.att] = a;
+          });
+        }
+      }
+      // Format attribut string
+      r.attText += formatAttributString(attribut, infos);
       r.themes.push(th);
     });
     r.rep = [];
@@ -175,6 +216,7 @@ var RIPart = function(options) {
   * @param {Object} liste des parametres a envoyer lors de l'action
   * @param {function} fonction de decodage xml => json
   * @param {function} callback (response, error)
+  * @return {boolean} false if not connected
   */
   function sendRequest (action, options, decode, cback) {
     if (!user || !pwd) {
@@ -194,6 +236,7 @@ var RIPart = function(options) {
       } else {
         r = resp;
       }
+      // console.log(r)
       // Callback
       if (cback) cback(r,error);
       else console.log(r);
@@ -272,7 +315,10 @@ var RIPart = function(options) {
         dataType: (format || "xml"),
         cache: false,
         // Bug with user/pwd in Android 4.1
-        beforeSend: function(xhr){ xhr.setRequestHeader("Authorization", "Basic " + btoa(user + ":" + pwd)); },
+        beforeSend: function(xhr){ 
+          xhr.setRequestHeader("Authorization", "Basic " + btoa(user + ":" + pwd)); 
+          xhr.setRequestHeader("Accept-Language", null);
+        },
         /*
         username: user,
         password: pwd,
@@ -313,6 +359,11 @@ var RIPart = function(options) {
         logo: resp.find("PROFIL LOGO").text(),
         filtre: resp.find("PROFIL FILTRE").text()
       };
+      if (typeof(r.profil.filtre) === 'string') {
+        try {
+          r.profil.filtre = JSON.parse(r.profil.filtre);
+        } catch(e) { /* ok */ }
+      }
       r.groupes = [];
       resp.find("GEOGROUPE").each(function() {
         var att = $(this);
@@ -361,6 +412,8 @@ var RIPart = function(options) {
               } catch(e){ /* ok */ }
             }
             if (l.type==='WFS') {
+              // BUG : force https
+              l.url = l.url.replace(/^http:/, 'https:');
               l.external = !(new RegExp('^'+ serviceHost)).test(l.url);
               l.version = $(this).find("VERSION").text();
               l.typename = $(this).find("TYPENAME").text();
@@ -405,7 +458,7 @@ var RIPart = function(options) {
               switch(att.type) {
                 case 'checkbox':
                   att.val = [(att.val[0] == 1)];
-                  att.defaultVal = (att.defaultVal == 1);
+                  att.defaultVal = (att.defaultVal == 1 || att.defaultVal==='true');
                 break;
                 case 'list': 
                 case 'date': 
@@ -442,7 +495,23 @@ var RIPart = function(options) {
         if (th[id]) th[id].attributs.push({
           att: att.find("ATT").text(),
           type: att.find("TYPE").text(),
+          obligatoire: (att.find('OBLIGATOIRE').length > 0),
           val: vals
+        });
+      });
+      // Recover OBLIGATOIRE from profil themes
+      r.groupes.forEach((g) => {
+        g.themes.forEach((t) => {
+          var ti = th[g.id_groupe+':'+t.nom];
+          if (ti) {
+            ti.attributs.forEach((ai) => {
+              t.attributs.forEach((a) => {
+                if (ai.obligatoire && ai.att === a.att) {
+                  a.obligatoire = true;
+                }
+              });
+            });
+          }
         });
       });
       return r;
@@ -476,29 +545,31 @@ var RIPart = function(options) {
   * @param {} options 
   * 	@param {boolean} options.croquis extraire les croquis
   */
-  this.getGeorem = function (id, cback, options)
-  {	// Decodage de la reponse
-    function decode(resp)
-    {	return getGeorem (resp.find("GEOREM"), options);
+  this.getGeorem = function (id, cback, options) {
+    var groupes = this.param.groupes;
+    // Decodage de la reponse
+    function decode(resp) {
+      return getGeorem (resp.find("GEOREM"), options, groupes);
     }
     // Demander au serveur
     return sendRequest ("georem_get/"+id, {}, decode, cback);
   };
 
   /** Recuperer un ensemble de remontees
-  * @param {Object} params de la requete { offset, limit, territory, departement, group, status, box, ... }
-  * 	@param {boolean} params.croquis extraire les croquis
-  * @param {RIPart.getGeoremCB} callback function (response, error)
-  */
-  this.getGeorems = function (params, cback)
-  {	if (!params) params = {};
+   * @param {Object} params de la requete { offset, limit, territory, departement, group, status, box, ... }
+   *  @param {boolean} params.croquis extraire les croquis
+   * @param {RIPart.getGeoremCB} callback function (response, error)
+   */
+  this.getGeorems = function (params, cback) {
+    if (!params) params = {};
+    var groupes = this.param.groupes;
     var croquis = params.croquis;
     delete params.croquis;
     // Decodage de la reponse
-    function decode(resp)
-    {	var r = [];
-      resp.find("GEOREM").each(function()
-      {	r.push (getGeorem($(this), { croquis: croquis }));
+    function decode(resp) {
+      var r = [];
+      resp.find("GEOREM").each(function() {
+        r.push (getGeorem($(this), { croquis: croquis }, groupes));
       });
       return r;
     }
@@ -507,9 +578,9 @@ var RIPart = function(options) {
   };
 
   /** Envoyer une remontee
-  * @param {Object} list des parametres a envoyer { comment, geometry, lon,lat, territory, attributes, sketch, features, proj, insee, protocol, version, photo }
-  * @param {function} callback function (response, error)
-  */
+   * @param {Object} list des parametres a envoyer { comment, geometry, lon,lat, territory, attributes, sketch, features, proj, insee, protocol, version, photo }
+   * @param {function} callback function (response, error)
+   */
   this.postGeorem = function (params, cback) {
     // Bad command
     if (!params || (
@@ -544,13 +615,32 @@ var RIPart = function(options) {
     if (params.version) post.version = params.version;
     if (params.photo) post.photo = params.photo;
     // Decode response
+    var groupes = this.param.groupes;
     function decode(resp) {
-      return getGeorem (resp.find("GEOREM"), { croquis: true });
+      return getGeorem (resp.find("GEOREM"), { croquis: true }, groupes);
     }
     // Send request
     return sendRequest ("georem_post", post, decode, cback);
   };
 
+  /** Send a response
+   * @param {Object} georep parameters to send { id, comment, statut }
+   * @param {function} callback function (response, error)
+   * @return {boolean} false if not connected
+   */
+  this.postGeorep = function (georep, cback) {
+    var groupes = this.param.groupes;
+    function decode(resp) {
+      return getGeorem (resp.find("GEOREM"), { croquis: true }, groupes);
+    }
+    var post = {
+      id: georep.id,
+      title: georep.title || '',
+      content: georep.comment,
+      status: georep.statut
+    }
+    return sendRequest ("georep_post", post, decode, cback);
+  };
 
   /** Get feature(s) from sketch
   * @param {String} sketch the sketch
@@ -645,9 +735,11 @@ var RIPart = function(options) {
       // Attributes
       var a, attr = "";
       for (a  in att) {
-        attr += '<attribut name="'+a.replace('"',"_")+'">'
-          + String(att[a]).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") 
-          +'</attribut>';
+        if (!(att[a] instanceof Feature)) {
+          attr += '<attribut name="'+a.replace('"',"_")+'">'
+            + String(att[a]).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") 
+            +'</attribut>';
+        }
       }
       attr = "<attributs>"+attr+"</attributs>";
       // Write!
@@ -721,6 +813,7 @@ var RIPart = function(options) {
     xhr.open("GET", url);
     var hash = btoa(user+":"+pwd);
     xhr.setRequestHeader("Authorization", "Basic " + hash);
+    xhr.setRequestHeader("Accept-Language", null);
     xhr.responseType = "arraybuffer";
     xhr.onload = function () {
       const arrayBufferView = new Uint8Array(this.response);
@@ -781,5 +874,39 @@ RIPart.prototype.initialize = function(/* options */) {};
  * @api
  */
 RIPart.prototype.onUpdate = function() {};
+
+/** Deconect
+ * @api
+ */
+RIPart.prototype.deconnect = function() {
+  this.param = { georems:[], nbrem:0 };
+  this.saveParam();
+  this.onUpdate();
+  // Clear credentials
+  var win;
+  if (window.cordova) {
+    if (cordova.InAppBrowser) {
+      win = cordova.InAppBrowser.open('logout.html','_blank','clearsessioncache=yes,hidden=yes');
+    } else {
+      console.warn('InAppBrowser plugin is missing...');
+    }
+  } else {
+    win = window.open('logout.html','_blank','clearsessioncache=yes,hidden=yes');
+  }
+  if (win) setTimeout(function(){ win.close(); }, 100);
+};
+
+/** Status */
+RIPart.status = {
+  "submit": "Reçu dans nos services", 
+  "pending": "En cours de traitement",
+  "pending1": "En attente de saisie", 
+  "pending2": "En attente de validation", 
+  "valid": "Pris en compte",
+  "valid0": "Déjà pris en compte",
+  "reject": "Rejeté (hors spéc.)",
+  "reject0": "Rejeté (hors propos)",
+  "pending0": "En demande de qualification"
+};
 
 export default RIPart;

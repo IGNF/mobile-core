@@ -18,6 +18,12 @@ let wapp;
 /* Use jQuery as global */
 import jQuery from 'jquery'
 window.$ = jQuery;
+jQuery.ajaxSetup({
+  beforeSend: function (xhr) {
+    xhr.setRequestHeader("Accept-Language", null);
+  }
+});
+
 
 /* Dynamically load cordova */
 let scriptCordova = false;
@@ -40,6 +46,7 @@ if (!window.cancelAnimationFrame && window.webkitCancelRequestAnimationFrame) {
  * @constructor
  * @param {Object} options 
  *  @param {*} options.fonts list of custom fonts to load (using WebFontloader custom syntax)
+ *  @param {Array<string>} options.templates list of templates to preload
  *  @param {function} options.initialize function called when ready
  *  @param {function} options.onMenu function called when menu is shown
  *  @param {function} options.onMenuButton function called when menu button is hit, default toggle menu
@@ -57,6 +64,9 @@ var CordovApp = function(options) {
 
   /** Webapp parameters */
   this.param = {};
+
+  /** Do something when ready */
+  this._onready = [];
 
   /** Show an alert
   *	@param {String} message to alert
@@ -163,6 +173,7 @@ var CordovApp = function(options) {
       // Initialize when fonts are loaded
       active: () => {
         self.initialize();
+        self._onready.forEach((fn) => fn());
         console.log('FONT LOADED')
       },
       inactive: () => {
@@ -177,10 +188,26 @@ var CordovApp = function(options) {
     checkInfo();
   }
 
+  /** Load dialog templates
+   * @private
+   */
+  function _loadTemplates() {
+    if (options.templates) {
+      let count = options.templates.length;
+      options.templates.forEach((t) => {
+        CordovApp.template (t, () => {
+          count--;
+          if (!count) _init();
+        });
+      });
+    } else {
+      _init();
+    }
+  };
+
   /* Load page templates asynchronously
-  *	@param {function} callback function when pages are ready
-  *	@private
-  */
+   *	@private
+   */
   function _loadPages() {
     var count = 0;
 
@@ -211,7 +238,7 @@ var CordovApp = function(options) {
         CordovApp.prototype.showOnglet(this); 
       });
 
-      _init();
+      _loadTemplates();
 
       return true;
     }
@@ -309,15 +336,32 @@ var CordovApp = function(options) {
     return self.quit();
   });
 
-  // Open link target="_system" in a browser
+  // Open link in a browser, use target="inAppBrowser" to open inside app
   $("body").on("click", "a", function(e) {
-    if (self.isCordova && $(this).attr("target") == "_system") {
-      e.stopPropagation();
-      e.preventDefault();
-      window.open('$(this).attr("href")', '_system'); 
-    }
+    e.stopPropagation();
+    e.preventDefault();
+    if (window.cordova) {
+      if (cordova.InAppBrowser) {
+        if ($(this).attr('target') === 'inAppBrowser') {
+          cordova.InAppBrowser.open($(this).attr('href'), '_blank');
+        } else {
+          cordova.InAppBrowser.open($(this).attr('href'), '_system')
+        }
+      } else {
+        console.warn('InAppBrowser plugin is missing...');
+      }
+    } else {
+      window.open($(this).attr("href"), $(this).attr("target")); 
+    } 
   });
     
+};
+
+/** Do something when ready
+ * @param {function} fn 
+ */
+CordovApp.prototype.ready = function(fn) {
+  this._onready.push(fn);
 };
 
 var backButtonDate = 0;

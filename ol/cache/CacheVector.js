@@ -6,13 +6,16 @@ import {extend as ol_extent_extend} from 'ol/extent'
 import ol_layer_Group from 'ol/layer/Group'
 import ol_layer_Vector from 'ol/layer/Vector'
 import ol_source_Vector from 'ol/source/Vector'
+import wapp from '../../../src/wapp'
+import TileSource from 'ol/source/tile'
 
 /**
  * Classe pour la gestion du cache vecteur
  * @constructor
  * @param {Cordovapp} wapp
  * @param {*} options 
- *	@param {string} options.page page du cuichet avec les boutons de chargement, "#guichet"
+ *	@param {string} options.page page du guichet avec les boutons de chargement, default "#guichet"
+ *	@param {string} options.loadPage page de chargement du guichet, default "#loadGuichet"
  */
 var CacheVector = function(wapp, options) {
   var self = this;
@@ -20,14 +23,16 @@ var CacheVector = function(wapp, options) {
   this.wapp = wapp;
   this.map = wapp.map;
 
-  this.page = $(options.page || '#guichet');
-  this.loadPage = $(options.loadPage || '#loadGuichet');
-
   if (!wapp.param.vectorCache) wapp.param.vectorCache = [];
 
+/* DEPRECATED
+  this.page = $(options.page || '#guichet');
   $('.addmap', this.page).click(function(){
     self.addDialog();
   });
+*/
+
+  this.loadPage = $(options.loadPage || '#loadGuichet');
 
   $('.cancel', this.loadPage).click(function(){
     // wapp.showPage(self.page.attr('id'));
@@ -43,8 +48,10 @@ var CacheVector = function(wapp, options) {
 
 /** Layers en cache d'un guichet
  * @param {groupe} guichet
+ * @param {Array<*>} layerDef returns layers definition
  */
-CacheVector.prototype.getLayers = function(guichet) {
+CacheVector.prototype.getLayers = function(guichet, cache) {
+  cache = cache || [];
   var layers = [];
   var self = this;
 
@@ -88,8 +95,9 @@ CacheVector.prototype.getLayers = function(guichet) {
       });
       var l;
       for (var k=0; l=c.layers[k]; k++) if (l.featureType) {
+        cache.push(l);
         l = this.wapp.layerWebpart(l, this.getCacheFileName(c,k)+'/', c.extent);
-        if (c.layers.length===1) l.set('displayInLayerSwitcher',false);
+        // if (c.layers.length===1) l.set('displayInLayerSwitcher',false);
         g.getLayers().push(l);
         // Marquer le layer sur l'objet
         l.getSource().on('addfeature', function (e) {
@@ -127,6 +135,7 @@ CacheVector.prototype.getCurrentGuichet = function() {
  */
 CacheVector.prototype.showList = function() {
 console.warn('[DEPRECATED] showlist')
+return;
   var ul = $('.offline ul.cartes', this.page);
   var tmp = $('[data-role="template"]', ul);
   ul.html('').append(tmp);
@@ -189,6 +198,7 @@ console.warn('[DEPRECATED] showlist')
  * @param {*} cache 
  */
 CacheVector.prototype.removeCache = function(cache) {
+  console.log('removeCACHE')
   // Remove in cache list
   for (var i=this.wapp.param.vectorCache.length-1; i>=0; i--) {
     if (this.wapp.param.vectorCache[i] === cache) {
@@ -198,38 +208,57 @@ CacheVector.prototype.removeCache = function(cache) {
   // Remove file on device
   var dir = this.getCacheFileName(cache);
   CordovApp.File.getDirectory(dir, function(entry){
-      if (entry.isDirectory) entry.removeRecursively();
+    if (entry.isDirectory) entry.removeRecursively();
   });
   // Update
   this.wapp.saveParam();
   this.showList();
   var guichet = this.getCurrentGuichet();
-  if (this.wapp.getIdGuichet()===guichet.id_groupe) this.wapp.setGuichet(guichet);
+  if (this.wapp.getIdGuichet()===guichet.id_groupe) {
+    this.wapp.setGuichet(guichet);
+  }
 };
 
-/**  */
-CacheVector.prototype.saveLayer = function(layers, cache) {
+/** Save modifications and update layers
+ * @param {Array<ol.layer.Vector>} 
+ * @param {} cache
+ * @param {Array<ol.l.Vector>} toload
+ */
+CacheVector.prototype.saveLayer = function(layers, cache, toload) {
   console.log('LOADING', cache, this.wapp.ripart.getGroupById(cache.id_guichet))
   this.setCurrentGuichet(this.wapp.ripart.getGroupById(cache.id_guichet));
   const l = layers.pop();
+  if (!toload) toload = [];
   if (l) {
+    // Find the layer indice in the layercache
+    cache.layers.forEach((c, i) => {
+      if (c.featureType.database+':'+c.featureType.name === l.get('name')) {
+        toload.push(i);
+      }
+    });
     if (l.get('cache') && l.getSource().nbModifications()) {
       this.wapp.wait('Sauvegarde des modifications...<br/>'+l.get('title'))
       l.getSource().save(()=>{
-        this.wapp.notification(l.get('title')+' sauvagardé...');
+        this.wapp.notification(l.get('title')+' sauvegardé...');
         // Next
-        this.saveLayer(layers,cache);
-      }, (error) => {
-        this.wait(false);
-        this.wapp.alert('Impossible de sauvegarder '+l.get('title')+'<br/>'+error);
+        this.saveLayer(layers, cache, toload);
+      }, (error, transaction) => {
+        this.wapp.wait(false);
+        // Look for transaction
+        console.log('ERROR', error, transaction)
+        if (transaction) {
+          this.wapp.handleConflict(transaction, l);
+        } else {
+          this.wapp.alert('Impossible de sauvegarder '+l.get('title')+'<br/><i class="error">'+error+'</i>');
+        }
       });
     } else {
       // Next
-      this.saveLayer(layers,cache);
+      this.saveLayer(layers, cache, toload);
     }
   } else {
     // Recharger le cache
-    this.uploadLayers(cache);
+    this.uploadLayers(cache, true, toload);
   }
 };
 
@@ -238,50 +267,67 @@ CacheVector.prototype.saveLayer = function(layers, cache) {
  * @param {*} cache 
  */
 CacheVector.prototype.updateCache = function(cache) {
+  console.warn('[CacheVector:updateCache] DEPRECATED')
   this.wapp.wait('Chargement...');
-  this.uploadLayers(cache);
+  this.uploadLayers(cache, true);
 };
 
 /**
  * Afficher la page de chargement du cache
  * @param {*} cache 
+ * @param {boolean} cancel true to enable cancel
  */
-CacheVector.prototype.loadCache = function(cache) {
+CacheVector.prototype.loadCache = function(cache, cancel) {
   this.wapp.showPage(this.loadPage.attr('id'));
+  if (cancel) this.loadPage.addClass('cancelable');
+  else this.loadPage.removeClass('cancelable')
   this.currentCache = cache;
 };
 
 /**
  * Charger l'emprise courante
  */
-CacheVector.prototype.uploadCache = function() {
+CacheVector.prototype.uploadCache = function(update) {
   var cache = this.currentCache;
   // Add current extent
   var ex = this.map.getView().calculateExtent(this.map.getSize());
   cache.extents.push(ex);
   ol_extent_extend(cache.extent, ex);
   // Get upload list
-  this.wapp.wait("Chargement...");
-  this.uploadLayers(cache);
+  this.wapp.wait('Chargement...');
+  this.uploadLayers(cache, update);
 };
 
 /**
  * Charger les layers du cache
- * @param {*} cache 
- * @param {*} layers liste des layers a charger (interne / recursif)
+ * @param {*} cache  the cache
+ * @param {boolean} update true to update layer, false to reload
+ * @param {*} toload list of layer indice to load, default load all layers from cache
+ * @param {*} layers list of layers that remains (private / internal / recursive)
  */
-CacheVector.prototype.uploadLayers = function(cache, layers) {
+CacheVector.prototype.uploadLayers = function(cache, update, toload, layers) {
+console.log('LOADCACHE', update)
   cache.date = (new Date()).toISODateString();
   var i, l;
   var guichet = this.getCurrentGuichet();
+  // Search for layers
   if (!layers) {
     layers = [];
-    //for (i=0; l = cache.layers[i]; i++)
-    cache.layers.forEach((l) => {
+    cache.layers.forEach((l, i) => {
+      // Reload all
+      if (!update) {
+        delete l.numrec;
+        // remove cache dir
+        var dir = this.getCacheFileName(cache, i, null, true);
+        CordovApp.File.getDirectory(dir, function(entry){
+          if (entry.isDirectory) entry.removeRecursively();
+        });
+      }
+      // Add new layer
       var wp = this.wapp.layerWebpart(l);
       layers.push(wp);
       wp.on('ready', () => { 
-        this.uploadLayers(cache, layers); 
+        this.uploadLayers(cache, update, toload, layers); 
       });
       wp.on("error", (e) => {
         this.wapp.alert ("Impossible de charger la couche <i>"
@@ -294,26 +340,66 @@ CacheVector.prototype.uploadLayers = function(cache, layers) {
     for (i=0; l=layers[i]; i++) {
       if (!l.getSource()) ready = false;
     }
-    // Ready to load?
+    // Ready to load? (all layers have a source)
     if (ready) {
-      // calculate tiles
-      var tiles = [];
+      // Check numrec
+      ready = true;
       for (i=0; l=layers[i]; i++) {
-        cache.layers[i].featureType = l.getFeatureType();
-        tiles.push ({
-          id_layer: i,
-          source: l.getSource(),
-          tiles: this.calculateTiles(cache, l)
-       })
+        if (!toload || toload.indexOf(i) >= 0) {
+          if (!cache.layers[i].hasOwnProperty('numrec')) {
+            ready = false;
+          }
+        }
       }
-      this.uploadTiles(cache, tiles);
-      /*
-      if (this.wapp.getIdGuichet() === cache.id_guichet) {
-        this.wapp.setGuichet(cache.id_guichet);
+      if (!ready) {
+        // Create layer cache
+        layers.forEach((l, i) => {
+          if (!toload || toload.indexOf(i) >= 0) {
+            var ft = cache.layers[i].featureType = l.getFeatureType();
+            cache.layers[i].date = (new Date()).toISODateString();
+            $.ajax({
+              url: ft.uri + '/max-numrec',
+              beforeSend: (xhr) => { 
+                xhr.setRequestHeader("Authorization", "Basic " + this.wapp.ripart.getHash()); 
+                xhr.setRequestHeader("Accept-Language", null);
+              },    
+              success: (result) => {
+                cache.layers[i].numrec = result.numrec;
+                this.uploadLayers(cache, update, toload, layers);
+                console.log('NUMREC', cache.layers[i].numrec)
+              },
+              error: (e) => {
+                if (e.status === 403 || e.status === 404) {
+                  cache.layers[i].numrec = false;
+                  this.uploadLayers(cache, update, toload, layers);
+                } else {
+                  wapp.wait(false);
+                  this.wapp.alert ("Impossible de charger la couche <i>"
+                    +(l.get('name')||l.get('title'))
+                    +"</i>.<i class='error'><br/>"+e.status+" - "+e.error+"</i>");
+                }
+              }
+            })
+          }
+        });
+      } else {
+        // calculate tiles to load
+        var tiles = [];
+        for (i=0; l=layers[i]; i++) {
+          if (!toload || toload.indexOf(i) >= 0) {
+            tiles.push ({
+              id_layer: i,
+              source: l.getSource(),
+              numrec: (update && cache.layers[i].numrec),
+              tiles: this.calculateTiles(cache, l)
+            })
+          }
+        }
+        // load tile
+        this.uploadTiles(cache, tiles);
+        this.wapp.saveParam();
+        if (guichet) this.showList();
       }
-      */
-      this.wapp.saveParam();
-      if (guichet) this.showList();
     }
   }
 };
@@ -351,8 +437,8 @@ CacheVector.prototype.calculateTiles = function(cache, l) {
  * @param {*} id_layer 
  * @param {*} tileCoord 
  */
-CacheVector.prototype.getCacheFileName = function(cache, id_layer, tileCoord) {
-  var dir = 'FILE/cache' ;
+CacheVector.prototype.getCacheFileName = function(cache, id_layer, tileCoord, numrec) {
+  var dir = 'FILE/cache';
   if (!cache) return dir;
   dir += '/' + CordovApp.File.fileName ('G'+cache.id_guichet);
   if (!id_layer && id_layer!==0) return dir;
@@ -364,6 +450,7 @@ CacheVector.prototype.getCacheFileName = function(cache, id_layer, tileCoord) {
               + '-' 
               + l.nom 
             );
+  if (numrec) base += '/diff';
   if (!tileCoord) return dir+'/'+base;
   // Filename
   return dir+'/'+base+'/'+tileCoord.join('-');
@@ -380,8 +467,25 @@ CacheVector.prototype.getCacheFileName = function(cache, id_layer, tileCoord) {
 CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
   var self = this;
   var i, t;
-  this.wapp.wait('chargement', { pourcent:50 });
+//  this.wapp.wait('chargement', { pourcent:50 });
+
   if (!size) {
+    this.canceled = false;
+    var mes = $('<div>Chargement...</div>');
+    if (this.loadPage.hasClass('cancelable')) {
+      this.loadPage.removeClass('cancelable');
+      this.wapp.wait(mes, { 
+        pourcent: 0, 
+        buttons: {
+          'Annuler': () => {
+            self.canceled = true;
+          }
+        } 
+      });
+
+    } else {
+      this.wapp.wait(mes, { pourcent: 0 });
+    }
     size=0;
     for (i=0; t=tiles[i]; i++) {
       size += t.tiles.length;
@@ -390,22 +494,48 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
     error = 0;
   } else {
     pos++;
+    if (this.canceled) {
+      this.wapp.wait(false);
+      // wapp.vectorCache.removeCache(wapp.getCache(wapp.guichet).cache);
+      this.removeCache(cache);
+      wapp.hidePage();
+      return;
+    }
   }
-  if (size>0) this.wapp.wait('chargement', { pourcent:Math.round(pos/size*100) });
+  if (size>0) this.wapp.wait({ pourcent: Math.round(pos/size*100) });
 
   for (i=0; t=tiles[i]; i++) {
     if (t.tiles.length) {
       var tgrid = t.source.getTileGrid();
       var tcoord = t.tiles.pop();
-      // var id = tcoord.join('-');
       var extent = tgrid.getTileCoordExtent(tcoord);
       var parameters = t.source.getWFSParam(extent, this.map.getView().getProjection());
+      if (t.numrec) {
+        parameters.numrec = t.numrec;     // update
+        parameters.filter = "{}";
+      }
+      parameters._T = (new Date()).getTime();         // Force refresh
       var p = "";
       for (var k in parameters) p += (p?'&':'?') +k+'='+parameters[k];
       // Chargement
       var url = (t.source.proxy_ || t.source.featureType_.wfs) + p;
-
-      var fileName = this.getCacheFileName(cache, t.id_layer, tcoord);
+      // Destination
+      var fileName = this.getCacheFileName(cache, t.id_layer, tcoord, t.numrec);
+/** /
+      console.log('url')
+      if (t.numrec) {
+        $.ajax({
+          url:url,
+          success: function(e)  {
+            console.log(e)
+          },
+          beforeSend: (xhr) => { 
+            xhr.setRequestHeader("Authorization", "Basic " + this.wapp.ripart.getHash());
+            xhr.setRequestHeader("Accept-Language", null);
+          },    
+        })
+      }
+/**/
       // Create dir if not exist
       CordovApp.File.getDirectory(
         this.getCacheFileName(cache),
@@ -416,10 +546,18 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
             function() {
               // Go on loading
               self.uploadTiles(cache, tiles, pos, size, error);
+              // Remove empty files
+              CordovApp.File.info(fileName, (e) => {
+                if (e.size === 0) CordovFile.delFile(fileName);
+              })
             },
             function() {
               error++;
               self.uploadTiles(cache, tiles, pos, size, error);
+            },{	
+              headers: {
+                'Authorization': 'Basic '+ this.wapp.ripart.getHash()
+              }
             }
           );
         },
@@ -480,7 +618,6 @@ CacheVector.prototype.addCache = function(name, layers) {
   }
   this.wapp.param.vectorCache.push (cache);
   this.wapp.saveParam();
-  this.showList();
   // Gestion de l'aide
   this.wapp.help.show("guichet-hors-ligne");
 };
@@ -493,7 +630,7 @@ CacheVector.prototype.addDialog = function(cback) {
   var content = CordovApp.template('dialog-guichet');
   var ul = $('ul.layerselect', content);
   for (var i=0, l; l = guichet.layers[i]; i++) {
-    if (l.type === 'WFS') {
+    if (l.type === 'WFS' && l.tilezoom) {
       $("<li>").addClass('selected')
         .attr('data-input','')
         .text(l.nom)
@@ -507,6 +644,17 @@ CacheVector.prototype.addDialog = function(cback) {
         .appendTo(ul);
     }
   }
+  // All/none
+  $('.all', content).click(()=>{
+    $('li', ul).each(function(){
+      $(this).addClass('selected');
+    })
+  })
+  $('.none', content).click(()=>{
+    $('li', ul).each(function(){
+      $(this).removeClass('selected');
+    })
+  })
 
   this.wapp.dialog.show (content, {
     title: "Définir une zone d'édition", 

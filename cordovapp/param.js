@@ -1,16 +1,15 @@
-/* global wapp*/
 /**
   @brief: Cordova web application 
   @author: Jean-Marc Viglino (ign.fr)
-  @copyright: IGN 2015
+  @copyright: IGN 2015-2020
   
   @require: JQuery
 */
 import CordovApp from './CordovApp'
-import {selectDialog} from './dialog'
+import { selectDialog, messageDlg } from './dialog'
 
 /** Transform date to ISODateString YYYY-MM-DD HH:MM:SS
-*/
+ */
 Date.prototype.toISODateString = function() {
   var d = new Date();
   return d.getFullYear() + "-" + 
@@ -52,9 +51,7 @@ CordovApp.prototype.setParamInput = function(elt, param, onchange) {
         break;
       }
       case "date": {
-        if (typeof(v)=="undefined") v = elt.data('default') || new Date().toISOString().split('T')[0];
-        //var d = v.split('-');
-        //v = d[2]+"-"+d[1]+"-"+d[0];
+        if (v===undefined) v = elt.data('default')===undefined ? new Date().toISOString().split('T')[0] : elt.data('default');
         $("input", elt).val(v);
         break;
       }
@@ -288,9 +285,9 @@ CordovApp.prototype.dataAttributes = function (element, attr) {
           for (var i=0; i<a.length; i++) {
             var ti = ""+template;
             for (var k in a[i]) {
-              ti = ti.replace("%"+k+"%", a[i][k]);
+              ti = ti.replace(new RegExp('%'+k+'%','g'), a[i][k]);
             }
-            t += (t.length ? (obj.data("sep")||"") :"") + ti;
+            t += (t.length ? (obj.data('sep')||'') : '') + ti;
           }
           obj.html(t);
         }
@@ -304,7 +301,7 @@ CordovApp.prototype.dataAttributes = function (element, attr) {
             .addClass("list")
             .unbind('click')
             .click(function() {
-              wapp.message(l.join("<br/>"), " ");
+              messageDlg(l.join("<br/>"), " ");
             });
         } else {
           obj.html(a).removeClass("list")
@@ -336,7 +333,7 @@ CordovApp.prototype.dataAttributes = function (element, attr) {
           if (obj.data("br")) {
             obj.html((obj.data("prefix") || "") + a.replace(/\n/g,"<br/>") + (obj.data("suffix") || "") );
           } else {
-            obj.text((obj.data("prefix") || "") + a + (obj.data("suffix") || "") );
+            obj.html((obj.data("prefix") || "") + a + (obj.data("suffix") || "") );
           }
         }
       }
@@ -360,7 +357,11 @@ CordovApp.prototype.dataAttributes = function (element, attr) {
   $('img[data-src]', element).each(function() {
     if (attr[$(this).data('src')]) {
       var src = attr[$(this).data('src')];
-      if (!/\?/.test(src)) src += "?"+(new Date());
+      // Convert iOS file path
+      if (window.WkWebView) {
+        src = window.WkWebView.convertFilePath(src);
+      }
+      if (!/\?/.test(src)) src += "?_t="+(new Date()).getTime();
       $(this).attr("src", src);
       $(this).attr("src", attr[src]).show();
     } else {
@@ -386,5 +387,8 @@ CordovApp.prototype.dataAttributes = function (element, attr) {
     $(this).attr("data-class",att+"="+attr[att]);
   });
 };
+
+const dataAttributes = CordovApp.prototype.dataAttributes;
+export { dataAttributes }
 
 export default CordovApp

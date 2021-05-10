@@ -34,6 +34,7 @@ textarea:focus {
   border-color: orange;
 }
 input[type=text],
+input[type=tel],
 input[type=password],
 input[type=number],
 input[type=date],
@@ -56,6 +57,7 @@ input[type=search] {
   padding:0;
 }
 input[type=text]:focus, 
+input[type=tel]:focus, 
 input[type=password]:focus, 
 input[type=number]:focus, 
 input[type=search]:focus {
@@ -513,6 +515,8 @@ i.backArrowBt:before
   border-bottom: 1px solid #666;
   cursor: pointer;
   clear: both;
+  min-height: 2.2em;
+  overflow: hidden;
 }
 [data-role=dialog] ul[data-role=select] li:last-child
 {	border:0;
@@ -526,6 +530,7 @@ i.backArrowBt:before
   border:2px solid #666;
   border-radius:100%;
   content:"";
+  background-color: #fff;
 }
 [data-role=dialog] ul[data-role=select] li.selected:after
 {	background-color: #39c;
@@ -592,8 +597,8 @@ i.backArrowBt:before
 {	position: absolute; /* bug on some devices  with fixed + spin */
 }
 
-#wait .fa-spinner 
-{	float: left;
+#wait .fa-spinner {
+  float: left;
   font-size: 2em;
   margin: 0.25em 0.5em;
   display: block;
@@ -601,16 +606,22 @@ i.backArrowBt:before
   height: 1em;
 }
 
-#wait > div
-{	margin-top: 1em;
+#wait .message {
+  margin-top: 1em;
+}
+#wait .buttons {
+  text-align: right;
+}
+#wait .buttons button {
+  margin: 0 0 0 .5em;
 }
 
 #wait .pourcent {
-    border: 1px solid #369;
-    height: 25px;
-    width: 80%;
-    margin: 1em auto;
-    max-width: 400px;
+  border: 1px solid #369;
+  height: 25px;
+  width: 80%;
+  margin: 1em auto;
+  max-width: 400px;
 }
 #wait .pourcent > div {
   background-color: #369;
@@ -622,14 +633,12 @@ i.backArrowBt:before
 
 /** Notification
 */
-[data-role=notification]
-{	-webkit-transition:opacity 0.3s ease-out 0s;
+[data-role=notification] {
   transition:opacity 0.3s ease-out 0s;
   opacity:0;
   position: fixed;
   bottom: 3em;
   left: 50%;
-  -webkit-transform: translate(-50%, 0);
   transform: translate(-50%, 0);
   z-index: 2000;
   font-size: 1.7em;
@@ -638,11 +647,15 @@ i.backArrowBt:before
   overflow: visible;
   pointer-events: none;
 }
-[data-role=notification].visible
-{	opacity:1;
+[data-role=notification].visible {
+  opacity:1;
 }
-[data-role=notification] > div
-{	background-color: rgba(0,0,0,0.6);
+[data-role=notification] a {
+  pointer-events: auto;
+  color: #ccc;
+}
+[data-role=notification] > div {
+  background-color: rgba(0,0,0,0.6);
   color: #fff;
   border-radius: 1.5em;
   padding: 0.5em 1em;
@@ -650,27 +663,27 @@ i.backArrowBt:before
   max-width: Calc(100% - 1em); 
 }
 
-@media screen and (max-width:700px)
-{	[data-role=dialog] 
-  {	font-size:1.5em;
+@media screen and (max-width:700px) {
+  [data-role=dialog] {
+    font-size:1.5em;
     top:50%;
     width:80%;
   }
 
-  [data-role=notification] 
-  {	font-size: 1.5em;
+  [data-role=notification] {
+    font-size: 1.5em;
   }
 }
-@media screen and (max-width:400px)
-{	[data-role=dialog] 
-  {	width:90%;
+@media screen and (max-width:400px) {
+  [data-role=dialog] {
+    width:90%;
   }
 }
 
 
 /** Notinfo */
-[data-role=notinfo]
-{	position: fixed;
+[data-role=notinfo] {
+  position: fixed;
   top: 0;
   left: 0;
   right:0;
@@ -678,8 +691,8 @@ i.backArrowBt:before
   overflow: visible;
   padding: 0.5em;
 }
-[data-role=notinfo] > div
-{	background: rgba(255,255,255,0.95);
+[data-role=notinfo] > div {
+  background: rgba(255,255,255,0.95);
   border-radius: 0.25em;
   font-size: 1.4em;
   color: #888;
@@ -691,8 +704,7 @@ i.backArrowBt:before
   transform: scale(0);
   transition: all 0.5s;
 }
-[data-role=notinfo] > div.visible
-{	-webkit-transform: scale(1);
+[data-role=notinfo] > div.visible {
   transform: scale(1);
 }
 [data-role=notinfo] > div .icon
@@ -746,17 +758,20 @@ i.backArrowBt:before
   top: 50%;
   width: 0.8em;
 }
-[data-input="check"].checked:after
-{	content: "\2713"; /* \2717 */
-  color: #39c;
-  display: block;
-  font-size: 1.5em;
-  font-weight: bold;
-  margin-top: -0.7em;
+[data-input="check"].checked:after {
+  content: "";
   position: absolute;
-  right: 0.5em;
-  text-shadow: 1px 1px #eee;
+  width: .6em;
+  height: .3em;
+  font-size: 1.5em;
+  margin-top: -.3em;
+  right: .5em;
   top: 50%;
+  border: .2em solid #39c;
+  border-width: 0 0 .15em .15em;
+  -webkit-transform: rotate(-45deg);
+  transform: rotate(-45deg);
+  box-shadow: 0 .05em #fff;
 }
 [data-input="check"] label
 {	padding-right: 2em;
@@ -895,18 +910,39 @@ ul[data-role="list"] li:first-child
 }
 
 /* Toggle button */
+label[class^="checkbox-"],
 label[class^="toggle-"] {
   position: relative;
 }
+label[class^="checkbox-"] input,
 label[class^="toggle-"] input {
-  position: absolute;
-  width: 0;
+  position: absolute!important;
+  width: 0!important;
 } 
+label.checkbox-right span {
+  padding-right: 2em;
+}
 label.toggle-right span {
   padding-right: 3em;
 }
+label.checkbox-left span {
+  padding-left: 2em;
+  position: relative;
+}
 label.toggle-left span {
   padding-left: 3em;
+}
+label[class^="checkbox-"] span:before {
+  content: "";
+  position: absolute;
+  right: .5em;
+  border: .1em solid currentColor;
+  top: 50%;
+  width: 1em;
+  height: 1em;
+  background-color: #ccc;
+  transform: translateY(-50%);
+  border-radius: .1em;
 }
 label[class^="toggle-"] span:before {
   content: "";
@@ -918,31 +954,54 @@ label[class^="toggle-"] span:before {
   background-color: #ccc;
   transform: translateY(-50%);
   border-radius: 2em;
-  -webkit-transition: .4s;
   transition: .4s;
+}
+label[class^="checkbox-"] span:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: .55em;
+  border: .2em solid currentColor;
+  border-width: 0 .2em .2em 0;
+  width: .5em;
+  height: 1em;
+  opacity: 0;
+  transform: translateY(-50%) rotate(45deg);
+  transition: .1s;
+  margin-top: -.2em;
 }
 label[class^="toggle-"] span:after {
   content: "";
   position: absolute;
-  right: .5em;
+  right: 1.5em;
   top: 50%;
   width: 1em;
   height: 1em;
   border-radius: 50%;
   background-color: #fff;
   transform: translateY(-50%);
-  -webkit-transition: .4s;
   transition: .4s;
 }
 label[class^="toggle-"] input:checked + span:before {
   background-color: #09c;
 }
+label[class^="checkbox-"] input:checked + span:after {
+  opacity: 1;
+}
 label[class^="toggle-"] input:checked + span:after {
-  right: 1.5em;
+    right: .5em;
+}
+label.checkbox-left span:before {
+  right: auto; 
+  left: 0;
 }
 label.toggle-left span:before {
   right: auto; 
   left: .25em;
+}
+label.checkbox-left span:after {
+  right: auto;
+  left: .5em;
 }
 label.toggle-left span:after {
   right: auto;
@@ -950,4 +1009,51 @@ label.toggle-left span:after {
 }
 label.toggle-left input:checked + span:after {
   left: 1.5em;
+}
+
+form[data-role="dialog"] .dateDlg {
+  position: relative;
+  text-align: center;
+}
+
+form[data-role="dialog"] .dateDlg ul {
+  position: relative;
+  font-size: 36px!important;
+  display: inline-block;
+  height: 1.5em;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  font-size: 2em;
+  width: 2.5em;
+  border: 1px solid #999;
+  padding: 0;
+  margin: 0 .1em;
+  text-align: center;
+  list-style: none;
+  box-shadow: 
+    inset 0 -.6em .7em -.6em rgba(0,0,0,.8),
+    inset 0 .6em .7em -.6em rgba(0,0,0,.8);
+  transform: scaleY(1.3);
+}
+form[data-role="dialog"] .dateDlg:before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: .1em;
+  box-shadow: 0 1em .5em .2em rgba(255,255,255,.7);
+  z-index: 1;
+  pointer-events: none;
+}
+
+form[data-role="dialog"] .dateDlg ul li {
+  padding: .2em 0 .3em 0;
+  height: 1.5em;
+}
+form[data-role="dialog"] .dateDlg ul.day {
+  width: 1.5em;
+}
+form[data-role="dialog"] .dateDlg ul.month {
+  width: 3em;
 }

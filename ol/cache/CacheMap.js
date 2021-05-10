@@ -11,6 +11,7 @@ import ol_layer_Vector from 'ol/layer/Vector'
 import ol_source_Vector from 'ol/source/Vector'
 import {createEmpty as ol_extent_createEmpty} from 'ol/extent'
 import {extend as ol_extent_extend} from 'ol/extent'
+import {unByKey} from 'ol/Observable'
 
 /**
  * @classdesc
@@ -61,9 +62,10 @@ const CacheMap = function(wapp, layerGroup, options) {
   var currentMap;
   var currentId = 0;
 
-  this.listMap = $(options.listMap);
-  this.liTemplate = $('[data-role="template"]', this.listMap).html();
-  this.page = this.listMap.closest('[data-role="page"]');
+// DEPRECATED
+//  this.listMap = $(options.listMap);
+//  this.liTemplate = $('[data-role="template"]', this.listMap).html();
+// this.page = this.listMap.closest('[data-role="page"]');
   var loadPage = this.loadPage = $(options.loadPage);
 
   var vector = new ol_layer_Vector({ 
@@ -125,10 +127,11 @@ const CacheMap = function(wapp, layerGroup, options) {
   });
   $('.cancel', this.loadPage).click(cancelLoadMap);
 
+  /*
 console.warn('[DEPRECATED] cachemap page');
   $('.addmap', this.page).click(function() { addCacheMap(); });
   $('.savemap', this.page).click(saveCacheFile);
-
+*/
   /**
    * Show info
    */
@@ -154,7 +157,7 @@ console.warn('[DEPRECATED] cachemap page');
         }
         // minutes
         else {
-          $(".tileCount .time", loadPage).text(Math.round(s.time/60000)||"-");
+          $(".tileCount .time", loadPage).text(Math.round(s.time/60000) || '< 1');
         }
       }
     }, currentMap.minZoom, currentMap.maxZoom, extent);
@@ -170,25 +173,30 @@ console.warn('[DEPRECATED] cachemap page');
     }, 100);
 */
   }
-  $(this.loadPage).on('showpage', function(){
-    map.on('moveend', showInfo);
-    showInfo();
-  })
-  .on('hidepage', function(){
-    map.un('moveend', showInfo);
-  });
+  // Show page
+  let listener;
+  $(this.loadPage)
+    .on('showpage', function(){
+      listener = map.on('moveend', showInfo);
+      showInfo();
+    })
+    .on('hidepage', function(){
+      // map.un('moveend', showInfo);
+      unByKey(listener);
+    });
 
+/*
   // Update on show
   $(this.page).on("showpage", function() {
     showWroot();
   });
 
-  /* Show root dir
-   */
+  // Show root dir
   function showWroot() {
     if (wapp.param.options.cacheRoot) $(".cacheroot", self.page).text(CordovApp.File.getFileName(wapp.param.options.cacheRoot.replace(/\/$/,"")));
     else $(".cacheroot", self.page).text("-");
   }
+*/
 
   // Carte en cache
   var CacheMap = function (title) {
@@ -321,9 +329,9 @@ console.warn('[DEPRECATED] cachemap page');
     wapp.help.hide();
     // Ask for deletion
     if (!noprompt) {
-      wapp.message(_T("Voulez-vous supprimer la carte ?"), _T("Suppression"), [_T("Annuler"),_T("OK")],
+      wapp.message(_T('qDeleteMap'), _T('deletion'), [_T('Cancel'),_T('OK')],
         function (button) {
-          if (button == "2") {
+          if (button == '2') {
             removeCacheMap(smap,true);
           }
         }
@@ -334,6 +342,7 @@ console.warn('[DEPRECATED] cachemap page');
     for (i=0; i<wapp.param.cacheMap.length; i++) {
       if (wapp.param.cacheMap[i] === smap) wapp.param.cacheMap.splice(i,1);
     }
+/*
     // Remove associated list
     var l = $('li', self.listMap);
     for (i=0; i<l.length; i++) {
@@ -342,7 +351,7 @@ console.warn('[DEPRECATED] cachemap page');
         break;
       }
     }
-
+*/
     // Remove associated layers
     var layercache = layerGroup.getLayers().getArray().find((l) => {
       return l.get('name') === 'cache_'+smap.id;
@@ -358,6 +367,8 @@ console.warn('[DEPRECATED] cachemap page');
   *	@param {CacheMap} smap carte a afficher
   */
   function updateCacheMapInfo (smap) {
+    console.warn('[DEPRECATED] updateCacheMapInfo')
+/*
     var li, l = $('li', self.listMap);
     for (var i=0; i<l.length; i++) {
       if ($(l[i]).data("map")===smap) {
@@ -371,6 +382,7 @@ console.warn('[DEPRECATED] cachemap page');
       $(".info .dalle", li).text(smap.length);
       $(".info .date", li).text(smap.date);
     }
+*/
   }
 
   /* Page de chargement
@@ -382,7 +394,7 @@ console.warn('[DEPRECATED] cachemap page');
       wapp.showPage(self.loadPage.attr('id'));
     }
     else {
-      wapp.alert ($(".nomap",self.listMap.parent()).html(), "Mode hors-ligne");
+      wapp.alert (_T('noOffline'), _T('offline'));
     }
   }
   this.loadCacheMap = loadCacheMap; 
@@ -409,7 +421,7 @@ console.warn('[DEPRECATED] cachemap page');
         });
       }, 200);
     } else {
-      wapp.alert ($(".nomap",self.listMap.parent()).html(), "Mode hors-ligne");
+      wapp.alert (_T('noOffline'), _T('offline'));
     }
   }
   this.refreshCacheMap = refreshCacheMap;
@@ -421,16 +433,43 @@ console.warn('[DEPRECATED] cachemap page');
    * @param {number} nb number of element to process
    * @param {number} nberr number of file not loaded
    */
+  let cancelDownloadTiles = false;
   function downloadTiles(t, layer, cback, nb, nberr) {
     if (nb===undefined) {
       nb = t.length;
       nberr = 0;
+      cancelDownloadTiles = false;
     }
+    if (cancelDownloadTiles) {
+      wapp.wait(false);
+      wapp.message(
+        'Toutes les données n\'ont pas été chargées.</br>'
+        + 'Si vous arrêtez maintenant, certains fonds ne s\'afficheront pas correctement.', 
+        'Interrompre le chargement', 
+        { ok: 'Interrompre', cancel: 'Reprendre'},
+        (b) => {
+          if (b==='cancel') {
+            cancelDownloadTiles = false;
+            downloadTiles(t, layer, cback, nb, nberr)
+          }
+        }
+      );
+      return;
+    }
+//    console.log('downloadTiles', nb, cancelDownloadTiles)
     var path = getPath()+layer+"/";
     var e = t.pop();
     if (e) {
       var pos = (nb+nberr-t.length);
-      wapp.wait("Chargement... "+pos+"/"+(nb+nberr), { pourcent: pos/(nb+nberr) * 100 });
+      wapp.wait("Chargement... "+pos+"/"+(nb+nberr), {
+        pourcent: pos/(nb+nberr) * 100, 
+        buttons: {
+          'Annuler': () => {
+            cancelDownloadTiles = true;
+            wapp.wait('Annulation en cours...')
+          }
+        }
+      });
       var options = {};
       if (authentication) {
         options = {	
@@ -484,6 +523,7 @@ console.warn('[DEPRECATED] cachemap page');
     // Start 
     cache.on("savestart", function() {
       wapp.wait("Chargement...");
+      console.log('chargement')
     });
     // End => load tiles
     cache.on("saveend", function() {
@@ -504,7 +544,7 @@ console.warn('[DEPRECATED] cachemap page');
         });
       })
     });
-    // Add a new tiel
+    // Add a new tile
     cache.on("save", function(e) {
       t.push(e);
     });
@@ -571,7 +611,7 @@ console.warn('[DEPRECATED] cachemap page');
         $(".time", content).text(h+" h "+mn);
       } else {
         // minutes
-        $(".time", content).text(Math.round(s.time/60000)||"-");
+        $(".time", content).text(Math.round(s.time/60000) || '< 1');
       }
     }
     function estimate() {
@@ -579,8 +619,10 @@ console.warn('[DEPRECATED] cachemap page');
       content.addClass("loading");
       var vmin = Number(min.val());
       var vmax = Math.min (18, Number(max.val()));
+      /* limit download size
       if (vmax-vmin>5) vmax = vmin+5;
       max.val(vmax);
+      */
       setTimeout(function() {
         cache.estimateSize (setSize, vmin, vmax, extent);
       }, 100);
@@ -703,21 +745,26 @@ console.warn('[DEPRECATED] cachemap page');
     }
   }
 
-  /* Ajoute une carte a l'application : layer / 
-   * @param {CacheMap|undefined} smap carte a charger sinon en cree un nouvelle
+  /** Add a new map from cache
+   * @param { CacheMap|boolean } smap the map to add create a new one if none. Use true to get advanced param
    */
   function addCacheMap (smap) {
     // Creer une carte ?
-    if (!smap) {
+    if (!smap || smap===true) {
+      var content = CordovApp.template("dialog-addmap");
+      if (smap) {
+        $('[data-param="minZoom"]', content).show();
+      } else {
+        $('[data-param="minZoom"]', content).hide();
+      }
+
       var c = wapp.param.cacheMap.length;
       while (true) {
         c++;
         if (!getCacheMapByName("Carte #"+c)) break;
       }
-      smap = new CacheMap ( "Carte #"+c );
-
-      var content = CordovApp.template("dialog-addmap");
-      wapp.setParamInput( content, smap);
+      var newmap = new CacheMap ( "Carte #"+c );
+      wapp.setParamInput( content, newmap);
   
       wapp.dialog.show (content, {
         title: "Ajouter une carte", 
@@ -725,9 +772,19 @@ console.warn('[DEPRECATED] cachemap page');
         className: "attributes",
         callback: function(b) {
           if (b=='ajouter') {
-            smap.maxZoom = smap.minZoom = parseInt(smap.minZoom);
-            wapp.param.cacheMap.push(smap);
-            addCacheMap(smap)
+            newmap.maxZoom = parseInt(newmap.maxZoom);
+            if (smap) {
+              newmap.minZoom = parseInt(newmap.minZoom);
+            } else {
+              newmap.minZoom = newmap.maxZoom;
+            }
+            if (newmap.minZoom > newmap.maxZoom) {
+              var z = newmap.maxZoom;
+              newmap.maxZoom = newmap.minZoom;
+              newmap.minZoom = z;
+            }
+            wapp.param.cacheMap.push(newmap);
+            addCacheMap(newmap)
           }
         }
       });
@@ -740,6 +797,7 @@ console.warn('[DEPRECATED] cachemap page');
 
     // Ajouter un layer a la carte (juste avant les layers vecteur)
     var layercache = new ol_layer_Geoportail(smap.layer||"GEOGRAPHICALGRIDSYSTEMS.MAPS", {
+      gppKey: apiKey,
       hidpi: false, 
       visible: isVisible 
     });
@@ -748,52 +806,7 @@ console.warn('[DEPRECATED] cachemap page');
     layercache.set('cacheMap', smap);
     layerGroup.getLayers().push(layercache);
     setLayerCache (smap);
-
-console.warn('[DEPRECATED] cache list');
-
-    // Page d'info
-    var li = $("<li>").html(self.liTemplate)
-        .data("map", smap)
-        .appendTo(self.listMap);
-    $("input",li).val(smap.nom)
-      .on('change', function() {
-        smap.nom = $(this).val();
-        map.getLayersByName("cache_"+smap.id)[0].set("title", smap.nom);
-      });
-
-    // Suppression d'une carte
-    $(".fa-trash",li).on ("click", function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      removeCacheMap(smap);
-    });
-    // Choix des tuilles de la carte
-    $(".fa-map-o",li).on ("click", function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      loadCacheMap(smap);
-    });
-    // Refresh map
-    $(".fa-refresh",li).on ("click", function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      refreshCacheMap(smap);
-    });
-    // Zoom to extent
-    $(".tools-locate",li).on ("click", function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (smap.extents.length) {
-        map.getView().fit(smap.extent, map.getSize());
-        wapp.hidePage();
-      }
-    });
-  
-    // Gestion de l'aide
-    if (wapp.getPage()==self.page.attr('id')) {
-      wapp.help.show("cartes-hors-ligne");
-    }
-  
+ 
     updateCacheMapInfo (smap);
 
   }

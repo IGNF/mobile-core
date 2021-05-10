@@ -224,6 +224,7 @@ CacheTile.prototype.estimateSize = function (callback, minZoom, maxZoom, extent)
           if (authentication) {
             xhr.setRequestHeader("Authorization", "Basic " + authentication); 
           }
+          xhr.setRequestHeader("Accept-Language", null);
         },
         success: function(msg, a, xhr) {
           var s = xhr.getResponseHeader('Content-Length') || xhr.responseText.length;

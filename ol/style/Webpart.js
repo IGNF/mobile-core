@@ -9,6 +9,10 @@ import ol_style_RegularShape from 'ol/style/RegularShape'
 import ol_style_Stroke from 'ol/style/Stroke'
 import ol_style_Style from 'ol/style/Style'
 import ol_style_Text from 'ol/style/Text'
+import ol_style_FontSymbol from 'ol-ext/style/FontSymbol'
+import geoportailStyle from 'ol-ext/style/geoportailStyle'
+
+import mongo from 'mongo-parse'
 
 /** 
 * @namespace ol_style_Webpart
@@ -25,7 +29,7 @@ ol_style_Webpart.formatProperties = function (format, feature) {
   if (i === format) {
     return format;
   } else {
-    return ol_style_Webpart.formatProperties(format.replace("${"+i+"}", feature.get(i)), feature);
+    return ol_style_Webpart.formatProperties(format.replace("${"+i+"}", feature.get(i)||''), feature);
   }
 };
 
@@ -37,7 +41,7 @@ ol_style_Webpart.formatFeatureStyle = function (fstyle, feature) {
   if (!fstyle) return {};
   var fs = {};
   for (var i in fstyle) {
-    fs[i] = ol_style_Webpart.formatProperties (fstyle[i], feature)
+    fs[i] = ol_style_Webpart.formatProperties (fstyle[i], feature);
   }
   return fs;
 };
@@ -84,12 +88,18 @@ ol_style_Webpart.Fill = function (fstyle) {
 
 /** Image cache */
 const imageCache = {};
+/** Default image (circle) */
+var circle = new ol_style_Circle({
+  radius: 8,
+  stroke: new ol_style_Stroke({ color: '#fff', width: 1.5 }),
+  fill: new ol_style_Fill({ color: 'rgba(255,0,0,.5)' })
+});
 
 /** Get Image style from featureType.style
 *	@param {featureType.style |  undefined}
 *	@return ol.style.Image
 */
-ol_style_Webpart.setImage = function (olStyle, fstyle) {
+ol_style_Webpart.setImage = function (olStyle, fstyle, feature) {
   var image, img;
   if (fstyle.img) {
     img = fstyle.img
@@ -100,20 +110,19 @@ ol_style_Webpart.setImage = function (olStyle, fstyle) {
     if (imageCache[img]) {
       image = imageCache[img];
     } else {
-      image = new ol_style_Icon ({ src: img });
+      // Test download
+      var i = new Image()
       // Save cache Image
-      image.getImage().addEventListener('load', () => {
-        imageCache[img] = image;
+      i.addEventListener('load', () => {
+        imageCache[img] = new ol_style_Icon ({ src: img });
+        olStyle.setImage(imageCache[img])
+        if (feature.layer) {
+          feature.layer.changed();
+        }
       });
-      // On error show default icon
-      image.getImage().addEventListener('error', () => {
-        imageCache[img] = new ol_style_Circle({
-          radius: 8,
-          stroke: new ol_style_Stroke({ color: '#fff', width: 1.5 }),
-          fill: new ol_style_Fill({ color: 'rgba(255,0,0,.5)' })
-        });
-        olStyle.setImage(imageCache[img]);
-      });
+      i.src = img;
+      // image = new ol_style_Icon ({ src: img });
+      image = circle;
     }
   } else {
     var radius = Number(fstyle.pointRadius) || 5;
@@ -127,11 +136,13 @@ ol_style_Webpart.setImage = function (olStyle, fstyle) {
     switch (fstyle.graphicName) {
       case "cross": 
       case "star":
+      case "rectangle":
       case "square":
       case "triangle":
       case "x":
         graphic = {
           cross: [ 4, radius, 0, 0 ],
+          rectangle: [ 4, radius, undefined, Math.PI/4 ],
           square: [ 4, radius, undefined, Math.PI/4 ],
           triangle: [ 3, radius, undefined, 0 ],
           star: [ 5, radius, radius/2, 0 ],
@@ -146,7 +157,34 @@ ol_style_Webpart.setImage = function (olStyle, fstyle) {
           stroke: ol_style_Webpart.Stroke(fstyle),
           fill: ol_style_Webpart.Fill(fstyle)
         });
+        if (fstyle.graphicName==='rectangle') {
+          var canvas = image.getImage();
+          var newCanvas = document.createElement('canvas');
+          newCanvas.width = canvas.width;
+          newCanvas.height = canvas.height;
+          newCanvas.getContext("2d").drawImage(canvas, 0,0,canvas.width,canvas.height, canvas.width/4,0,canvas.width/2,canvas.height)
+          canvas.getContext("2d").clearRect(0,0,canvas.width,canvas.height);
+          canvas.getContext("2d").drawImage(newCanvas, 0,0);
+        }
         break;
+      case 'lightning':
+        image = new ol_style_FontSymbol({
+          glyph: 'fa-bolt',
+          radius: radius,
+          stroke: ol_style_Webpart.Stroke(fstyle),
+          fill: ol_style_Webpart.Fill(fstyle)
+        });
+        break;
+      case 'church': {
+        image = new ol_style_FontSymbol({
+          glyph: 'fa-venus',
+          rotation: Math.PI,
+          radius: radius,
+          stroke: ol_style_Webpart.Stroke(fstyle),
+          fill: ol_style_Webpart.Fill(fstyle)
+        });
+        break;
+      }
       default:
         image = new ol_style_Circle({
           radius: radius,
@@ -168,17 +206,17 @@ ol_style_Webpart.Text = function (fstyle) {
   var s = {
     font: (fstyle.fontWeight || '')
       + " "
-      + (fstyle.fontSize || "12") +'px'
+      + (fstyle.fontSize || '12') +'px'
       + " "
       + (fstyle.fontFamily || 'Sans-serif'),
-    text: fstyle.label,
+    text: fstyle.label || '',
     rotation: (fstyle.labelRotation || 0),
-    textAlign: "left",
-    textBaseline: "middle",
+    textAlign: 'left',
+    textBaseline: 'middle',
     offsetX: fstyle.labelXOffset||0,
     offsetY: -fstyle.labelYOffset||0,
     stroke: new ol_style_Stroke({
-      color: fstyle.labelOutlineColor || "#fff",
+      color: fstyle.labelOutlineColor || '#fff',
       width: Number(fstyle.labelOutlineWidth) || 2
     }),
     fill: new ol_style_Fill({
@@ -208,14 +246,13 @@ ol_style_Webpart.loadSymbolCache = function() {
   }
 };
 
-
-import mongo from 'mongo-parse'
-
 /** Get ol.style.function as defined in featureType
-* @param {featureType}
-* @return { ol.style.function | undefined }
-*/
-ol_style_Webpart.getFeatureStyleFn = function(featureType, cache) {
+ * @param {featureType}
+ * @param {} cache
+ * @param {} options
+ * @return { ol.style.function | undefined }
+ */
+ol_style_Webpart.getFeatureStyleFn = function(featureType, cache, options) {
   // Fonction de style
   if (!featureType) featureType = {};
   if (featureType.name && ol_style_Webpart[featureType.name]) {
@@ -239,7 +276,6 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache) {
           }
         }
       }
-
       var fstyle = ol_style_Webpart.formatFeatureStyle (style, feature);
       // Gestion d'une bibliotheque de symboles
       if (style && style.name) {
@@ -250,7 +286,8 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache) {
             featureType.style.name+'/'+feature.get(featureType.symbo_attribute.name),
             featureType.style.graphicWidth,
             featureType.style.graphicHeight,
-            cache
+            cache,
+            options
           )
         } else if (style.externalGraphic) {
           fstyle.radius = 5;
@@ -259,14 +296,15 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache) {
             style.externalGraphic,
             style.graphicWidth,
             style.graphicHeight,
-            cache
+            cache,
+            options
           )
         }
       }
       const olStyle = new ol_style_Style ({});
       olStyle.setText(ol_style_Webpart.Text (fstyle));
       //olStyle.setImage(ol_style_Webpart.Image (fstyle));
-      ol_style_Webpart.setImage(olStyle, fstyle);
+      ol_style_Webpart.setImage(olStyle, fstyle, feature);
       olStyle.setFill(ol_style_Webpart.Fill (fstyle));
       olStyle.setStroke(ol_style_Webpart.Stroke (fstyle));
       return olStyle;
@@ -277,7 +315,7 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache) {
 /** Get image uri and save it if not allready saved 
  * 
  */
-ol_style_Webpart.getSymbolURI = function (featureType, name, width, height, cache) {
+ol_style_Webpart.getSymbolURI = function (featureType, name, width, height, cache, options) {
   var img;
   var cacheName = name.replace(/\//g,'_')+'_'+width+'x'+height;
   // Allready in cache
@@ -295,11 +333,16 @@ ol_style_Webpart.getSymbolURI = function (featureType, name, width, height, cach
       CordovApp.File.dowloadFile(
         img,
         'FILE/cache/symbols/'+cacheName,
-        function (e){
+        function (e) {
           // Update symbol cache
           ol_style_Webpart.symbolCache[e.name] = e.nativeURL;
         },
-        function(){}
+        function(){
+        }, {
+          headers: {
+            "Authorization": "Basic " + btoa(options.username + ":" + options.password)
+          }
+        }
       );
     }
   }
@@ -395,6 +438,9 @@ ol_style_Webpart.combine = function(style) {
 /** Style des troncon de route DBUni
 */
 ol_style_Webpart.troncon_de_route = function(options) {
+  options = options || {};
+  return geoportailStyle('BDTOPO_V3:troncon_de_route', { sens: options.sens || 2.5 });
+  /*
   if (!options) options={};
 
   function getColor(feature) {
@@ -427,10 +473,8 @@ ol_style_Webpart.troncon_de_route = function(options) {
 
   function getWidth(feature) {
     return Math.max ( Number(feature.get('largeur_de_chaussee'))||2 , 2 );
-    /*
-    if (feature.get('largeur_de_chaussee')) return Math.max (Number(feature.get('largeur_de_chaussee')),2);
-    return 2;
-    */
+    // if (feature.get('largeur_de_chaussee')) return Math.max (Number(feature.get('largeur_de_chaussee')),2);
+    // return 2;
   }
 
   function getZindex(feature) {
@@ -454,6 +498,7 @@ ol_style_Webpart.troncon_de_route = function(options) {
       })
     ];
   };
+  */
 }
 
 /** Affichage du sens de parcours
@@ -565,7 +610,7 @@ ol_style_Webpart.batiment = function(options) {
       strokeColor: getColor(feature, 1),
       fillColor: getColor(feature, 0.5)
     }
-    if (feature.get('etat_de_l_objet')) {
+    if (!/en service/i.test(feature.get('etat_de_l_objet'))) {
       fstyle.dash = true;
       fstyle.fillColor = [0,0,0,0];
     }

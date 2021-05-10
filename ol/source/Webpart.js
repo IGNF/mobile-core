@@ -3,6 +3,7 @@
 import CordovApp from '../../CordovApp'
 import proj4 from 'proj4'
 import {register as ol_proj_proj4_register} from 'ol/proj/proj4.js';
+import * as Papa from 'papaparse';
 
 import ol_Collection from 'ol/Collection'
 import ol_source_Vector from 'ol/source/Vector'
@@ -51,6 +52,7 @@ ol_proj_proj4_register(proj4);
  *  @param {integer} options.maxReload max number of feature before reload (for tiled layers), default +Infinity
  *  @param {featureType} options.featureType
  *  @param {Object} options.filter Webpart filter, ie: {detruit:false}, default {}
+ *  @param {string} options.outputFormat CSV or JSON
  *  @param {integer} options.tileZoom tile zoom for tiled layers (tile size are requested at tileZoom)
  *  @param {integer|undefined} options.tileSize size for tiles, default 256
  *  @param {ol.Collection} options.preserved collection of objects to preserve when reload
@@ -80,6 +82,7 @@ const VectorWebpart = function(opt_options) {
   this.featureType_.docURI = this.featureType_.wfs.replace(/\/gcms\/.*/,"/document/");
 
   this.maxFeatures_	= options.maxFeatures || 5000;
+  this._outputformat = options.outputFormat;
   
   var crs = this.featureType_.attributes[this.featureType_.geometryName];
   crs = crs ? crs.crs : 'IGNF:LAMB93';
@@ -93,11 +96,10 @@ const VectorWebpart = function(opt_options) {
   this.featureFilter_ = options.filter || {};
   // Filter / deleted objects
   if (this.featureType_.attributes.detruit) {
-    this.featureFilter_ = { detruit : false };
+    this.featureFilter_ = {detruit:false};
   } else if (this.featureType_.attributes.gcms_detruit) {
-    this.featureFilter_ = { gcms_detruit : false };
+    this.featureFilter_ = {gcms_detruit:false};
   }
-
   
   // Strategy for loading source (bbox or tile)
   var strategy = options.strategy || ol_loadingstrategy_bbox;
@@ -129,6 +131,8 @@ const VectorWebpart = function(opt_options) {
   
   // Collection of feature we want to preserve when reloaded
   this.preserved_ = options.preserved || new ol_Collection();
+  // Differentiel updates
+  this.differentiel_ = [];
   // Inserted features
   this.insert_ = [];
   this.on ('addfeature', this.onAddFeature_.bind(this));
@@ -140,8 +144,8 @@ const VectorWebpart = function(opt_options) {
   this.update_ = [];
   this.on ('changefeature', this.onUpdateFeature_.bind(this));
 
-  // Read editions
-  this.readChanges();
+  // Read editions and load
+  this.loadChanges()
 };
 ol_ext_inherits(VectorWebpart, ol_source_Vector);
 
@@ -207,10 +211,55 @@ VectorWebpart.prototype.nbModifications = function() {
   return this.delete_.length + this.update_.length + this.insert_.length;
 };
 
-/** Read changes in a file
- * 
+/** Load changes (differentiels) and read updates
  */
-VectorWebpart.prototype.readChanges = function() {
+VectorWebpart.prototype.loadDifferentiels = function() {
+  console.log('loaddiff')
+  this.differentiel_ = [];
+  if (!this._cacheUrl) {
+    this.setLoader(this.loaderFn_);
+    return;
+  }
+  // Load differentiels
+  var dirUrl = this._cacheUrl + 'diff';
+  CordovApp.File.listDirectory(
+    dirUrl, 
+    (files) => {
+      var load = function() {
+        var f = files.pop();
+        if (!f) {
+          // Start loading features
+          this.setLoader(this.loaderFn_);
+          this.reload();
+        } else {
+          CordovFile.read(
+            'FILE'+ f.fullPath,
+            (data)=> {
+              var features = this._readFeatures(data);
+              console.log('LOADING', f.fullPath, features.length);
+              features.forEach((f) => this.differentiel_.push(f));
+              load();
+            },
+            () => {
+              load();
+            }
+          )
+        }
+      }.bind(this);
+      load();
+    },
+    // Error (no changes)
+    () => {
+      // Start loading features
+      this.setLoader(this.loaderFn_);
+      this.reload();
+    }
+  )
+};
+
+/** Read new features in a file
+ */
+VectorWebpart.prototype.loadChanges = function() {
   if (!this._cacheUrl) {
     this.setLoader(this.loaderFn_);
     return;
@@ -250,14 +299,11 @@ VectorWebpart.prototype.readChanges = function() {
           }
         }
       });
-      // Start loading features
-      this.setLoader(this.loaderFn_);
-      this.reload();
+      this.loadDifferentiels();
     },
     // Error (or no changes found)
     () => {
-      this.setLoader(this.loaderFn_);
-      this.reload();
+      this.loadDifferentiels();
     }
   );
 };
@@ -280,11 +326,10 @@ VectorWebpart.prototype.writeChanges = function(force) {
   }
   this._writeUpdate = 0;
 
-  const url = this._cacheUrl + 'editions.txt';
   var actions = this.getSaveActions(true);
 
-console.log('ACTIONS',actions)
-if (!this._cacheUrl) return;
+  if (!this._cacheUrl) return;
+  const url = this._cacheUrl + 'editions.txt';
 
   CordovApp.File.write(
     url, 
@@ -354,7 +399,7 @@ VectorWebpart.prototype.getFeatureAction = function(f, full) {
     a.feature[idName] = f.get(idName);
     // Get changed properties
     for (let i in f.getProperties()) {
-      if (updates[i]) {
+      if (updates[i] || i==='gcms_fingerprint') {
         a.feature[i] = f.get(i);
       }
     }
@@ -412,6 +457,40 @@ VectorWebpart.prototype.getSaveActions = function(full) {
   return res;
 }
 
+/** Return all update features
+ * @return { Array<ol.Feature> }
+ */
+VectorWebpart.prototype.getFeatureUpdate = function() {
+  var updates = [];
+  this.insert_.forEach((f) => { updates.push(f); });
+  this.delete_.forEach((f) => { updates.push(f); });
+  this.update_.forEach((f) => { updates.push(f); });
+};
+
+/** Remove a feature from updates
+ * @param {ol.Feature} feature
+ * @return {boolean}
+ */
+VectorWebpart.prototype.removeFeatureUpdate = function(feature) {
+  let index;
+  index = this.insert_.indexOf(feature);
+  if (index > -1) {
+    this.insert_.splice(index, 1);
+    return true;
+  }
+  index = this.delete_.indexOf(feature);
+  if (index > -1) {
+    this.delete_.splice(index, 1);
+    return true;
+  }
+  index = this.update_.indexOf(feature);
+  if (index > -1) {
+    this.update_.splice(index, 1);
+    return true;
+  }
+  return false
+};
+
 /** Save changes
 */
 VectorWebpart.prototype.save = function(onSuccess, onError) {
@@ -441,22 +520,27 @@ VectorWebpart.prototype.save = function(onSuccess, onError) {
     url: this.proxy_ || url,
     method: 'POST',
     data: param,
-    dataType: ('xml'),
-
+    dataType: 'xml',
     // Authentification
-    username: this.username_,
-    password: this.password_,
-
+    /* BUG Chrome 
+    username: this.username,
+    password: this.password,
+    */
+    beforeSend: (xhr) => { 
+      xhr.setRequestHeader("Authorization", "Basic " + btoa(this.username + ":" + this.password)); 
+      xhr.setRequestHeader("Accept-Language", null);
+    },
     success: function(wfs) {
       const info = $(wfs).find('wfs\\:Message').text();
+      const url = $(wfs).find('wfs\\:TransactionURL').text();
       if ($(wfs).find('wfs\\:SUCCESS').length) {
         // Clear history
         self.reset();
-        self.dispatchEvent({ type:"saveend", error: info });
-        if (onSuccess) onSuccess(info);
+        self.dispatchEvent({ type:"saveend", error: info, transaction: url });
+        if (onSuccess) onSuccess(info, url);
       } else {
-        self.dispatchEvent({ type:"saveend", error: info });
-        if (onError) onError(info);
+        self.dispatchEvent({ type:"saveend", error: info, transaction: url });
+        if (onError) onError(info, url);
       }
     },
     error: function(jqXHR, status, error) {
@@ -589,6 +673,13 @@ VectorWebpart.prototype.findFeature_ = function(f) {
   if (find(this.delete_)) return null;
   // Search updated features
   if (find(this.update_)) return f;
+  // Search differentiel update
+  if (find(this.differentiel_)) {
+    console.log('find', f)
+    // Deleted feature ?
+    if (f.get('detruit') || f.get('gcms_detruit')) return null;
+    return f;
+  }
   // Search preserved features
   if (find(this.preserved_.getArray())) return f;
   // Nothing found > return initial feature
@@ -608,7 +699,7 @@ VectorWebpart.prototype.getWFSParam = function (extent, projection) {
   var parameters = {
     service	: 'WFS',
     request: 'GetFeature',
-    outputFormat: 'JSON',
+    outputFormat: this._outputformat || 'JSON',
     typeName: this.featureType_.name,
     bbox: bboxStr,
     filter: JSON.stringify(this.featureFilter_),
@@ -617,6 +708,78 @@ VectorWebpart.prototype.getWFSParam = function (extent, projection) {
   };
   if (this.proxy_) parameters.url = this.featureType_.wfs;
   return parameters;
+};
+
+/** Read features from file
+ * @param {*} data
+ */
+VectorWebpart.prototype._readFeatures = function (data, projection) {
+  projection = projection || 'EPSG:3857';
+  let feature;
+  const features = [];
+  const geometryAttribute = this.featureType_.geometryName;
+  const typing = {};
+  for (let i in this.featureType_.attributes) {
+    typing[i] = /^Double$|^Integer$/.test(this.featureType_.attributes[i].type);
+  }
+  switch (this._outputformat) {
+    case 'CSV': {
+      data = Papa.parse(
+        // DEBUG: OLD VERSION
+        data.replace(/(ST_AsEWKT(.*)ASgeometrie)/, geometryAttribute), {
+          dynamicTyping: typing,
+          header: true 
+        }
+      );
+      data = data.data;
+      break;
+    }
+    default: {
+      try{
+        data = JSON.parse(data);
+      } catch(e) { 
+        onError(null, 'JSON', 'Bad JSON response'); 
+        return;
+      }
+      break;
+    }
+  }
+  var format = new ol_format_WKT();
+  var r3d = /([-+]?(\d*[.])?\d+) ([-+]?(\d*[.])?\d+) ([-+]?(\d*[.])?\d+)/g;
+  //
+  for (var f=0; f<data.length; f++) {
+    // CSV empty lines
+    if (!data[f] || !data[f][geometryAttribute]) continue;
+    // Get data
+    var geom = data[f][geometryAttribute];
+    // 
+    if (geom.type) {
+      var g = ol_geom_createFromType (geom.type, geom.coordinates);
+      g.transform (this.srsName_, projection);
+      feature = new ol_Feature (g);
+    }
+    // WKT
+    else {
+      geom = geom.replace (r3d, "$1 $3");
+      try{
+        feature = format.readFeature(geom, {
+          dataProjection: this.srsName_,
+          featureProjection : projection
+        });
+      } catch(e) {
+        console.error('[BAD FORMAT] error line: ', f, data[f]);
+        continue;
+      }
+    }
+  
+    var properties = data[f];
+    delete properties[geometryAttribute];
+    feature.setProperties(properties, true);
+
+    features.push(feature);
+  }
+
+  return features;
 };
 
 /**
@@ -642,38 +805,15 @@ VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
   }
 
   function onSuccess(data) {
-    var feature, features = [];
-    var geometryAttribute = self.featureType_.geometryName;
-    var format = new ol_format_WKT();
-    var r3d = /([-+]?(\d*[.])?\d+) ([-+]?(\d*[.])?\d+) ([-+]?(\d*[.])?\d+)/g;
-    //
-    for (var f=0; f<data.length; f++) {
-      var geom = data[f][geometryAttribute];
-      // 
-      if (geom.type) {
-        var g = ol_geom_createFromType (geom.type, geom.coordinates);
-        g.transform (self.srsName_, projection);
-        feature = new ol_Feature (g);
-      }
-      // WKT
-      else {
-        geom = geom.replace (r3d, "$1 $3");
-        feature = format.readFeature(geom, {
-          dataProjection: self.srsName_,
-          featureProjection : projection
-        });
-      }
-    
-      var properties = data[f];
-      delete properties[geometryAttribute];
-      feature.setProperties(properties, true);
-
+    var features = [];
+    var f0 = self._readFeatures(data, projection)
+    f0.forEach((f) => {
       // Find preserved features
-      feature = self.findFeature_(feature);
+      var feature = self.findFeature_(f);
       if (feature) {
-        features.push( feature );
+        features.push(feature);
       }
-    }
+    })
     
     // Add new inserted features
     var l = self.insert_.length;
@@ -707,15 +847,7 @@ VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
     var tgrid = this.getTileGrid();
     var tcoord = tgrid.getTileCoordForCoordAndResolution(ol_extent_getCenter(extent), resolution);
     url += tcoord.join('-');
-    CordovApp.File.read(url, function(data) {
-      try{
-        data = JSON.parse(data);
-      } catch(e) { 
-        onError(null, 'JSON', 'Bad JSON response'); 
-        return;
-      }
-      onSuccess(data)
-    }, onError);
+    CordovApp.File.read(url, onSuccess, onError);
   } else {
     // WFS parameters
     var parameters = this.getWFSParam(extent, projection);
@@ -726,8 +858,18 @@ VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
     // Ajax request to get features in bbox
     this.request_ = $.ajax({
       url: this.proxy_ || this.featureType_.wfs,
-      dataType: 'json', 
+      dataType: 'text', 
       data: parameters,
+
+      // Authentification
+      /* BUG Chrome 
+      username: this.username,
+      password: this.password,
+      */
+      beforeSend: (xhr) => { 
+        xhr.setRequestHeader("Authorization", "Basic " + btoa(this.username + ":" + this.password)); 
+        xhr.setRequestHeader("Accept-Language", null);
+      },
       success: onSuccess,
       // Error
       error: onError

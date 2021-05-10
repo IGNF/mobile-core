@@ -90,7 +90,7 @@ CordovApp.File.getExtension = function(path) {
 CordovApp.File.getFileName = function(path) {
   return path.split('/').pop();
 };
-  
+
 /** Get the file dir
  * @memberof CordovApp.File
  * @param {string} path the file fullname
@@ -98,6 +98,22 @@ CordovApp.File.getFileName = function(path) {
  */
 CordovApp.File.getDir = function (path){
   return path.substring(0, path.lastIndexOf("/"));
+};
+
+/** Get local file URI
+ * @memberof CordovApp.File
+ * @param {cordova.file||string} file
+ * @return {string}
+ */
+CordovApp.File.getFileURI = function (file) {
+  if (file && typeof file !== 'string') {
+    file = file.nativeURL;
+  }
+  if (window.WkWebView) {
+    return window.WkWebView.convertFilePath(file);
+  } else {
+    return file;
+  }
 };
 
 /** Get free space disk 
@@ -164,7 +180,8 @@ CordovApp.File.getDirectory = function (path, success, fail, create) {
   if (!success) success = this.success || function(){};
   if (!fail) fail = this.fail;
   if (!window.LocalFileSystem) {
-    setTimeout(function() { fail({code:-1}); });
+    // Add a timeout to simulate loading
+    setTimeout(function() { fail({code:-1}); }, 300);
     return;
   }
   // File systhem URL
@@ -364,6 +381,7 @@ CordovApp.File.moveFile = function(file, name, success, fail) {
  * @param {String} name URI referring to a local file to move to
  * @param {function} success callback 
  * @param {function} fail callback invoked on error
+ * @param {*} options
  */
 CordovApp.File.dowloadFile = function (url, name, success, fail, options) {
   options = options || {};

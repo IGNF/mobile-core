@@ -45,7 +45,7 @@ const symbol = {
   'submit': new ol_style_Style({
     image: new ol_style_Circle({
       radius: radius,
-      stroke: new ol_style_Stroke({ color: [128,128,128], width: 3 }),
+      stroke: new ol_style_Stroke({ color: [51,102,153], width: 3 }),
       fill: new ol_style_Fill({ color: [255,255,255] })
     })
   }),
@@ -60,6 +60,13 @@ const symbol = {
     image: new ol_style_Circle({
       radius: radius,
       stroke: new ol_style_Stroke({ color: [255,0,0], width: 3 }),
+      fill: new ol_style_Fill({ color: [255,255,255] })
+    })
+  }),
+  'dump': new ol_style_Style({
+    image: new ol_style_Circle({
+      radius: radius,
+      stroke: new ol_style_Stroke({ color: [192,192,192], width: 3 }),
       fill: new ol_style_Fill({ color: [255,255,255] })
     })
   })

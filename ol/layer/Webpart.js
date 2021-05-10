@@ -34,24 +34,29 @@ const VectorWebpart = function(options, source_options) {
   options.renderMode = options.renderMode || 'image';
   ol_layer_Vector.call(this, options);
   this.set('name', options.database+':'+options.name);
-
   if (options.cacheUrl) {
     source_options.cacheUrl = options.cacheUrl;
     this.set('cache', true);
     this.createSource(options, source_options, options.featureType);
-    this.setZIndex(options.featureType.position);
+    // this.setZIndex(options.featureType.position);
   } else {
     const url = this.url_+this.database_+'/feature-type/'+this.name_+'.json';
     $.ajax({
       url: (this.proxy_ || url ),
       dataType: 'json', 
       // Authentification
+      /*
       username: options.username,
       password: options.password,
+      */
+      beforeSend: (xhr) => { 
+        xhr.setRequestHeader("Authorization", "Basic " + btoa(options.username + ":" + options.password)); 
+        xhr.setRequestHeader("Accept-Language", null);
+      },    
       data: { url: this.proxy_ ? url : undefined },
       success: (featureType) => {
         this.createSource(options, source_options, featureType);
-        this.setZIndex(featureType.position);
+        // this.setZIndex(featureType.position);
       },
       error: (jqXHR, status, error) => {
         //console.log(jqXHR)
@@ -100,33 +105,48 @@ VectorWebpart.prototype.createSource = function(options, source_options, feature
       }
     }
   }
+  if (featureType.styles && featureType.styles.length) {
+    let found = false;
+    featureType.styles.forEach((st) => {
+      if (featureType.style && st.id === featureType.style.id) found = true;
+      if (st.children) {
+        st.children.forEach((s) => {
+          if (typeof(s.condition)==='string') {
+            try { s.condition = JSON.parse(s.condition); }
+            catch(e){ /* ok */ }
+          }
+        })
+      }
+    })
+    if (!found && featureType.style) featureType.styles.unshift(featureType.style)
+  }
 
   // Style of the feature style
   if (!options.style && ol_style_Webpart) {
-    this.setStyle (ol_style_Webpart.getFeatureStyleFn(featureType, options.cacheUrl));
+    this.setStyle (ol_style_Webpart.getFeatureStyleFn(featureType, options.cacheUrl, source_options));
   }
 
   this.dispatchEvent({ type:"ready", source: vectorSource });
 };
 
 /** Is the layer ready
-*	@return {bool} the layer is ready (source is connected)
-*/
+ *	@return {bool} the layer is ready (source is connected)
+ */
 VectorWebpart.prototype.isReady = function() {
   return (this.getSource() && this.getSource().featureType_);
 }
 
 /** FeatureType of the layer
-*	@return {featureType} 
-*/
+ *	@return {featureType} 
+ */
 VectorWebpart.prototype.getFeatureType = function() {
   if (this.isReady()) return this.getSource().featureType_;
   else return false;
 }
 
 /** FeatureType style of the layer
-*	@return {featureStyle} 
-*/
+ *	@return {featureStyle} 
+ */
 VectorWebpart.prototype.getFeatureStyle = function() {
   if (this.isReady()) return this.getSource().featureType_.style;
   else return {};

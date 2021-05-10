@@ -1,5 +1,4 @@
 import notinfo from './notinfo'
-import Ajax from 'ol-ext/util/Ajax'
 
 /** Check and display info on url
  * @param {string} services a list services to check, default 'geoprotail,espaceco'
@@ -9,7 +8,7 @@ const checkInfo = function(services, url) {
   services = services || 'geoportail,espaceco';
 
   // Test service url
-  Ajax.get({
+  $.ajax({
     url: (url || 'https://geodesie.ign.fr/checkinfo.json?') + (new Date()).getTime(),
     success: function(res) {
       var tout = 0;

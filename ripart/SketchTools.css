@@ -1,0 +1,105 @@
+/* Drawing tools */
+.ol-overlaycontainer .ol-touch-cursor,
+.ol-overlaycontainer .ol-touch-cursor .ol-button {
+  background-color: rgba(255,255,255,.7)!important;
+  z-index: 1;
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button:before {
+  font-size: 1.5em!important;
+  font-family: "FontAwesome";
+  line-height: normal!important;
+  font-weight: normal!important;
+}
+.ol-touch-cursor.modify .ol-button.ol-button-x:after {
+  content: none;
+}
+.ol-touch-cursor.modify .ol-button.ol-button-move:before {
+  content: "\f0b2";
+  font-family: "FontAwesome";
+  font-size: 1em;
+}
+.ol-overlaycontainer .ol-touch-cursor.sketch .ol-button-back,
+.ol-overlaycontainer .ol-touch-cursor.tools .ol-button,
+.ol-overlaycontainer .ol-touch-cursor .ol-button-geom {
+  background-color: rgba(51,102,153, .7)!important;
+  opacity: 1!important;
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button-back:before {
+  content: "\f112";
+  color: #fff;
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button-modify:before {
+  color: #fff;
+}
+.ol-overlaycontainer .ol-touch-cursor.modify:before,
+.ol-overlaycontainer .ol-touch-cursor .ol-button-modify:before {
+  content: "\f040";
+  font-family: "FontAwesome";
+}
+
+.ol-touch-cursor.sketch:before,
+.ol-overlaycontainer .ol-touch-cursor .ol-button-geom:before {
+  content: "\e800";
+  font-family: "tools";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  color: #369;
+  font-size: 2.5em;
+  opacity: .8;
+}
+.ol-overlaycontainer .ol-touch-cursor.tools:after {
+  content: none;
+}
+.ol-overlaycontainer .ol-touch-cursor.tools:before {
+  content: "\f128";
+  font-family: "FontAwesome";
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button-geom:before {
+  color: #fff;
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button-geom:before {
+  font-size: 1.2em;
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button.ol-button-cancel:before {
+  content: "\f0e2";
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button.ol-button-check:before {
+  content: "\f00c";
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button.ol-button-x:before {
+  content: "\f00d";
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button.ol-button-remove:before {
+  content: "\f068";
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button.ol-button-add:before {
+  content: "\f067";
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button.ol-button-trash:before {
+  content: "\f1f8";
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button-select:before {
+  content: "\f25a";
+  color: #fff;
+}
+.ol-overlaycontainer .ol-touch-cursor.translate:before {
+  content: "\f25a";
+  font-family: "FontAwesome";
+}
+.ol-overlaycontainer .ol-touch-cursor .ol-button.ol-button-translate:before {
+  content: "\f0b2";
+}
+
+.ol-overlaycontainer .ol-touch-cursor.LineString:before,
+.ol-overlaycontainer .ol-touch-cursor .LineString:before {
+  content: "\e807";
+  font-family: "tools";
+}
+.ol-overlaycontainer .ol-touch-cursor.Polygon:before,
+.ol-overlaycontainer .ol-touch-cursor .Polygon:before {
+  content: "\e809";
+  font-family: "tools";
+}
