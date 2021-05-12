@@ -6,7 +6,6 @@ import {extend as ol_extent_extend} from 'ol/extent'
 import ol_layer_Group from 'ol/layer/Group'
 import ol_layer_Vector from 'ol/layer/Vector'
 import ol_source_Vector from 'ol/source/Vector'
-import wapp from '../../../src/wapp'
 import TileSource from 'ol/source/tile'
 
 /**
@@ -18,12 +17,11 @@ import TileSource from 'ol/source/tile'
  *	@param {string} options.loadPage page de chargement du guichet, default "#loadGuichet"
  */
 var CacheVector = function(wapp, options) {
-  var self = this;
   if (!options) options = {};
   this.wapp = wapp;
   this.map = wapp.map;
 
-  if (!wapp.param.vectorCache) wapp.param.vectorCache = [];
+  if (!this.wapp.param.vectorCache) this.wapp.param.vectorCache = [];
 
 /* DEPRECATED
   this.page = $(options.page || '#guichet');
@@ -34,12 +32,12 @@ var CacheVector = function(wapp, options) {
 
   this.loadPage = $(options.loadPage || '#loadGuichet');
 
-  $('.cancel', this.loadPage).click(function(){
+  $('.cancel', this.loadPage).click(() => {
     // wapp.showPage(self.page.attr('id'));
-    wapp.hidePage();
+    this.wapp.hidePage();
   });
-  $('.ok', this.loadPage).click(function(){
-    self.uploadCache();
+  $('.ok', this.loadPage).click(() => {
+    this.uploadCache();
   });
 
   // Create dir if doesn't exist

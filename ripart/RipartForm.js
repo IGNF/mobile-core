@@ -1,5 +1,4 @@
-﻿/* global wapp */
-/* global Camera */
+﻿/* global Camera */
 import _T from '../i18n'
 import CordovApp from '../Cordovapp'
 import RIPart from './Ripart'
@@ -40,7 +39,6 @@ import { selectInputText } from '../cordovapp/param'
 import { dataAttributes } from '../cordovapp/param'
 
 import 'ol-ext/style/FontAwesomeDef'
-import wapp from '../../src/wapp'
 
 /** @module ripart/RIPartForm
  * @description
@@ -1065,7 +1063,7 @@ RIPart.prototype.postLocalRep = function(georem, georep, options) {
         $("<i>").addClass('error')
           .html("<br/>Erreur : "+error.status+" - "+error.statusText+"</i>")
           .appendTo(msg);
-        wapp.alert(msg);
+        this.wapp.alert(msg);
       }
     }
   });
