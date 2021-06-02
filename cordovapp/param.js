@@ -313,21 +313,41 @@ CordovApp.prototype.dataAttributes = function (element, attr) {
         obj.html(a.length);
       }
       else {
-        if (obj.data("format")) {
-          switch (obj.data("format")) {
-            case "date:year": {
-              var y = a.split('/')[2];
+        var format = obj.data('format');
+        var neg = { 'lon-dms': 'O', 'lat-dms': 'S' };
+        var pos = { 'lon-dms': 'E', 'lat-dms': 'N' };
+        if (format) {
+          switch (format) {
+            case "date-en:year": {
+              var y = a.toString().split('/')[0];
               if (y) a = y;
+              break;
+            }
+            case "date:year": {
+              var y = a.toString().split('/')[2];
+              if (y) a = y;
+              break;
+            }
+            case "lon-dms":
+            case "lat-dms": {
+              var d = Math.floor (a);
+              var minfloat = (a-d)*60;
+              var m = Math.floor(minfloat);
+              var s = (minfloat-m)*60;
+              a = (d<0 ? -1 : 1) * d +'° '+m+'\' '+s.toFixed(1)+'" '+(d<0 ? neg[format] : pos[format]);
               break;
             }
             default: break;
           }
         }
         var eq, neq;
-        if (obj.data("eq")) eq = attr[obj.data("eq")];
-        if (obj.data("neq")) neq = attr[obj.data("neq")];
-        if (neq || eq) {
-          if ((neq && a!=neq) || (eq && a==eq)) obj.show();
+        if (obj.data("eq")) {
+          eq = attr[obj.data("eq")];
+          if (a==eq) obj.show();
+          else obj.hide();
+        } else if (obj.data("neq")) {
+          neq = attr[obj.data("neq")];
+          if (a!=neq) obj.show();
           else obj.hide();
         } else {
           if (obj.data("br")) {
