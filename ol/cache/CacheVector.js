@@ -37,6 +37,7 @@ var CacheVector = function(wapp, options) {
     this.wapp.hidePage();
   });
   $('.ok', this.loadPage).click(() => {
+    // Load layer cache
     this.uploadCache();
   });
 

@@ -88,6 +88,7 @@ ol_style_Webpart.Fill = function (fstyle) {
 
 /** Image cache */
 const imageCache = {};
+
 /** Default image (circle) */
 var circle = new ol_style_Circle({
   radius: 8,
@@ -248,7 +249,7 @@ ol_style_Webpart.loadSymbolCache = function() {
 
 /** Get ol.style.function as defined in featureType
  * @param {featureType}
- * @param {} cache
+ * @param {} cache deprecated
  * @param {} options
  * @return { ol.style.function | undefined }
  */
@@ -286,7 +287,7 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache, options) {
             featureType.style.name+'/'+feature.get(featureType.symbo_attribute.name),
             featureType.style.graphicWidth,
             featureType.style.graphicHeight,
-            cache,
+            feature,
             options
           )
         } else if (style.externalGraphic) {
@@ -296,7 +297,7 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache, options) {
             style.externalGraphic,
             style.graphicWidth,
             style.graphicHeight,
-            cache,
+            feature,
             options
           )
         }
@@ -312,14 +313,20 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache, options) {
   }
 };
 
-/** Get image uri and save it if not allready saved 
- * 
+/** Get image uri and save to cache if not allready done
+ * @param {Object} featureType
+ * @param {string} name image name
+ * @param {number} width
+ * @param {number} height
+ * @param {ol.Feature} feature
+ * @param {object} options user name and password 
  */
-ol_style_Webpart.getSymbolURI = function (featureType, name, width, height, cache, options) {
+ol_style_Webpart.getSymbolURI = function (featureType, name, width, height, feature, options) {
   var img;
   var cacheName = name.replace(/\//g,'_')+'_'+width+'x'+height;
+
   // Allready in cache
-  if (cache && this.symbolCache[cacheName]) {
+  if (this.symbolCache && this.symbolCache[cacheName]) {
     img = this.symbolCache[cacheName];
   } else {
     // Load Image from server
@@ -328,7 +335,7 @@ ol_style_Webpart.getSymbolURI = function (featureType, name, width, height, cach
       + name
       +'?width='+width
       +'&height='+height;
-    // Save symbol if exist
+    // Save symbol if not yet
     if (window.cordova && !this.symbolCache[cacheName]) {
       CordovApp.File.dowloadFile(
         img,
@@ -336,6 +343,8 @@ ol_style_Webpart.getSymbolURI = function (featureType, name, width, height, cach
         function (e) {
           // Update symbol cache
           ol_style_Webpart.symbolCache[e.name] = e.nativeURL;
+          // Force layer redraw
+          feature.layer.changed();
         },
         function(){
         }, {

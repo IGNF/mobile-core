@@ -840,7 +840,7 @@ RIPart.prototype.updateLocalRem = function(i, options) {
 RIPart.prototype.delLocalRems = function() {
   var self = this;
   selectDialog ({
-      send: 'Tous les signalements envoyé', 
+      send: 'Tous les signalements envoyés', 
       rep: 'Les signalements ayant eu une réponse',
       close: 'Seulement les signalements clos',
       all: 'Tous les signalements'
@@ -1670,7 +1670,7 @@ RIPart.prototype.formulaireAttribut = function(valdef, prompt) {
           break;
         }
         case 'checkbox': {
-          vals[a.att] = vals[a.att]==='1';
+          vals[a.att] = (vals[a.att]==='1' || vals[a.att]===true);
           li = $("<li data-input='check'>").attr('data-param',a.att).appendTo(content);
           break;
         }
