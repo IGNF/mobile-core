@@ -305,7 +305,6 @@ CacheVector.prototype.uploadCache = function(update) {
  * @param {*} layers list of layers that remains (private / internal / recursive)
  */
 CacheVector.prototype.uploadLayers = function(cache, update, toload, layers) {
-console.log('LOADCACHE', update)
   cache.date = (new Date()).toISODateString();
   var i, l;
   var guichet = this.getCurrentGuichet();
@@ -325,6 +324,7 @@ console.log('LOADCACHE', update)
       // Add new layer
       var wp = this.wapp.layerWebpart(l);
       layers.push(wp);
+      // Upload when ready
       wp.on('ready', () => { 
         this.uploadLayers(cache, update, toload, layers); 
       });
@@ -342,15 +342,21 @@ console.log('LOADCACHE', update)
     // Ready to load? (all layers have a source)
     if (ready) {
       // Check numrec
-      ready = true;
+      var hasNumrec = true;
+      var loading = false;
       for (i=0; l=layers[i]; i++) {
         if (!toload || toload.indexOf(i) >= 0) {
           if (!cache.layers[i].hasOwnProperty('numrec')) {
-            ready = false;
+            hasNumrec = false;
+          } else {
+            loading = true;
           }
         }
       }
-      if (!ready) {
+      // Ready to load: layer has numrec
+      if (!hasNumrec) {
+        // Still loading numrec on last sources
+        if (loading) return;
         // Create layer cache
         layers.forEach((l, i) => {
           if (!toload || toload.indexOf(i) >= 0) {
@@ -382,8 +388,9 @@ console.log('LOADCACHE', update)
           }
         });
       } else {
-        // calculate tiles to load
+        // Ready to load
         var tiles = [];
+        // calculate tiles to load
         for (i=0; l=layers[i]; i++) {
           if (!toload || toload.indexOf(i) >= 0) {
             tiles.push ({
@@ -555,7 +562,7 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
               self.uploadTiles(cache, tiles, pos, size, error);
             },{	
               headers: {
-                'Authorization': 'Basic '+ this.wapp.ripart.getHash()
+                'Authorization': 'Basic '+ self.wapp.ripart.getHash()
               }
             }
           );
