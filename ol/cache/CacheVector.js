@@ -48,6 +48,7 @@ var CacheVector = function(wapp, options) {
 /** Layers en cache d'un guichet
  * @param {groupe} guichet
  * @param {Array<*>} layerDef returns layers definition
+ * @param {Array<ol.layer.Vector}
  */
 CacheVector.prototype.getLayers = function(guichet, cache) {
   cache = cache || [];
@@ -103,6 +104,7 @@ CacheVector.prototype.getLayers = function(guichet, cache) {
           e.feature.layer = this; 
         }.bind(l));
       }
+      // Red border
       if (g.getLayers().getLength()) {
         layers.push(g);
         l = new ol_layer_Vector({ 

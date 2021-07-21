@@ -9,15 +9,17 @@ import ol_style_Webpart from '../style/Webpart'
 
 /** @class VectorWebpart
  * @constructor
- * @extends {ol.source.Vector}
+ * @extends {ol.layer.Vector}
  * @trigger ready (when source is ready), error (connexion error)
- * @param {*} 
- *	@param {string} database datatbase name
- *  @param {string} name featureType name
- *  @param {string|undefined} proxy proxy url
- *  @param {string} url service url url
- *  @param {string} username
- *  @param {string} password
+ * @param {*} options extend ol.layer.Vector
+ *	@param {string} options.database datatbase name
+ *  @param {string} options.name featureType name
+ *  @param {string|undefined} options.proxy proxy url
+ *  @param {string} options.url service url url
+ *  @param {string} options.username
+ *  @param {string} options.password
+ * @param {*} source_options
+ *  @param {string} source_options.cacheUrl
  * @returns {ol.source.Vector.Webpart}
  */
 const VectorWebpart = function(options, source_options) {

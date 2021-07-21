@@ -1222,6 +1222,7 @@ RIPart.prototype.delCurrentRem = function() {
 
 /** Dialog de connexion a l'espace collaboratif
 * @param {} options
+*	- onConnect {function} a function called when connected/deconnected
 *	- onShow {function} a function called when the dialog is shown
 *	- onQuit {function} a function called when the dialog is closed
 *	- onError {function} a function called when an error occures
@@ -1244,7 +1245,7 @@ RIPart.prototype.connectDialog = function (options) {
             options.onConnect, 
             (typeof (options.onError) == "function") ? options.onError : null,
             function() { 
-              if (options.page) setTimeout(function(){this.wapp.showPage(options.page); });
+              if (options.page) setTimeout(function(){ this.wapp.showPage(options.page); });
               waitDlg(false); 
             }
           );
@@ -1479,6 +1480,7 @@ RIPart.prototype.isConnected = function() {
  * @param {boolean} select autoriser la selection, default true
  */
 RIPart.prototype.showFormulaire = function(grem, select) {
+  
   if (grem==='gps') {
     grem = false;
     $(this.formElement).parent().addClass('gps');
@@ -1486,7 +1488,9 @@ RIPart.prototype.showFormulaire = function(grem, select) {
     $(this.formElement).parent().removeClass('gps');
   }
   // Show the chek in the menu
-  setTimeout(function(){ showActionBt('fiche') });
+  setTimeout(function(){ 
+    showActionBt('fiche');
+  });
 
   var self = this;
   this.selectOverlay.getSource().clear();
@@ -1582,6 +1586,14 @@ RIPart.prototype.showFormulaire = function(grem, select) {
   this.geolocation.setTracking (true);
   this.hasLocation = false;
   $('body').removeClass("trackingGeorem fullscreenMap");
+
+  // Start with tracking on (if not fullscreen and movePosition enabled)
+  const parent = this.formElement.parent().parent();
+  if (parent.outerHeight() < $(window).height() -1
+  || parent.outerWidth() < $(window).width() -1) {
+    var moveBt = $('.formulaire .movePosition', this.formElement);
+    if (moveBt.is(':visible')) moveBt.click();
+  }
 };
 
 
@@ -1843,7 +1855,7 @@ RIPart.prototype.addFeature = function(features) {
     }
   }
   this.selectInteraction.getFeatures().clear();
-  $(".addfeatures .nb", this.formElement).text(this.selectOverlay.getSource().getFeatures().length);
+  $(".croquis .nb", this.formElement).text(this.selectOverlay.getSource().getFeatures().length);
   return result;
 };
 
