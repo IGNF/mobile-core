@@ -136,6 +136,7 @@ CacheVector.prototype.getCurrentGuichet = function() {
  */
 CacheVector.prototype.showList = function() {
 console.warn('[DEPRECATED] showlist')
+/*
 return;
   var ul = $('.offline ul.cartes', this.page);
   var tmp = $('[data-role="template"]', ul);
@@ -192,6 +193,7 @@ return;
       );
     }
   });
+  */
 };
 
 /**
@@ -259,7 +261,10 @@ CacheVector.prototype.saveLayer = function(layers, cache, toload) {
     }
   } else {
     // Recharger le cache
-    this.uploadLayers(cache, true, toload);
+    this.wapp.wait('Chargement...');
+    setTimeout(() => { 
+      this.uploadLayers(cache, true, toload); 
+    }, 300);
   }
 };
 
@@ -270,7 +275,9 @@ CacheVector.prototype.saveLayer = function(layers, cache, toload) {
 CacheVector.prototype.updateCache = function(cache) {
   console.warn('[CacheVector:updateCache] DEPRECATED')
   this.wapp.wait('Chargement...');
-  this.uploadLayers(cache, true);
+  setTimeout(() => { 
+    this.uploadLayers(cache, true); 
+  }, 300);
 };
 
 /**
@@ -296,7 +303,9 @@ CacheVector.prototype.uploadCache = function(update) {
   ol_extent_extend(cache.extent, ex);
   // Get upload list
   this.wapp.wait('Chargement...');
-  this.uploadLayers(cache, update);
+  setTimeout(() => { 
+    this.uploadLayers(cache, update); 
+  }, 300);
 };
 
 /**
@@ -556,7 +565,7 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
               self.uploadTiles(cache, tiles, pos, size, error);
               // Remove empty files
               CordovApp.File.info(fileName, (e) => {
-                if (e.size === 0) CordovFile.delFile(fileName);
+                if (e.size < 5) CordovFile.delFile(fileName);
               })
             },
             function() {
