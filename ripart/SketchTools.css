@@ -4,11 +4,22 @@
   background-color: rgba(255,255,255,.7)!important;
   z-index: 1;
 }
+.ol-overlaycontainer .ol-touch-cursor {
+    width: 64px;
+    height: 64px;
+    margin: 2px;
+}
 .ol-overlaycontainer .ol-touch-cursor .ol-button:before {
   font-size: 1.5em!important;
   font-family: "FontAwesome";
   line-height: normal!important;
   font-weight: normal!important;
+}
+.ol-overlaycontainer .ol-touch-cursor.active.disable .ol-button,
+.ol-overlaycontainer .ol-touch-cursor.nodrawing .ol-button.ol-button-x, 
+.ol-overlaycontainer .ol-touch-cursor.nodrawing .ol-button.ol-button-remove, 
+.ol-overlaycontainer .ol-touch-cursor.nodrawing .ol-button.ol-button-check {
+  opacity: .4;
 }
 .ol-touch-cursor.modify .ol-button.ol-button-x:after {
   content: none;

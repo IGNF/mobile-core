@@ -294,6 +294,7 @@ CacheVector.prototype.loadCache = function(cache, cancel) {
 
 /**
  * Charger l'emprise courante
+ * @param {boolean} update
  */
 CacheVector.prototype.uploadCache = function(update) {
   var cache = this.currentCache;
