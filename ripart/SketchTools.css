@@ -114,3 +114,8 @@
   content: "\e809";
   font-family: "tools";
 }
+
+.ol-overlaycontainer .ol-touch-cursor.active.ol-select .ol-button-cancel,
+.ol-overlaycontainer .ol-touch-cursor.active.ol-select .ol-button-add {
+  opacity: 1;
+}

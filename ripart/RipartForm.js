@@ -358,7 +358,10 @@ RIPart.prototype.initialize = function(options) {
     }
   });
   this.selectInteraction.setActive(false);
-  this.map.addInteraction(this.selectInteraction);
+  // No selection if has croquis button
+  if (!$('.formulaire .addCroquis button', formulaire).length) {
+    this.map.addInteraction(this.selectInteraction);
+  }
   this.selectInteraction.on('select', function (e){
     this.addFeature (e.selected[0]);
   }.bind(this));
@@ -369,6 +372,7 @@ RIPart.prototype.initialize = function(options) {
     this.selectInteraction.setActive(!this.drawInteraction.getActive());
   })
   $('.formulaire .addCroquis button', formulaire).click(() => {
+    if ($('body').hasClass('trackingGeorem')) this.cancelTracking();
     this.drawInteraction.setActive(!this.drawInteraction.getActive());
   });
 

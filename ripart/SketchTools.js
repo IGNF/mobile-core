@@ -7,6 +7,8 @@ import TouchCursor from 'ol-ext/interaction/TouchCursor'
 import TouchCursorSelect from 'ol-ext/interaction/TouchCursorSelect'
 import TouchCursorDraw from 'ol-ext/interaction/TouchCursorDraw'
 import TouchCursorModify from 'ol-ext/interaction/TouchCursorModify'
+import VectorWebpart from 'cordovapp/ol/layer/Webpart'
+import LayerWFS from 'cordovapp/ol/layer/WFS'
 
 /** TouchCursor interaction + ModifyFeature
  * @constructor
@@ -149,7 +151,9 @@ SketchTools.prototype.addTranslate = function(ripart) {
   // Translate
   var translate = this.tools.translate = new TouchCursorSelect({
     className: 'sketch translate',
-    layerFilter: (l) => { return l===ripart.selectOverlay }
+    layerFilter: (l) => { 
+      return l===ripart.selectOverlay;
+    }
   });
   translate.setActive(false);
   ripart.map.addInteraction(translate);
@@ -184,18 +188,43 @@ SketchTools.prototype.addTranslate = function(ripart) {
     }
   });
 
+  // Go back
   translate.addButton({
     className: 'ol-button-back', 
     click: () => {
       this.setActive(true, translate.getPosition());
     }
   });
+  // Add a new feature 
+  translate.addButton({
+    className: 'ol-button-add', 
+    click: () => {
+      var features = translate.getMap().getFeaturesAtPixel(translate.getPixel(), {
+        layerFilter: (l) => {
+          return l instanceof VectorWebpart || l instanceof LayerWFS;
+        },
+        hitTolerance: 5
+      });
+      if (features.length && !translate.getSelection()) {
+        translate.removeButton('ol-button-cancel');
+        var feature = ripart.addFeature(features[0]);
+        translate.addButton({
+          className: 'ol-button-cancel', 
+          click: () => {
+            ripart.addFeature(feature.added);
+            translate.removeButton('ol-button-cancel');
+          }
+        });
+      }
+    }
+  });
+  // Remove a feature from 
   translate.addButton({
     className: 'ol-button-trash', 
     click: () => {
-      translate.removeButton('ol-button-cancel');
       var selection = translate.getSelection();
       if (selection) {
+        translate.removeButton('ol-button-cancel');
         selection.setStyle();
         var feature = ripart.addFeature(selection);
         translate.addButton({
@@ -208,6 +237,7 @@ SketchTools.prototype.addTranslate = function(ripart) {
       }
     }
   });
+  // Translate feature
   translate.addButton({
     className: 'ol-button-translate', 
     on: {
