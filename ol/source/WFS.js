@@ -213,8 +213,7 @@ VectorWFS.prototype.loadCache = function(options) {
  */
 VectorWFS.prototype.saveCache = function(/*response, extent, resolution, tileCoord*/) {};
 
-/**
- * 
+/** Read WFS response
  * @param {*} response 
  * @param {*} projection 
  * @private
@@ -229,7 +228,8 @@ VectorWFS.prototype.handleResponse_ = function(response, projection) {
     default: {
       var format = new ol_format_WFS({ gmlFormat: new ol_format_GML3() });
       data = format.readFeatures(response);
-      if (data.length && !data[0].getGeometry() || !data[0].getGeometry().getFirstCoordinate.length) {
+      // No data try to load GML2 instead
+      if (data.length && (!data[0].getGeometry() || (data[0].getGeometry() && !data[0].getGeometry().getFirstCoordinate.length))) {
         format = new ol_format_WFS({ gmlFormat: new ol_format_GML2() });
         data = format.readFeatures(response);
       }

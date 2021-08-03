@@ -341,6 +341,7 @@ CacheVector.prototype.uploadLayers = function(cache, update, toload, layers) {
         this.uploadLayers(cache, update, toload, layers); 
       });
       wp.on("error", (e) => {
+        wapp.wait(false);
         this.wapp.alert ("Impossible de charger la couche <i>"
           +(wp.get('name')||wp.get('title'))
           +"</i>.<i class='error'><br/>"+e.status+" - "+e.error+"</i>");
@@ -482,7 +483,7 @@ CacheVector.prototype.getCacheFileName = function(cache, id_layer, tileCoord, nu
  * @param {number} size size to load
  * @param {number} error nb error
  */
-CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
+CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error, errorTiles) {
   var self = this;
   var i, t;
 //  this.wapp.wait('chargement', { pourcent:50 });
@@ -510,6 +511,7 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
     }
     pos = 0;
     error = 0;
+    errorTiles = [];
   } else {
     pos++;
     if (this.canceled) {
@@ -523,6 +525,16 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
   if (size>0) this.wapp.wait({ pourcent: Math.round(pos/size*100) });
 
   for (i=0; t=tiles[i]; i++) {
+    if (!errorTiles[i]) {
+      errorTiles.push({
+        id_layer: t.id_layer,
+        numrec: t.numrec,
+        source: t.source,
+        tiles: []
+      });
+    }
+    var tileError = errorTiles[i];
+    // Next tile
     if (t.tiles.length) {
       var tgrid = t.source.getTileGrid();
       var tcoord = t.tiles.pop();
@@ -539,7 +551,7 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
       var url = (t.source.proxy_ || t.source.featureType_.wfs) + p;
       // Destination
       var fileName = this.getCacheFileName(cache, t.id_layer, tcoord, t.numrec);
-/** /
+/* www * /
       console.log('url')
       if (t.numrec) {
         $.ajax({
@@ -563,7 +575,7 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
             fileName,
             function() {
               // Go on loading
-              self.uploadTiles(cache, tiles, pos, size, error);
+              self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
               // Remove empty files
               CordovApp.File.info(fileName, (e) => {
                 if (e.size < 5) CordovFile.delFile(fileName);
@@ -571,7 +583,8 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
             },
             function() {
               error++;
-              self.uploadTiles(cache, tiles, pos, size, error);
+              tileError.tiles.push(tcoord);
+              self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
             },{	
               headers: {
                 'Authorization': 'Basic '+ self.wapp.ripart.getHash()
@@ -581,25 +594,44 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error) {
         },
         function() {
           error++;
-          self.uploadTiles(cache, tiles, pos, size, error);
+          tileError.tiles.push(tcoord);
+          self.uploadTiles(cache, tiles, pos, size, error, uploadTiles);
         },
         true
       );
       return;
     }
   }
+  // Ended?
+  this.wapp.wait(false);
   // Alert on error
   if (error) {
-    this.wapp.alert(error+ ' / ' + size + ' fichier(s) en erreur...', 'Chargement');
+    // Try to load errorTiles
+    // this.wapp.alert(error+ ' / ' + size + ' fichier(s) en erreur...', 'Chargement');
+    wapp.message(error+ ' / ' + size + ' fichier(s) en erreur...', 
+      'Chargement',
+      { ok: 'Recommencer', cancel:'Annuler' }, 
+      (b) => {
+        if (b==='ok') {
+          // Restart
+          wapp.wait(null, {anim: false});
+          this.uploadTiles(cache, errorTiles);
+        } else {
+          // Reload Guichet
+          if (this.wapp.getIdGuichet() === cache.id_guichet) {
+            this.wapp.setGuichet(cache.id_guichet);
+          }
+        }
+      });
+      return;
   } else {
     this.wapp.message(size + ' fichier(s) chargé(s).', 'Chargement');
-  }
-  // Reload Guichet
-  if (this.wapp.getIdGuichet() === cache.id_guichet) {
-    this.wapp.setGuichet(cache.id_guichet);
+    // Reload Guichet
+    if (this.wapp.getIdGuichet() === cache.id_guichet) {
+      this.wapp.setGuichet(cache.id_guichet);
+    }
   }
   //getTileCoordExtent + getWFSParam
-  this.wapp.wait(false);
 };
 
 /**
