@@ -314,98 +314,128 @@ CacheVector.prototype.uploadCache = function(update) {
  * @param {*} cache  the cache
  * @param {boolean} update true to update layer, false to reload
  * @param {*} toload list of layer indice to load, default load all layers from cache
- * @param {*} layers list of layers that remains (private / internal / recursive)
  */
-CacheVector.prototype.uploadLayers = function(cache, update, toload, layers) {
+CacheVector.prototype.uploadLayers = function(cache, update, toload) {
   cache.date = (new Date()).toISODateString();
+  // Search for layers
+  const layers = [];
+  cache.layers.forEach((l, i) => {
+    // Reload all
+    if (!update) {
+      // remove cache dir
+      var dir = this.getCacheFileName(cache, i, null, true);
+      CordovApp.File.getDirectory(dir, function(entry){
+        if (entry.isDirectory) entry.removeRecursively();
+      });
+    }
+    // Handle numrec on update (save current numrec)
+    if (update) {
+      l.numrec0 = l.numrec;
+    }
+    delete l.numrec;
+    // Add new layer
+    var wp = this.wapp.layerWebpart(l);
+    layers.push(wp);
+    // Upload when ready
+    wp.on('ready', () => { 
+      this.uploadLayers2(cache, update, toload, layers); 
+    });
+    wp.on("error", (e) => {
+      wapp.wait(false);
+      this.wapp.alert ("Impossible de charger la couche <i>"
+        +(wp.get('name') || wp.get('title'))
+        +"</i>.<i class='error'><br/>"+e.status+" - "+e.error+"</i>");
+    });
+  });
+};
+
+/**
+ * Charger les layers du cache step 2
+ * @param {*} cache  the cache
+ * @param {boolean} update true to update layer, false to reload
+ * @param {*} toload list of layer indice to load, default load all layers from cache
+ * @param {*} layers list of layers that remains (private / internal / recursive)
+ * @private
+ */
+CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
   var i, l;
   var guichet = this.getCurrentGuichet();
-  // Search for layers
-  if (!layers) {
-    layers = [];
-    cache.layers.forEach((l, i) => {
-      // Reload all
-      if (!update) {
-        delete l.numrec;
-        // remove cache dir
-        var dir = this.getCacheFileName(cache, i, null, true);
-        CordovApp.File.getDirectory(dir, function(entry){
-          if (entry.isDirectory) entry.removeRecursively();
-        });
-      }
-      // Add new layer
-      var wp = this.wapp.layerWebpart(l);
-      layers.push(wp);
-      // Upload when ready
-      wp.on('ready', () => { 
-        this.uploadLayers(cache, update, toload, layers); 
-      });
-      wp.on("error", (e) => {
-        wapp.wait(false);
-        this.wapp.alert ("Impossible de charger la couche <i>"
-          +(wp.get('name')||wp.get('title'))
-          +"</i>.<i class='error'><br/>"+e.status+" - "+e.error+"</i>");
-      });
-    });
-  } else {
-    var ready = true;
+  var ready = true;
+  // Wait all sources ar loaded
+  for (i=0; l=layers[i]; i++) {
+    if (!l.getSource()) ready = false;
+  }
+  // Ready to load? (all layers have a source)
+  if (ready) {
+    // Check numrec
+    var hasNumrec = true;
+    var loading = false;
     for (i=0; l=layers[i]; i++) {
-      if (!l.getSource()) ready = false;
-    }
-    // Ready to load? (all layers have a source)
-    if (ready) {
-      // Check numrec
-      var hasNumrec = true;
-      var loading = false;
-      for (i=0; l=layers[i]; i++) {
-        if (!toload || toload.indexOf(i) >= 0) {
-          if (!cache.layers[i].hasOwnProperty('numrec')) {
-            hasNumrec = false;
-          } else {
-            loading = true;
-          }
+      if (!toload || toload.indexOf(i) >= 0) {
+        if (!cache.layers[i].hasOwnProperty('numrec')) {
+          hasNumrec = false;
+        } else {
+          loading = true;
         }
       }
-      // Ready to load: layer has numrec
-      if (!hasNumrec) {
-        // Still loading numrec on last sources
-        if (loading) return;
-        // Create layer cache
-        layers.forEach((l, i) => {
-          if (!toload || toload.indexOf(i) >= 0) {
-            var ft = cache.layers[i].featureType = l.getFeatureType();
-            cache.layers[i].date = (new Date()).toISODateString();
-            $.ajax({
-              url: ft.uri + '/max-numrec',
-              beforeSend: (xhr) => { 
-                xhr.setRequestHeader("Authorization", "Basic " + this.wapp.ripart.getHash()); 
-                xhr.setRequestHeader("Accept-Language", null);
-              },    
-              success: (result) => {
+    }
+    // Ready to load: some numrec are missing
+    if (!hasNumrec) {
+      // Still loading numrec on last sources (wait next call)
+      if (loading) return;
+      // Create layer cache
+      layers.forEach((l, i) => {
+        if (!toload || toload.indexOf(i) >= 0) {
+          var ft = cache.layers[i].featureType = l.getFeatureType();
+          cache.layers[i].date = (new Date()).toISODateString();
+          var param = l.getSource().getWFSParam(cache.extent, this.map.getView().getProjection());
+          $.ajax({
+            url: ft.uri + '/max-numrec?bbox=' + param.bbox,
+            beforeSend: (xhr) => { 
+              xhr.setRequestHeader("Authorization", "Basic " + this.wapp.ripart.getHash()); 
+              xhr.setRequestHeader("Accept-Language", null);
+            },    
+            success: (result) => {
+              if (update) {
+                // get current numrec 
+                cache.layers[i].numrec = cache.layers[i].numrec0;
+                delete cache.layers[i].numrec0;
+                cache.layers[i].numrec2 = result.numrec;
+              } else {
                 cache.layers[i].numrec = result.numrec;
-                this.uploadLayers(cache, update, toload, layers);
-                console.log('NUMREC', cache.layers[i].numrec)
-              },
-              error: (e) => {
-                if (e.status === 403 || e.status === 404) {
-                  cache.layers[i].numrec = false;
-                  this.uploadLayers(cache, update, toload, layers);
-                } else {
-                  wapp.wait(false);
-                  this.wapp.alert ("Impossible de charger la couche <i>"
-                    +(l.get('name')||l.get('title'))
-                    +"</i>.<i class='error'><br/>"+e.status+" - "+e.error+"</i>");
-                }
               }
-            })
-          }
-        });
-      } else {
-        // Ready to load
-        var tiles = [];
-        // calculate tiles to load
-        for (i=0; l=layers[i]; i++) {
-          if (!toload || toload.indexOf(i) >= 0) {
+              this.uploadLayers2(cache, update, toload, layers);
+              console.log('NUMREC', cache.layers[i].numrec)
+            },
+            error: (e) => {
+              if (e.status === 403 || e.status === 404) {
+                if (update) {
+                  // get current numrec 
+                  cache.layers[i].numrec = cache.layers[i].numrec0;
+                  delete cache.layers[i].numrec0;
+                  cache.layers[i].numrec2 = false;
+                } else {
+                  cache.layers[i].numrec = false;
+                }
+                this.uploadLayers2(cache, update, toload, layers);
+              } else {
+                wapp.wait(false);
+                this.wapp.alert ("Impossible de charger la couche <i>"
+                  +(l.get('name')||l.get('title'))
+                  +"</i>.<i class='error'><br/>"+e.status+" - "+e.error+"</i>");
+              }
+            }
+          })
+        }
+      });
+    } else {
+      // Ready to load (all layers have a numrec)
+      var tiles = [];
+      // calculate tiles to load
+      for (i=0; l=layers[i]; i++) {
+        if (!toload || toload.indexOf(i) >= 0) {
+          // load layer if no history or if updates (numrec > courrent numrec)
+          if (!cache.layers[i].numrec || cache.layers[i].numrec !== cache.layers[i].numrec2) {
             tiles.push ({
               id_layer: i,
               source: l.getSource(),
@@ -414,11 +444,11 @@ CacheVector.prototype.uploadLayers = function(cache, update, toload, layers) {
             })
           }
         }
-        // load tile
-        this.uploadTiles(cache, tiles);
-        this.wapp.saveParam();
-        if (guichet) this.showList();
       }
+      // load tile
+      this.uploadTiles(cache, tiles);
+      this.wapp.saveParam();
+      if (guichet) this.showList();
     }
   }
 };
@@ -595,7 +625,7 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error, err
         function() {
           error++;
           tileError.tiles.push(tcoord);
-          self.uploadTiles(cache, tiles, pos, size, error, uploadTiles);
+          self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
         },
         true
       );
