@@ -127,11 +127,6 @@ const CacheMap = function(wapp, layerGroup, options) {
   });
   $('.cancel', this.loadPage).click(cancelLoadMap);
 
-  /*
-console.warn('[DEPRECATED] cachemap page');
-  $('.addmap', this.page).click(function() { addCacheMap(); });
-  $('.savemap', this.page).click(saveCacheFile);
-*/
   /**
    * Show info
    */
@@ -434,10 +429,11 @@ console.warn('[DEPRECATED] cachemap page');
    * @param {number} nberr number of file not loaded
    */
   let cancelDownloadTiles = false;
-  function downloadTiles(t, layer, cback, nb, nberr) {
+  function downloadTiles(t, layer, cback, nb, nberr, terror) {
     if (nb===undefined) {
       nb = t.length;
       nberr = 0;
+      terror = [];
       cancelDownloadTiles = false;
     }
     if (cancelDownloadTiles) {
@@ -450,7 +446,7 @@ console.warn('[DEPRECATED] cachemap page');
         (b) => {
           if (b==='cancel') {
             cancelDownloadTiles = false;
-            downloadTiles(t, layer, cback, nb, nberr)
+            downloadTiles(t, layer, cback, nb, nberr, terror)
           }
         }
       );
@@ -458,8 +454,8 @@ console.warn('[DEPRECATED] cachemap page');
     }
 //    console.log('downloadTiles', nb, cancelDownloadTiles)
     var path = getPath()+layer+"/";
-    var e = t.pop();
-    if (e) {
+    var tile = t.pop();
+    if (tile) {
       var pos = (nb+nberr-t.length);
       wapp.wait("Chargement... "+pos+"/"+(nb+nberr), {
         pourcent: pos/(nb+nberr) * 100, 
@@ -479,21 +475,22 @@ console.warn('[DEPRECATED] cachemap page');
         }
       }
       // Download
-//			console.log("saving: "+path+e.id)
+//			console.log("saving: "+path+tile.id)
       CordovApp.File.dowloadFile (
-        decodeURIComponent(e.url), 
-        path+e.id, 
+        decodeURIComponent(tile.url), 
+        path + tile.id, 
         function() {
           // Suivant
-          downloadTiles(t, layer, cback, nb, nberr);
+          downloadTiles(t, layer, cback, nb, nberr, terror);
         }, 
         function() {
-          // console.log(e);
+          // console.log(tile);
           // Fichier non charge
           nb--;
           nberr++;
+          terror.push(tile);
           // Suivant
-          downloadTiles(t, layer, cback, nb, nberr);
+          downloadTiles(t, layer, cback, nb, nberr, terror);
         }, 
         options);
     } else {
@@ -501,13 +498,21 @@ console.warn('[DEPRECATED] cachemap page');
       if (nberr) {
         wapp.message(nb+" fichiers chargés.\n"
           +nberr+" fichier(s) en erreur ou hors zone...",
-          "Chargement", ["OK"]);
-          layerGroup.changed();
+          "Chargement", 
+          { reload: 'Recommencer', ok:'Terminer' },
+          (b) => {
+            if (b==='reload') {
+              downloadTiles(terror, layer, cback);
+            } else {
+              cback();
+            }
+          });
+        layerGroup.changed();
       } else {
         wapp.notification(nb+" fichiers chargés.");
         layerGroup.changed();
+        cback();
       }
-      cback();
     }
   }
 
