@@ -1545,8 +1545,9 @@ RIPart.prototype.showFormulaire = function(grem, select) {
   var valdef = false;
   var nbth = 0;
   for (var i=0; i<this.param.themes.length; i++) {
-    if (	this.wapp.param.options.igntheme 
-      || this.param.themes[i].id_groupe == this.param.profil.id_groupe
+    if (
+      $.isEmptyObject(this.param.profil)
+      || this.isThemeInProfileFilter(this.param.themes[i], this.param.profil)
       // Operation tourisme 2017
       // || this.param.themes[i].id_groupe == 140
     ) {
@@ -1600,6 +1601,22 @@ RIPart.prototype.showFormulaire = function(grem, select) {
   }
 };
 
+/**
+ * Vérifie qu'un theme est dans le profil utilisateur
+ * @param {Object} theme ex {"nom": "Parcelles, Cadastre", "id_groupe": 13, "global": true, "attributs": []}
+ * @param {Object} profil ex {"filtre": [{"group_id": 2, "themes": ["Test","mon thème","Parking vélo"]}], "groupe": "Groupe Test","status": "public", "comment": "Ceci est un test", "id_groupe": 2,"logo": "https://qlf-collaboratif.ign.fr/collaboratif-develop/document/image/95"}
+ * @return {boolean} true si le theme est dans le profil false sinon
+ */
+RIPart.prototype.isThemeInProfileFilter = function(theme, profil) 
+{
+  if (undefined == profil.filtre) {
+    return false;
+  }
+  for (var i in profil.filtre) {
+    if (theme.id_groupe == profil.filtre[i].group_id && profil.filtre[i].themes.indexOf(theme.nom) != -1) return true;
+  }
+  return false;
+}
 
 /** Selectionne un theme dans le formulaire
 * @param {string} th theme par defaut
