@@ -367,14 +367,14 @@ var RIPart = function(options) {
       r.groupes = [];
       resp.find("GEOGROUPE").each(function() {
         var att = $(this);
-        /*
+ 
         var filter;
         try {
           filter = JSON.parse(att.find("FILTER").first().text());
         } catch(e){ 
           filter = [] 
         }
-        */
+        
         var g = {
           nom: att.find("NOM").first().text(),
           desc: att.find("DESCRIPTION").first().text(),
@@ -383,11 +383,10 @@ var RIPart = function(options) {
           global: (att.find("STATUS").first().text() == "global"),
           status: att.find("STATUS").first().text(),
           active: !!att.find("ACTIVE").first().text(),
-          //filter: filter,
+          filter: filter,
           logo: att.find("LOGO").text(),
           offline: !!att.find("OFFLINE_ALLOWED").text(),
           lonlat: [ Number(att.find("LON").text()), Number(att.find("LAT").text()) ],
-          filter: att.find("FILTER").last().text(),
           layers:[]
         };
         r.offline = r.offline || g.offline;
