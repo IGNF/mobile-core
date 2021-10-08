@@ -1765,7 +1765,7 @@ RIPart.prototype.formulaireAttribut = function(valdef, prompt) {
               }
             })
             if (obligatoire) {
-              dialog.show(null, { anim: false });
+              dialog.replay();
               alertDlg('L\'attribut <b><i>"'+obligatoire+'"</i></b> est obligatoire.')
             } else {
               showInfo();
