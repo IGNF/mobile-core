@@ -256,60 +256,59 @@ ol_style_Webpart.loadSymbolCache = function() {
 ol_style_Webpart.getFeatureStyleFn = function(featureType, cache, options) {
   // Fonction de style
   if (!featureType) featureType = {};
-  if (featureType.name && ol_style_Webpart[featureType.name]) {
-    return ol_style_Webpart[featureType.name](featureType);
-  } else {
-    return function(feature) {
-      // Chargement du cache des images
-      ol_style_Webpart.loadSymbolCache();
-      // Conditionnal style
-      var style = featureType.style;
-      if (featureType.style && featureType.style.children) {
-        var p = feature.getProperties();
-        delete p.geometry;
-        for (var i=0, fi; fi=featureType.style.children[i]; i++) {
-          if (!fi.mongo || !fi.mongo.matches) {
-            fi.mongo = mongo.parse(fi.condition)
-          }
-          if (fi.mongo.matches(p)) {
-            style = fi;
-            break;
-          }
-        }
-      }
-      var fstyle = ol_style_Webpart.formatFeatureStyle (style, feature);
-      // Gestion d'une bibliotheque de symboles
-      if (style && style.name) {
-        if (featureType.symbo_attribute) {
-          fstyle.radius = 5;
-          fstyle.img = ol_style_Webpart.getSymbolURI(
-            featureType,
-            featureType.style.name+'/'+feature.get(featureType.symbo_attribute.name),
-            featureType.style.graphicWidth,
-            featureType.style.graphicHeight,
-            feature,
-            options
-          )
-        } else if (style.externalGraphic) {
-          fstyle.radius = 5;
-          fstyle.img = ol_style_Webpart.getSymbolURI(
-            featureType,
-            style.externalGraphic,
-            style.graphicWidth,
-            style.graphicHeight,
-            feature,
-            options
-          )
-        }
-      }
-      const olStyle = new ol_style_Style ({});
-      olStyle.setText(ol_style_Webpart.Text (fstyle));
-      //olStyle.setImage(ol_style_Webpart.Image (fstyle));
-      ol_style_Webpart.setImage(olStyle, fstyle, feature);
-      olStyle.setFill(ol_style_Webpart.Fill (fstyle));
-      olStyle.setStroke(ol_style_Webpart.Stroke (fstyle));
-      return olStyle;
+  return function(feature) {
+    // Chargement du cache des images
+    ol_style_Webpart.loadSymbolCache();
+    // Conditionnal style
+    var style = featureType.style;
+    if(!featureType.style && featureType.name && ol_style_Webpart[featureType.name]) {
+      return ol_style_Webpart[featureType.name](featureType)(feature);
     }
+    if (featureType.style && featureType.style.children) {
+      var p = feature.getProperties();
+      delete p.geometry;
+      for (var i=0, fi; fi=featureType.style.children[i]; i++) {
+        if (!fi.mongo || !fi.mongo.matches) {
+          fi.mongo = mongo.parse(fi.condition)
+        }
+        if (fi.mongo.matches(p)) {
+          style = fi;
+          break;
+        }
+      }
+    }
+    var fstyle = ol_style_Webpart.formatFeatureStyle (style, feature);
+    // Gestion d'une bibliotheque de symboles
+    if (style && style.name) {
+      if (featureType.symbo_attribute) {
+        fstyle.radius = 5;
+        fstyle.img = ol_style_Webpart.getSymbolURI(
+          featureType,
+          featureType.style.name+'/'+feature.get(featureType.symbo_attribute.name),
+          featureType.style.graphicWidth,
+          featureType.style.graphicHeight,
+          feature,
+          options
+        )
+      } else if (style.externalGraphic) {
+        fstyle.radius = 5;
+        fstyle.img = ol_style_Webpart.getSymbolURI(
+          featureType,
+          style.externalGraphic,
+          style.graphicWidth,
+          style.graphicHeight,
+          feature,
+          options
+        )
+      }
+    }
+    const olStyle = new ol_style_Style ({});
+    olStyle.setText(ol_style_Webpart.Text (fstyle));
+    //olStyle.setImage(ol_style_Webpart.Image (fstyle));
+    ol_style_Webpart.setImage(olStyle, fstyle, feature);
+    olStyle.setFill(ol_style_Webpart.Fill (fstyle));
+    olStyle.setStroke(ol_style_Webpart.Stroke (fstyle));
+    return olStyle;
   }
 };
 
