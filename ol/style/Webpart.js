@@ -46,16 +46,34 @@ ol_style_Webpart.formatFeatureStyle = function (fstyle, feature) {
   return fs;
 };
 
+/** Get stroke LineDash style from featureType.style
+ * @param {style}
+ * @return Array
+ */
+ ol_style_Webpart.StrokeLineDash = function (style) {
+  var width = Number(style.strokeWidth) || 2;
+  switch (style.strokeDashstyle) {
+      case 'dot': return [1,2*width];
+      case 'dash': return [2*width,2*width];
+      case 'dashdot': return [2*width, 4*width, 1, 4*width];
+      case 'longdash': return [4*width,2*width];
+      case 'longdashdot': return [4*width, 4*width, 1, 4*width];
+      default: return undefined;
+  }
+};
+
 /** Get stroke style from featureType.style
 *	@param {featureType.style | {color,width} | undefined}
 *	@return ol.style.Stroke
 */
 ol_style_Webpart.Stroke = function (fstyle) {
   if (fstyle.strokeOpacity===0) return;
+  let lineDash = this.StrokeLineDash(fstyle);
   var stroke = new ol_style_Stroke({
     color: fstyle.strokeColor || "#00f",
     width: Number(fstyle.strokeWidth) || 1,
-    lineDash: fstyle.dash ? [5,5] : undefined
+    lineDash: lineDash,
+    lineCap: fstyle.strokeLinecap || "round"
   });
   if (fstyle.strokeOpacity<1) {
     var a = ol_color_asArray(stroke.getColor());
