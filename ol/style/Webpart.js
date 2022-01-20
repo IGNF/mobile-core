@@ -4,6 +4,7 @@ import CordovApp from '../../CordovApp'
 import {asArray as ol_color_asArray} from 'ol/color'
 import ol_style_Circle from 'ol/style/Circle'
 import ol_style_Fill from 'ol/style/Fill'
+import ol_style_FillPattern from 'ol-ext/style/FillPattern'
 import ol_style_Icon from 'ol/style/Icon'
 import ol_style_RegularShape from 'ol/style/RegularShape'
 import ol_style_Stroke from 'ol/style/Stroke'
@@ -100,6 +101,14 @@ ol_style_Webpart.Fill = function (fstyle) {
       a[3] = Number(fstyle.fillOpacity);
       fill.setColor(a);
     }
+  }
+  if (fstyle.fillPattern) {
+    var fill = new ol_style_FillPattern({
+        fill: fill,
+        pattern: fstyle.fillPattern,
+        color: fstyle.patternColor,
+        angle: 45
+    });
   }
   return fill;
 };
