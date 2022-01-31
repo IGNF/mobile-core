@@ -337,6 +337,10 @@ CordovApp.prototype.dataAttributes = function (element, attr) {
               a = (d<0 ? -1 : 1) * d +'° '+m+'\' '+s.toFixed(1)+'" '+(d<0 ? neg[format] : pos[format]);
               break;
             }
+            case 'km' : {
+              a /= 1000;
+              break;
+            }
             default: break;
           }
         }
