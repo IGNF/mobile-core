@@ -404,7 +404,10 @@ RIPart.prototype.initialize = function(options) {
 RIPart.prototype.getIndice = function(grem){
   if (typeof(grem) != 'number'){
     for (var k=0; k<this.param.georems.length; k++){
-      if (this.param.georems[k].id === grem.id) {
+      if (
+        (grem.id && this.param.georems[k].id === grem.id)
+        || this.param.georems[k] == grem
+      ) {
         return k;
       }
     }

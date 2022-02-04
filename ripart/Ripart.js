@@ -401,7 +401,7 @@ var RIPart = function(options) {
             url: $(this).find("URL").text()
           };
           if (l.nom) {
-            if (l.type==="WMS") {
+            if (l.type==="WMS" || l.type === 'WMTS') {
               for (var k=0; k<l.extent.length; k++) l.extent[k] = Number(l.extent[k]);
               l.version = $(this).find("VERSION").text();
               l.layer = $(this).find("LAYER").text();

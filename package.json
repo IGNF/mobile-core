@@ -1,6 +1,6 @@
 {
   "name": "cordovapp",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Lib for Cordova+ol+RIPart",
   "main": "index.html",
   "directories": {},
