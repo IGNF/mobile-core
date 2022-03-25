@@ -6,7 +6,6 @@ import {extend as ol_extent_extend} from 'ol/extent'
 import ol_layer_Group from 'ol/layer/Group'
 import ol_layer_Vector from 'ol/layer/Vector'
 import ol_source_Vector from 'ol/source/Vector'
-import TileSource from 'ol/source/tile'
 
 /**
  * Classe pour la gestion du cache vecteur
@@ -58,6 +57,9 @@ CacheVector.prototype.getLayers = function(guichet, cache) {
   // Afficher le contour du cache
   function addPostcompose (l, extents) {
     l.on('postcompose', function(e){
+      if (typeof wapp.param.online != 'undefined' && wapp.param.online ) {
+        return;
+      }
       var canvas = document.createElement('canvas');
       canvas.width = e.context.canvas.width;
       canvas.height = e.context.canvas.height;
@@ -87,7 +89,7 @@ CacheVector.prototype.getLayers = function(guichet, cache) {
 
   for (var i=0, c; c = this.wapp.param.vectorCache[i]; i++) {
     if (c.id_guichet === guichet.id_groupe) {
-      var g = new ol_layer_Group({ 
+      var g = new ol_layer_Group({
         title: c.nom, 
         name: c.id_guichet+'-'+c.id, 
         vectorCache: c,
@@ -222,7 +224,7 @@ CacheVector.prototype.removeCache = function(cache) {
   }
 };
 
-/** Save modifications and update layers
+/** Save modifications and update cache data for layers
  * @param {Array<ol.layer.Vector>} 
  * @param {} cache
  * @param {Array<ol.l.Vector>} toload
@@ -293,21 +295,28 @@ CacheVector.prototype.loadCache = function(cache, cancel) {
 };
 
 /**
- * Charger l'emprise courante
+ * Charger les emprises donnees
+ * Charge l'emprise courante si non fournies
  * @param {boolean} update
+ * @param {Array<ol.extent>} extents
  */
-CacheVector.prototype.uploadCache = function(update) {
+CacheVector.prototype.uploadCache = function(update, extents) {
   var cache = this.currentCache;
   // Add current extent
-  var ex = this.map.getView().calculateExtent(this.map.getSize());
-  cache.extents.push(ex);
-  ol_extent_extend(cache.extent, ex);
+  if (!extents) extents = [this.map.getView().calculateExtent(this.map.getSize())];
+  cache.extents = [];
+  for (var i in extents) {
+    cache.extents.push(extents[i]);
+    ol_extent_extend(cache.extent, extents[i]);
+  }
+  
   // Get upload list
   this.wapp.wait('Chargement...');
   setTimeout(() => { 
     this.uploadLayers(cache, update); 
   }, 300);
 };
+
 
 /**
  * Charger les layers du cache

@@ -19,7 +19,7 @@ import {ol_geom_createFromType} from 'ol-ext/geom/GeomUtils'
 import ol_ext_inherits from 'ol-ext/util/ext'
 
 /** Need proj4js to load projections
-*/
+ */
 if (!proj4) throw ("PROJ4 is not defined!");
 
 /* Define projections
@@ -40,26 +40,29 @@ if (!proj4.defs["EPSG:EPSG:4471"]) proj4.defs("EPSG:4471","+proj=utm +zone=38 +s
 
 ol_proj_proj4_register(proj4);
 
+const editionCacheDir = 'FILE/layer-edition-cache/';
+
 /** VectorWebpart
- * @constructor
- * @extends {ol.source.Vector}
- * @trigger savestart, saveend, loadstart, loadend, overload
- * @param {olx.source.WebpartOptions} options
- *  @param {string} options.proxy proxy path, default none
- *  @param {string} options.username authentification
- *  @param {string} options.password authentification
- *  @param {integer} options.maxFeatures max number of feature to load before overload, default 5000
- *  @param {integer} options.maxReload max number of feature before reload (for tiled layers), default +Infinity
- *  @param {featureType} options.featureType
- *  @param {Object} options.filter Webpart filter, ie: {detruit:false}, default {}
- *  @param {string} options.outputFormat CSV or JSON
- *  @param {integer} options.tileZoom tile zoom for tiled layers (tile size are requested at tileZoom)
- *  @param {integer|undefined} options.tileSize size for tiles, default 256
- *  @param {ol.Collection} options.preserved collection of objects to preserve when reload
- *  @param {ol.Attribution} options.attribution source attribution
- *  @param {bool} options.wrapX
- * @returns {VectorWebpart}
- */
+* @constructor
+* @extends {ol.source.Vector}
+* @trigger savestart, saveend, loadstart, loadend, overload
+* @param {olx.source.WebpartOptions} options
+*  @param {string} options.proxy proxy path, default none
+*  @param {string} options.username authentification
+*  @param {string} options.password authentification
+*  @param {integer} options.maxFeatures max number of feature to load before overload, default 5000
+*  @param {integer} options.maxReload max number of feature before reload (for tiled layers), default +Infinity
+*  @param {featureType} options.featureType
+*  @param {Object} options.filter Webpart filter, ie: {detruit:false}, default {}
+*  @param {string} options.outputFormat CSV or JSON
+*  @param {integer} options.tileZoom tile zoom for tiled layers (tile size are requested at tileZoom)
+*  @param {integer|undefined} options.tileSize size for tiles, default 256
+*  @param {ol.Collection} options.preserved collection of objects to preserve when reload
+*  @param {ol.Attribution} options.attribution source attribution
+*  @param {bool} options.wrapX
+*  @param {bool} options.online default true : la source doit elle se charger en ligne
+* @returns {VectorWebpart}
+*/
 const VectorWebpart = function(opt_options) {
   var options = opt_options || {};
   
@@ -110,6 +113,7 @@ const VectorWebpart = function(opt_options) {
   }
 
   if (this.tiled_) this.maxReload_ = options.maxReload;
+  this.online = options.online || true;
 
   ol_source_Vector.call(this, {
     // Loader function => added when changes are loaded
@@ -127,6 +131,8 @@ const VectorWebpart = function(opt_options) {
   
   // Lecture en cache
   this._cacheUrl = options.cacheUrl;
+  this.editionCacheFile = editionCacheDir + CordovApp.File.fileName( this.featureType_.database +'-'+ this.featureType_.name + '-editions.txt');
+  
   this._formatWKT = new ol_format_WKT();
   
   // Collection of feature we want to preserve when reloaded
@@ -146,11 +152,15 @@ const VectorWebpart = function(opt_options) {
 
   // Read editions and load
   this.loadChanges()
+
+  if (!this._cacheUrl) {
+  this.setLoader(this.loaderFn_);
+}
 };
 ol_ext_inherits(VectorWebpart, ol_source_Vector);
 
 /** Editing states for vector features
-*/
+ */
 ol_Feature.State = {
   UNKNOWN: 'Unknown',
   INSERT: 'Insert',
@@ -159,15 +169,15 @@ ol_Feature.State = {
 };
 
 /** Get feature state
-* @return { ol.Feature.State }
-*/
+ * @return { ol.Feature.State }
+ */
 ol_Feature.prototype.getState = function() {
   return this.state_ || ol_Feature.State.UNKNOWN;
 };
 
 /** Set feature state
-* @param { ol.Feature.State }
-*/
+ * @param { ol.Feature.State }
+ */
 ol_Feature.prototype.setState = function(state) {
   this.state_ = state;
 };
@@ -184,7 +194,7 @@ ol_Feature.prototype.setUpdates = function(updates) {
 }
 
 /** Set an object property 
- */
+*/
 const olFeatureSet = ol_Feature.prototype.set;
 ol_Feature.prototype.set = function(key, val) {
   if (this.get(key) !== val) {
@@ -196,7 +206,7 @@ ol_Feature.prototype.set = function(key, val) {
 };
 
 /** Unset an object property
- */
+*/
 const olFeatureUnset = ol_Feature.prototype.unset;
 ol_Feature.prototype.unset = function(key) {
   olFeatureUnset.apply(this, arguments);
@@ -206,20 +216,20 @@ ol_Feature.prototype.unset = function(key) {
 };
 
 /** Get number of modif in the source
- */
+*/
 VectorWebpart.prototype.nbModifications = function() {
   return this.delete_.length + this.update_.length + this.insert_.length;
 };
 
 /** Load changes (differentiels) and read updates
- */
+*/
 VectorWebpart.prototype.loadDifferentiels = function() {
-  console.log('loaddiff')
   this.differentiel_ = [];
   if (!this._cacheUrl) {
     this.setLoader(this.loaderFn_);
     return;
   }
+  console.log('loaddiff')
   // Load differentiels
   var dirUrl = this._cacheUrl + 'diff';
   CordovApp.File.listDirectory(
@@ -258,13 +268,9 @@ VectorWebpart.prototype.loadDifferentiels = function() {
 };
 
 /** Read new features in a file
- */
+*/
 VectorWebpart.prototype.loadChanges = function() {
-  if (!this._cacheUrl) {
-    this.setLoader(this.loaderFn_);
-    return;
-  }
-  const url = this._cacheUrl + 'editions.txt';
+  const url = this.editionCacheFile;
   CordovApp.File.read(
     url, 
     // Success
@@ -309,11 +315,10 @@ VectorWebpart.prototype.loadChanges = function() {
 };
 
 /** Save new change in a cache file
- * 
- */
+* 
+*/
 VectorWebpart.prototype.writeChanges = function(force) {
   // Write in cache
-//  if (!this._cacheUrl) return;
   if (!this._writeUpdate) this._writeUpdate = 0;
   // Prevent many update at once
   if (!force) {
@@ -328,33 +333,38 @@ VectorWebpart.prototype.writeChanges = function(force) {
 
   var actions = this.getSaveActions(true);
 
-  if (!this._cacheUrl) return;
-  const url = this._cacheUrl + 'editions.txt';
-
-  CordovApp.File.write(
-    url, 
-    JSON.stringify(actions),
-    () => {},
-    () => { console.log('ERROR: writeChanges on layer...'); }
+  if (!this.editionCacheFile) return;
+  var self = this;
+  CordovFile.getDirectory(
+    editionCacheDir, 
+    function() {
+        CordovApp.File.write(
+          self.editionCacheFile, 
+          JSON.stringify(actions),
+          () => {},
+          () => { console.log('ERROR: writeChanges on layer...'); }
+    )},
+    () => { console.log('ERROR: writeChanges on layer...'); },
+    true
   );
 };
 
 /** Get layer's tile grid
-* @return { ol.tilegrid.TileGrid }
-*/
+ * @return { ol.tilegrid.TileGrid }
+ */
 VectorWebpart.prototype.getTileGrid = function() {
   return this._tileGrid;
 }
 
 /** Get the layer featureType
-* @return { featureType }
-*/
+ * @return { featureType }
+ */
 VectorWebpart.prototype.getFeatureType = function() {
   return this.featureType_;
 }
 
 /** Reset edition 
-*/
+ */
 VectorWebpart.prototype.reset = function() {
   this.insert_ = [];
   this.delete_ = [];
@@ -365,8 +375,8 @@ VectorWebpart.prototype.reset = function() {
 }
 
 /** Force source reload
-* @warning use this function instead of clear() to avoid delete events on reload
-*/
+ * @warning use this function instead of clear() to avoid delete events on reload
+ */
 VectorWebpart.prototype.reload = function() {
   this.isloading_ = true;
   this.un ('removefeature', this.onDeleteFeature_bind);
@@ -381,10 +391,10 @@ VectorWebpart.prototype.reload = function() {
 }
 
 /** Get an action
- * @param {ol.Feature} f
- * @param {boolean} full true to get full feature, default false
- * @return {*}
- */
+* @param {ol.Feature} f
+* @param {boolean} full true to get full feature, default false
+* @return {*}
+*/
 VectorWebpart.prototype.getFeatureAction = function(f, full) {
   const updates = f.getUpdates();
   const a = { feature: {}, state: f.getState(), typeName: this.featureType_.name };
@@ -423,9 +433,9 @@ VectorWebpart.prototype.getFeatureAction = function(f, full) {
 };
 
 /** Get save actions
- * @param {boolean} full true to get full feature, default false
- * @return list of save actions + number of features in each states
- */
+* @param {boolean} full true to get full feature, default false
+* @return list of save actions + number of features in each states
+*/
 VectorWebpart.prototype.getSaveActions = function(full) {
   var self = this;
   // var idName = this.featureType_.idName;
@@ -458,8 +468,8 @@ VectorWebpart.prototype.getSaveActions = function(full) {
 }
 
 /** Return all update features
- * @return { Array<ol.Feature> }
- */
+* @return { Array<ol.Feature> }
+*/
 VectorWebpart.prototype.getFeatureUpdate = function() {
   var updates = [];
   this.insert_.forEach((f) => { updates.push(f); });
@@ -468,9 +478,9 @@ VectorWebpart.prototype.getFeatureUpdate = function() {
 };
 
 /** Remove a feature from updates
- * @param {ol.Feature} feature
- * @return {boolean}
- */
+* @param {ol.Feature} feature
+* @return {boolean}
+*/
 VectorWebpart.prototype.removeFeatureUpdate = function(feature) {
   let index;
   index = this.insert_.indexOf(feature);
@@ -492,7 +502,7 @@ VectorWebpart.prototype.removeFeatureUpdate = function(feature) {
 };
 
 /** Save changes
-*/
+ */
 VectorWebpart.prototype.save = function(onSuccess, onError) {
   var self = this;
   var actions = this.getSaveActions().actions;
@@ -552,9 +562,9 @@ VectorWebpart.prototype.save = function(onSuccess, onError) {
 }
 
 /**
- * Triggered when a feature is added / update add actions
- * @param {type} e
- */
+* Triggered when a feature is added / update add actions
+* @param {type} e
+*/
 VectorWebpart.prototype.onAddFeature_ = function(e) {
   var f = e.feature;
   f.getGeometry().on('change', () => {
@@ -608,9 +618,9 @@ VectorWebpart.prototype.onDeleteFeature_ = function(e) {
 };
 
 /**
- * Triggered when a feature is updated / update update actions
- * @param {type} e
- */
+* Triggered when a feature is updated / update update actions
+* @param {type} e
+*/
 VectorWebpart.prototype.onUpdateFeature_ = function(e) {
   if (this.isloading_) return;
     
@@ -626,7 +636,7 @@ VectorWebpart.prototype.onUpdateFeature_ = function(e) {
 };
 
 /** Find a feature giving a fid
-*	@param {string} fid
+ *	@param {string} fid
 *	@param {Array<ol.feature>} an array to search in
 *	@return {ol.feature|null}
 */
@@ -642,9 +652,9 @@ VectorWebpart.prototype.findFeatureByFid = function(fid, features) {
 }
 
 /** Find preserved feature (updated, deleted or preserved)
-* @param {ol.Feature}
-* @private
-*/
+ * @param {ol.Feature}
+ * @private
+ */
 VectorWebpart.prototype.findFeature_ = function(f) {
   var idName = this.featureType_.idName;
   var fid = f.get(idName);
@@ -687,10 +697,10 @@ VectorWebpart.prototype.findFeature_ = function(f) {
 };
 
 /**
- * Parametres du WFS
- * @param {ol.extent} extent
- * @param {ol.projection} projection
- */
+* Parametres du WFS
+* @param {ol.extent} extent
+* @param {ol.projection} projection
+*/
 VectorWebpart.prototype.getWFSParam = function (extent, projection) {
   var bbox = ol_proj_transformExtent(extent, projection, this.srsName_);
   var bboxStr = bbox.join(',');
@@ -711,8 +721,8 @@ VectorWebpart.prototype.getWFSParam = function (extent, projection) {
 };
 
 /** Read features from file
- * @param {*} data
- */
+* @param {*} data
+*/
 VectorWebpart.prototype._readFeatures = function (data, projection) {
   projection = projection || 'EPSG:3857';
   let feature;
@@ -783,9 +793,9 @@ VectorWebpart.prototype._readFeatures = function (data, projection) {
 };
 
 /**
- * The loader function used to load features
- * @private
- */
+* The loader function used to load features
+* @private
+*/
 VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
   // if (resolution > this.maxResolution_) return;
   var self = this;
@@ -842,7 +852,7 @@ VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
   this.dispatchEvent({type:"loadstart", remains:++this.tileloading_ } );
 
   // Read in cache
-  if (this._cacheUrl) {
+  if (this._cacheUrl && !this.online) {
     var url = this._cacheUrl;
     var tgrid = this.getTileGrid();
     var tcoord = tgrid.getTileCoordForCoordAndResolution(ol_extent_getCenter(extent), resolution);
@@ -878,7 +888,7 @@ VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
 };
 
 /** Gestion des documents
-*	@param {number} document ID
+ *	@param {number} document ID
 *	@return {url} 
 */
 VectorWebpart.prototype.getDocumentUrl = function (id) {
@@ -886,7 +896,7 @@ VectorWebpart.prototype.getDocumentUrl = function (id) {
 }
 
 /** Gestion des documents
-*	@param {number} document ID
+ *	@param {number} document ID
 *	@param {function} callback
 */
 VectorWebpart.prototype.getDocument = function (id, cback) {
@@ -910,9 +920,9 @@ VectorWebpart.prototype.getDocument = function (id, cback) {
 
 
 /** Gestion des documents
- * @param {File}
- * @param {function} callback
- */
+* @param {File}
+* @param {function} callback
+*/
 VectorWebpart.prototype.addDocument = function (file, cback) {
   var data = new FormData();
   data.append('fileToUpload', file);
@@ -932,9 +942,9 @@ VectorWebpart.prototype.addDocument = function (file, cback) {
 }
 
 /** Gestion des documents
- * @param {number} document id
- * @param {function} callback
- */
+* @param {number} document id
+* @param {function} callback
+*/
 VectorWebpart.prototype.deleteDocument = function (id, cback) {
   $.ajax({
     url: this.featureType_.docURI+"delete/"+id,
@@ -948,3 +958,4 @@ VectorWebpart.prototype.deleteDocument = function (id, cback) {
 }
 
 export default VectorWebpart
+ 

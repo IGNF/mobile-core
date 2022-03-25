@@ -18,7 +18,7 @@ import ol_style_Webpart from '../style/Webpart'
  *  @param {string} options.url service url url
  *  @param {string} options.username
  *  @param {string} options.password
- * @param {*} source_options
+ *  @param {*} source_options
  *  @param {string} source_options.cacheUrl
  * @returns {ol.source.Vector.Webpart}
  */
@@ -38,11 +38,12 @@ const VectorWebpart = function(options, source_options) {
   this.set('name', options.database+':'+options.name);
   if (options.cacheUrl) {
     source_options.cacheUrl = options.cacheUrl;
+    source_options.online = false;
     this.set('cache', true);
     this.createSource(options, source_options, options.featureType);
     // this.setZIndex(options.featureType.position);
   } else {
-    const url = this.url_+this.database_+'/feature-type/'+this.name_+'.json';
+    const url = this.url_ + this.database_ + '/feature-type/'+this.name_+'.json';
     $.ajax({
       url: (this.proxy_ || url ),
       dataType: 'json', 
@@ -71,9 +72,9 @@ const VectorWebpart = function(options, source_options) {
 ol_ext_inherits(VectorWebpart, ol_layer_Vector);
 
 /**
- * Creat the layer source when loaded
+ * Create the layer source when loaded
  * @param {*} source_options 
- * @param {*} featureType 
+ * @param {*} featureType
  */
 VectorWebpart.prototype.createSource = function(options, source_options, featureType) {
   source_options.proxy = this.proxy_;
@@ -136,6 +137,15 @@ VectorWebpart.prototype.createSource = function(options, source_options, feature
  */
 VectorWebpart.prototype.isReady = function() {
   return (this.getSource() && this.getSource().featureType_);
+}
+
+/**
+ * Switch between online and offline mode (use cache)
+ * @param {bool} online if the app is online (default is true)
+ */
+VectorWebpart.prototype.online = function(online = true) {
+  this.getSource().online = online;
+  this.getSource().reload();
 }
 
 /** FeatureType of the layer

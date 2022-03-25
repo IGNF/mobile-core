@@ -394,6 +394,20 @@ const CacheMap = function(wapp, layerGroup, options) {
   }
   this.loadCacheMap = loadCacheMap; 
 
+  /**
+   * Setter carte courante
+   * @param {CacheMap} smap carte courante
+   */
+  function setCurrentMap(smap) {
+    if (wapp.ripart.param.offline) {
+      currentMap = smap;
+    }
+    else {
+      wapp.alert (_T('noOffline'), _T('offline'));
+    }
+  }
+  this.setCurrentMap = setCurrentMap;
+
   /* Mise a jour d'une carte
   *	@param {CacheMap} smap carte a charger
   */
@@ -559,14 +573,17 @@ const CacheMap = function(wapp, layerGroup, options) {
   }
 
   /* Dialogue de chargement d'une carte
+   * @param <ol.extent>
   */
-  function loadMapDlg() {
+  function loadMapDlg(extent) {
     var layerName = currentMap.layer||"GEOGRAPHICALGRIDSYSTEMS.MAPS";
     var layercache = new ol_layer_Geoportail(layerName, { hidpi: false, key: apiKey });
 
     var cache = new ol_cache_Tile (layercache, { authentication: authentication });
 
-    var extent = map.getView().calculateExtent(map.getSize());
+    if (!extent) {
+      extent = map.getView().calculateExtent(map.getSize());
+    }
 
     // Dialogue
     var content = CordovApp.template("dialog-loadmap");
@@ -635,6 +652,7 @@ const CacheMap = function(wapp, layerGroup, options) {
     content.addClass("loading");
     setTimeout (estimate,500);
   }
+  this.loadMapDlg = loadMapDlg;
 
   /* Annule le chargement de carte (ferme la page)
   */
