@@ -6,6 +6,7 @@ import {extend as ol_extent_extend} from 'ol/extent'
 import ol_layer_Group from 'ol/layer/Group'
 import ol_layer_Vector from 'ol/layer/Vector'
 import ol_source_Vector from 'ol/source/Vector'
+import CacheExtents from './CacheExtents'
 
 /**
  * Classe pour la gestion du cache vecteur
@@ -19,6 +20,7 @@ var CacheVector = function(wapp, options) {
   if (!options) options = {};
   this.wapp = wapp;
   this.map = wapp.map;
+  this.cacheExtents = new CacheExtents(wapp);
 
   if (!this.wapp.param.vectorCache) this.wapp.param.vectorCache = [];
 
@@ -54,39 +56,6 @@ CacheVector.prototype.getLayers = function(guichet, cache) {
   var layers = [];
   var self = this;
 
-  // Afficher le contour du cache
-  function addPostcompose (l, extents) {
-    l.on('postcompose', function(e){
-      if (typeof wapp.param.online != 'undefined' && wapp.param.online ) {
-        return;
-      }
-      var canvas = document.createElement('canvas');
-      canvas.width = e.context.canvas.width;
-      canvas.height = e.context.canvas.height;
-      var ctx = canvas.getContext('2d');
-      ctx.strokeStyle = 'rgb(255,0,0)';
-      ctx.lineWidth = Math.max(30, 1000 * e.frameState.pixelRatio / e.frameState.viewState.resolution);
-      ctx.scale(e.frameState.pixelRatio,e.frameState.pixelRatio);
-      var rects = [];
-      var k, extent, r;
-      ctx.beginPath();
-        for (k=0, extent; extent=extents[k]; k++) {
-          var p0 = self.map.getPixelFromCoordinate([extent[0], extent[1]]);
-          var p1 = self.map.getPixelFromCoordinate([extent[2], extent[3]]);
-          rects.push([p0[0],p0[1],p1[0]-p0[0],p1[1]-p0[1]]);
-          ctx.rect(p0[0],p0[1],p1[0]-p0[0],p1[1]-p0[1]);
-        }
-      ctx.stroke();
-      for (k=0, r; r=rects[k]; k++) {
-        ctx.clearRect(r[0],r[1],r[2],r[3]);
-      }
-      e.context.save();
-        e.context.globalAlpha = .1;
-        e.context.drawImage(canvas,0,0);
-      e.context.restore();
-    });
-  }
-
   for (var i=0, c; c = this.wapp.param.vectorCache[i]; i++) {
     if (c.id_guichet === guichet.id_groupe) {
       var g = new ol_layer_Group({
@@ -114,7 +83,6 @@ CacheVector.prototype.getLayers = function(guichet, cache) {
           displayInLayerSwitcher: false,
           source: new ol_source_Vector()
         });
-        addPostcompose(l, c.extents);
         g.getLayers().push(l);
       }
     }
@@ -224,6 +192,41 @@ CacheVector.prototype.removeCache = function(cache) {
   }
 };
 
+/**
+ * Delete cache for one layer
+ * @param {*} cache 
+ * @param ol.l.Vector layer layer to delete in cache
+ * @param function cbk
+ * @return {boolean} false if not deleted or not found true otherwise
+ */
+CacheVector.prototype.removeLayerCache = function(cache, layer, cbk) {
+  if (!layer) return false;
+  let layerId = false;
+  cache.layers.forEach((c, i) => {
+    if (c.featureType.database+':'+c.featureType.name == layer.get('name')) {
+      layerId = i;
+    }
+  });
+  if (false === layerId) {
+    if (cbk) cbk(false);
+    return;
+  }
+  if (cache.loaded) {
+    let dir = this.getCacheFileName(cache, layerId);
+    CordovApp.File.getDirectory(dir, function(entry){
+      if (entry.isDirectory) entry.removeRecursively();
+    });
+  }
+
+  layer.online(true);
+  
+  // Update
+  cache.layers.splice(layerId, 1);
+  this.wapp.saveParam();
+  if (cbk) cbk(true);
+
+}
+
 /** Save modifications and update cache data for layers
  * @param {Array<ol.layer.Vector>} 
  * @param {} cache
@@ -298,17 +301,17 @@ CacheVector.prototype.loadCache = function(cache, cancel) {
  * Charger les emprises donnees
  * Charge l'emprise courante si non fournies
  * @param {boolean} update
- * @param {Array<ol.extent>} extents
+ * @param {String} extent name
  */
-CacheVector.prototype.uploadCache = function(update, extents) {
+CacheVector.prototype.uploadCache = function(update, extentName) {
   var cache = this.currentCache;
   // Add current extent
-  if (!extents) extents = [this.map.getView().calculateExtent(this.map.getSize())];
-  cache.extents = [];
-  for (var i in extents) {
-    cache.extents.push(extents[i]);
-    ol_extent_extend(cache.extent, extents[i]);
+  if (!extentName) {
+    extentName = this.cacheExtents.add(null, [this.map.getView().calculateExtent(this.map.getSize())]);
   }
+  
+  cache.extents.push(extentName);
+  cache.extent = this.cacheExtents.getAllInOneExtent(cache.extents);
   
   // Get upload list
   this.wapp.wait('Chargement...');
@@ -316,7 +319,6 @@ CacheVector.prototype.uploadCache = function(update, extents) {
     this.uploadLayers(cache, update); 
   }, 300);
 };
-
 
 /**
  * Charger les layers du cache
@@ -458,6 +460,7 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
       this.uploadTiles(cache, tiles);
       this.wapp.saveParam();
       if (guichet) this.showList();
+      cache.loaded = true;
     }
   }
 };
@@ -470,7 +473,8 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
 CacheVector.prototype.calculateTiles = function(cache, l) {
   var tgrid = l.getSource().getTileGrid();
   var tiles = {};
-  for (var i=0, ex; ex=cache.extents[i]; i++){
+  let extents = this.cacheExtents.getAllExtents(cache.extents);
+  for (var i=0, ex; ex=extents[i]; i++){
     var p0 = [ex[0],ex[1]];
     var p1 = [ex[2],ex[3]];
     var t0 = tgrid.getTileCoordForCoordAndZ(p0,tgrid.getMinZoom());
@@ -703,7 +707,8 @@ CacheVector.prototype.addCache = function(name, layers) {
     layers: layers,
     date: (new Date()).toISODateString(),
     extent: ol_extent_createEmpty(),
-    extents: []
+    extents: [], // noms de CacheExtent
+    loaded: false
   }
   this.wapp.param.vectorCache.push (cache);
   this.wapp.saveParam();

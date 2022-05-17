@@ -13,11 +13,15 @@ class CacheExtents {
      * Ajoute une nouvelle zone
      * @param {String} name 
      * @param {Array<ol.extent>} extents 
+     * @return {String} name
      */
     add(name, extents) {
         if (!this.wapp.param.cacheExtents) this.wapp.param.cacheExtents = {};
+        let indice = Object.keys(this.wapp.param.cacheExtents).length;
+        if (!name) name = "Sans titre " + indice;
         this.wapp.param.cacheExtents[name] = extents;
         this.wapp.saveParam();
+        return name;
     }
 
     /**
@@ -125,28 +129,44 @@ class CacheExtents {
     }
 
     /**
-     * Tableau clé valeur des noms de zones avec la cle new en plus
+     * Tableau clé valeur des noms de zones
+     * @return {Array<String>} 
      */
-    getExtentNamesPlusNew() {
+    getExtentNames() {
         let names = this.getNames();
         let extentsNames = {};
         for (var i in names) {
             extentsNames[names[i]] = names[i];
         }
-        extentsNames["new"] = "Nouvelle..."
         return extentsNames;
     }
 
     /**
-     * recupere un seul extent incluant tous les autres
+     * Recupere un seul extent incluant tous les autres
+     * @param {String or Array<String>} names
+     * @return {ol.extent}
      */
-    getAllInOneExtent(name) {
+    getAllInOneExtent(names) {
         let extent = ol_extent_createEmpty();
-        let extents = this.get(name);
+        let extents = Array.isArray(names) ? this.getAllExtents(names) : this.get(names);
         for (let i in extents) {
             ol_extent_extend(extent, extents[i]);
         }
         return extent;
+    }
+
+    /**
+     * Recupere un tableau de tous les extents
+     * @param {Array<String>} names
+     * @return {Array<ol.extent>}
+     */
+    getAllExtents(names) {
+        if (!Array.isArray(names)) throw new Error("names parameter must be an array");
+        let extentsArr = [];
+        for (let i in names) {
+            extentsArr = extentsArr.concat(this.get(names[i])); 
+        }
+        return extentsArr;
     }
 }
 

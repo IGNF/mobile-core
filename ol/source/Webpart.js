@@ -113,7 +113,7 @@ const VectorWebpart = function(opt_options) {
   }
 
   if (this.tiled_) this.maxReload_ = options.maxReload;
-  this.online = options.online || true;
+  this.online = (options.online != undefined) ? options.online : true;
 
   ol_source_Vector.call(this, {
     // Loader function => added when changes are loaded

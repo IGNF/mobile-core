@@ -38,7 +38,7 @@ const VectorWebpart = function(options, source_options) {
   this.set('name', options.database+':'+options.name);
   if (options.cacheUrl) {
     source_options.cacheUrl = options.cacheUrl;
-    source_options.online = false;
+    source_options.online = (source_options.online != undefined) ? source_options.online : false;
     this.set('cache', true);
     this.createSource(options, source_options, options.featureType);
     // this.setZIndex(options.featureType.position);
@@ -144,6 +144,7 @@ VectorWebpart.prototype.isReady = function() {
  * @param {bool} online if the app is online (default is true)
  */
 VectorWebpart.prototype.online = function(online = true) {
+  if (!this.getSource()) return;
   this.getSource().online = online;
   this.getSource().reload();
 }
