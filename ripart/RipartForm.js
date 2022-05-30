@@ -706,6 +706,7 @@ RIPart.prototype.postLocalRem = function(i, options) {
             .appendTo(msg);
         }
         if (typeof(options.error)=='function') {
+          e.gremIndice = i;
           options.error(e, msg);
         } else {
           messageDlg ( msg, 
@@ -738,11 +739,12 @@ RIPart.prototype.postLocalRem = function(i, options) {
 };
 
 /** Nombre de georems en attente
+ * @param boolean countErrors compter les signalements en erreur
 */
-RIPart.prototype.countLocalRems = function() {
+RIPart.prototype.countLocalRems = function(countErrors = true) {
   var c = 0;
   for (var i=0; i<this.param.georems.length; i++) {
-    if (!this.param.georems[i].id) c++;
+    if (!this.param.georems[i].id && (countErrors || !this.param.georems[i].error)) c++;
   }
   return c;
 };
