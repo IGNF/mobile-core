@@ -19,6 +19,7 @@ class CacheExtents {
         if (!this.wapp.param.cacheExtents) this.wapp.param.cacheExtents = {};
         let indice = Object.keys(this.wapp.param.cacheExtents).length;
         if (!name) name = "Sans titre " + indice;
+        if (!Array.isArray(extents)) extents = [extents];
         this.wapp.param.cacheExtents[name] = extents;
         this.wapp.saveParam();
         return name;

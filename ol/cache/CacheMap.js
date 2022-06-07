@@ -6,6 +6,7 @@ import _T from '../../i18n'
 
 import CordovApp from '../../Cordovapp'
 import ol_cache_Tile from './CacheTile'
+import CacheExtents from './CacheExtents'
 import ol_layer_Geoportail from 'ol-ext/layer/Geoportail'
 import ol_layer_Vector from 'ol/layer/Vector'
 import ol_source_Vector from 'ol/source/Vector'
@@ -30,6 +31,10 @@ import {unByKey} from 'ol/Observable'
  *  @param {string} options.authentication authentication de la cle, default celle de la map
  */
 const CacheMap = function(wapp, layerGroup, options) {
+  this.cacheExtents = new CacheExtents(wapp);
+  this.silentErrors = false;
+  this.errors = {};
+
   var self = this;
 
   const map = wapp.map;
@@ -202,6 +207,7 @@ const CacheMap = function(wapp, layerGroup, options) {
     this.maxZoom = 15;
     this.extent = ol_extent_createEmpty();
     this.extents = [];
+    this.extentNames = [];
   };
 
   /* Recupere un liste des id-fichier de la carte
@@ -355,6 +361,9 @@ const CacheMap = function(wapp, layerGroup, options) {
 
     // Remove associated files
     removeCacheFiles (smap);
+
+    // Remove errors
+    delete self.errors[smap.id];
   }
   this.removeCacheMap = removeCacheMap;
 
@@ -414,6 +423,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   function refreshCacheMap (smap)	{	
     if (wapp.ripart.param.offline) {
       wapp.wait("Mise à jour...");
+      window.plugins.insomnia.keepAwake();
       setTimeout (function() {
         // Fichiers de la carte
         getCacheFiles (smap, function(list) {
@@ -425,6 +435,7 @@ const CacheMap = function(wapp, layerGroup, options) {
             smap.date = (new Date()).toISODateString();
             updateCacheMapInfo (smap);
             setLayerCache(smap);
+            window.plugins.insomnia.allowSleepAgain();
             wapp.wait(false);
           })
         });
@@ -446,9 +457,10 @@ const CacheMap = function(wapp, layerGroup, options) {
   function downloadTiles(t, layer, cback, nb, nberr, terror) {
     if (nb===undefined) {
       nb = t.length;
-      nberr = 0;
-      terror = [];
+      nberr = 1;
+      terror = [t[0]];
       cancelDownloadTiles = false;
+      window.plugins.insomnia.keepAwake();
     }
     if (cancelDownloadTiles) {
       wapp.wait(false);
@@ -461,6 +473,8 @@ const CacheMap = function(wapp, layerGroup, options) {
           if (b==='cancel') {
             cancelDownloadTiles = false;
             downloadTiles(t, layer, cback, nb, nberr, terror)
+          } else {
+            window.plugins.insomnia.allowSleepAgain();
           }
         }
       );
@@ -509,30 +523,49 @@ const CacheMap = function(wapp, layerGroup, options) {
         options);
     } else {
       wapp.wait(false);
+      window.plugins.insomnia.allowSleepAgain();
       if (nberr) {
-        wapp.message(nb+" fichiers chargés.\n"
-          +nberr+" fichier(s) en erreur ou hors zone...",
-          "Chargement", 
-          { reload: 'Recommencer', ok:'Terminer' },
-          (b) => {
-            if (b==='reload') {
-              downloadTiles(terror, layer, cback);
-            } else {
-              cback();
-            }
-          });
+        let message = nb+" fichiers chargés.\n"
+        +nberr+" fichier(s) en erreur ou hors zone...";
+        if (!self.silentErrors){
+          wapp.message(message,
+            "Chargement", 
+            { reload: 'Recommencer', ok:'Terminer' },
+            (b) => {
+              if (b==='reload') {
+                downloadTiles(terror, layer, cback);
+              } else if (typeof(cback) === "function") {
+                cback();
+              }
+            });
+        } else {
+          self.errors[currentMap.id] = {
+            "msg": message,
+            "tiles": terror
+          }
+          if (typeof(cback) === "function"){
+            cback();
+          }
+        }
+        
         layerGroup.changed();
       } else {
         wapp.notification(nb+" fichiers chargés.");
         layerGroup.changed();
-        cback();
+        if (typeof(cback) === "function"){
+          cback();
+        }
       }
     }
   }
 
   /* Chargement 
   */
-  function downloadMap(layercache, min, max, extent) {
+  function downloadMap(layercache, min, max, extent, cbk) {
+    if (typeof (layercache) === 'string') {
+      let layerName = layercache;
+      layercache = new ol_layer_Geoportail(layerName, { hidpi: false, key: apiKey });
+    }
     // Cache pour le chargement
     console.log("download")
     var cache = new ol_cache_Tile (layercache, { authentication: authentication });
@@ -550,9 +583,22 @@ const CacheMap = function(wapp, layerGroup, options) {
       currentMap.maxZoom = max;
       currentMap.layer = layercache.get("layer");
       if (!currentMap.extent) currentMap.extent = ol_extent_createEmpty();
-      currentMap.extent = ol_extent_extend (currentMap.extent, extent);
-      currentMap.extents.push (extent);
+      
+      if (typeof (extent) === 'string') {
+        let extentName = extent;
+        let extents = self.cacheExtents.get(extentName);
+        for (let i in extents) {
+          currentMap.extents.push(extents[i])
+          currentMap.extent = ol_extent_extend (currentMap.extent, extents[i]);
+        }
+        currentMap.extentNames.push(extentName);
+      } else {
+        currentMap.extents.push (extent);
+        currentMap.extent = ol_extent_extend (currentMap.extent, extent);
+      }
+      
       wapp.saveParam();
+      
       downloadTiles (t, layercache.get("layer"), function(){
         setLayerCache (currentMap);
         currentMap.date = (new Date()).toISODateString();
@@ -560,22 +606,28 @@ const CacheMap = function(wapp, layerGroup, options) {
         getCacheFiles (currentMap, function(l,n) {
           currentMap.length = n; 
           updateCacheMapInfo (currentMap);
+          if (typeof(cbk) === 'function') cbk();
         });
-      })
+      });
     });
     // Add a new tile
     cache.on("save", function(e) {
       t.push(e);
     });
 
+    let allInOneextent = extent;
+    if (typeof(extent) === "string") {
+      allInOneextent = self.cacheExtents.getAllInOneExtent(extent);
+    }
     // Start loading
-    cache.save(min, max, extent);
+    cache.save(min, max, allInOneextent);
   }
+  this.downloadMap = downloadMap;
 
   /* Dialogue de chargement d'une carte
-   * @param <ol.extent>
+   * @param <ol.extent> or string
   */
-  function loadMapDlg(extent) {
+  function loadMapDlg(extent, postponeDownload = false, cbk) {
     var layerName = currentMap.layer||"GEOGRAPHICALGRIDSYSTEMS.MAPS";
     var layercache = new ol_layer_Geoportail(layerName, { hidpi: false, key: apiKey });
 
@@ -609,11 +661,19 @@ const CacheMap = function(wapp, layerGroup, options) {
     
     wapp.dialog.show (content, {
       title: "Chargement...", 
-      buttons: { charger:"Charger...", cancel:"Annuler" },
+      buttons: { charger: (postponeDownload ? "Ok..." : "Charger..."), cancel:"Annuler" },
       callback: function(b) {
-        if (b=='charger') {
+        if (b=='charger' && !postponeDownload) {
           downloadMap (layercache, Number(min.val()), Number(max.val()), extent);
+        } else if (b=='charger') {
+          currentMap.pending = {
+            'layername': layerName,
+            'min': Number(min.val()),
+            'max': Number(max.val()),
+            'extent': extent
+          };
         }
+        if (typeof(cbk) === "function") cbk();
       }
     });
 
@@ -646,7 +706,11 @@ const CacheMap = function(wapp, layerGroup, options) {
       max.val(vmax);
       */
       setTimeout(function() {
-        cache.estimateSize (setSize, vmin, vmax, extent);
+        let allInOneextent = extent;
+        if (typeof(extent) === "string") {
+          allInOneextent = self.cacheExtents.getAllInOneExtent(extent);
+        }
+        cache.estimateSize (setSize, vmin, vmax, allInOneextent);
       }, 100);
     }
     content.addClass("loading");
@@ -708,6 +772,7 @@ const CacheMap = function(wapp, layerGroup, options) {
     }
     return null;
   }
+  this.getCacheMapById = getCacheMapById;
 
   /** Charger un fichier de cache */
   function loadCacheFile(name) {
@@ -879,6 +944,19 @@ const CacheMap = function(wapp, layerGroup, options) {
       { dir:true }
     );
   };
+
+  this.reloadErrorTiles = function(errorMap){
+    if (!errorMap) return;
+    self.setCurrentMap(errorMap);
+    self.silentErrors = false;
+    downloadTiles(self.errors[errorMap.id].tiles, errorMap.layer);
+    delete self.errors[errorMap.id];
+    var layercache = layerGroup.getLayers().getArray().find((l) => {
+      return l.get('name') === 'cache_'+errorMap.id;
+    });
+    layercache.changed();
+  };
+
 };
 
 export default CacheMap
