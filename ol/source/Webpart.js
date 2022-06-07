@@ -858,7 +858,7 @@ VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
     var tcoord = tgrid.getTileCoordForCoordAndResolution(ol_extent_getCenter(extent), resolution);
     url += tcoord.join('-');
     CordovApp.File.read(url, onSuccess, onError);
-  } else {
+  } else if (this.online) {
     // WFS parameters
     var parameters = this.getWFSParam(extent, projection);
 

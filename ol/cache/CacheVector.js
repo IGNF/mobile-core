@@ -217,8 +217,6 @@ CacheVector.prototype.removeLayerCache = function(cache, layer, cbk) {
       if (entry.isDirectory) entry.removeRecursively();
     });
   }
-
-  layer.online(true);
   
   // Update
   cache.layers.splice(layerId, 1);
@@ -309,10 +307,18 @@ CacheVector.prototype.uploadCache = function(update, extentName) {
   if (!extentName) {
     extentName = this.cacheExtents.add(null, [this.map.getView().calculateExtent(this.map.getSize())]);
   }
+
+  let extents = this.cacheExtents.get(extentName);
   
-  cache.extents.push(extentName);
-  cache.extent = this.cacheExtents.getAllInOneExtent(cache.extents);
+  cache.extentNames.push(extentName)
+  for (let i in extents) cache.extents.push(extents[i]);
   
+  let extent = ol_extent_createEmpty();
+  for (let i in cache.extents) {
+      ol_extent_extend(extent, cache.extents[i]);
+  }
+  cache.extent = extent;
+
   // Get upload list
   this.wapp.wait('Chargement...');
   setTimeout(() => { 
@@ -473,8 +479,7 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
 CacheVector.prototype.calculateTiles = function(cache, l) {
   var tgrid = l.getSource().getTileGrid();
   var tiles = {};
-  let extents = this.cacheExtents.getAllExtents(cache.extents);
-  for (var i=0, ex; ex=extents[i]; i++){
+  for (var i=0, ex; ex=cache.extents[i]; i++){
     var p0 = [ex[0],ex[1]];
     var p1 = [ex[2],ex[3]];
     var t0 = tgrid.getTileCoordForCoordAndZ(p0,tgrid.getMinZoom());
@@ -707,13 +712,12 @@ CacheVector.prototype.addCache = function(name, layers) {
     layers: layers,
     date: (new Date()).toISODateString(),
     extent: ol_extent_createEmpty(),
-    extents: [], // noms de CacheExtent
+    extents: [],
+    extentNames: [], // noms de CacheExtent
     loaded: false
   }
   this.wapp.param.vectorCache.push (cache);
   this.wapp.saveParam();
-  // Gestion de l'aide
-  this.wapp.help.show("guichet-hors-ligne");
 };
 
 /** Dialogue d'ajout de carte
