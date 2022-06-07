@@ -330,11 +330,13 @@ CordovApp.prototype.dataAttributes = function (element, attr) {
             }
             case "lon-dms":
             case "lat-dms": {
+              var minus = (a < 0);
+              if (minus) a = -a;
               var d = Math.floor (a);
               var minfloat = (a-d)*60;
               var m = Math.floor(minfloat);
               var s = (minfloat-m)*60;
-              a = (d<0 ? -1 : 1) * d +'° '+m+'\' '+s.toFixed(1)+'" '+(d<0 ? neg[format] : pos[format]);
+              a = d +'° '+m+'\' '+s.toFixed(5)+'" '+(minus ? neg[format] : pos[format]);
               break;
             }
             case 'km' : {
