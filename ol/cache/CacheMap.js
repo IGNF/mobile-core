@@ -457,8 +457,8 @@ const CacheMap = function(wapp, layerGroup, options) {
   function downloadTiles(t, layer, cback, nb, nberr, terror) {
     if (nb===undefined) {
       nb = t.length;
-      nberr = 1;
-      terror = [t[0]];
+      nberr = 0;
+      terror = [];
       cancelDownloadTiles = false;
       window.plugins.insomnia.keepAwake();
     }
