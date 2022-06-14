@@ -13,6 +13,8 @@ import CordovApp from './CordovApp'
  */
 CordovApp.File = {};
 
+const publicFolders = ["Documents", "Download", "DCIM", "Music", "Movies", "Pictures"];
+
 
 /** Test if a path refer to a local path
  * @memberof CordovApp.File
@@ -224,6 +226,11 @@ CordovApp.File.getDirectory = function (path, success, fail, create) {
         croot = lup[i][1];
         break;
       }
+    }
+    // https://github.com/apache/cordova-plugin-file/issues/408#issuecomment-1126059587
+    // from android 10, can't write on root of externalRootDirectory anymore
+    if ( croot == cordova.file.externalRootDirectory && publicFolders.indexOf(path.split('/')[0]) == -1) {
+      croot += "Documents/";
     }
     this.getDirectory (croot+path, success, fail, create);
   }
