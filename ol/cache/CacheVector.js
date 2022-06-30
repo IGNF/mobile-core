@@ -1,6 +1,6 @@
 /** @module ol/cache/CacheVector
  */
-import CordovApp from '../../Cordovapp'
+import CordovApp from '../../CordovApp'
 import {createEmpty as ol_extent_createEmpty} from 'ol/extent'
 import {extend as ol_extent_extend} from 'ol/extent'
 import ol_layer_Group from 'ol/layer/Group'

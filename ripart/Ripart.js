@@ -2,7 +2,7 @@
  */
 /* global wapp, FileUploadOptions, FileTransfer, FileTransferError */
 import * as CryptoJS from 'crypto-js';
-import CordovApp from '../Cordovapp'
+import CordovApp from '../CordovApp'
 import { wappStorage } from '../cordovapp/CordovApp'
 import ol_Feature from 'ol/Feature'
 import ol_geom_Point from 'ol/geom/Point'

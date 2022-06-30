@@ -1,4 +1,4 @@
-import './cordovapp/cordovapp.css'
+import './cordovapp/CordovApp.css'
 import './cordovapp/help.css'
 
 import CordovApp from './cordovapp/page'

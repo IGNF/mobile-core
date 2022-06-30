@@ -4,7 +4,7 @@
 /*eslint no-constant-condition: ["error", { "checkLoops": false }]*/
 import _T from '../../i18n'
 
-import CordovApp from '../../Cordovapp'
+import CordovApp from '../../CordovApp'
 import ol_cache_Tile from './CacheTile'
 import CacheExtents from './CacheExtents'
 import ol_layer_Geoportail from 'ol-ext/layer/Geoportail'
