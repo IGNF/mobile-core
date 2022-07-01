@@ -1,6 +1,6 @@
 ﻿/* global Camera */
 import _T from '../i18n'
-import CordovApp from '../Cordovapp'
+import CordovApp from '../CordovApp'
 import RIPart from './Ripart'
 import {help} from '../cordovapp/help'
 import {dialog} from '../cordovapp/dialog'
