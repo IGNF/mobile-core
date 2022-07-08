@@ -474,6 +474,7 @@ const CacheMap = function(wapp, layerGroup, options) {
             cancelDownloadTiles = false;
             downloadTiles(t, layer, cback, nb, nberr, terror)
           } else {
+            delete currentMap.pending;
             window.plugins.insomnia.allowSleepAgain();
           }
         }
