@@ -42,9 +42,9 @@ import 'ol-ext/style/FontAwesomeDef'
 
 /** @module ripart/RIPartForm
  * @description
- * Gestion de connexion avec l'espace collaboratif pour la remontee d'informations    
- * Gestion des dialogues dans l'application (connexion, formulaire de saisie d'une remontee)    
- * Connexion avec la carte et les elements de l'application    
+ * Gestion de connexion avec l'espace collaboratif pour la remontee d'informations
+ * Gestion des dialogues dans l'application (connexion, formulaire de saisie d'une remontee)
+ * Connexion avec la carte et les elements de l'application
 ````
                           +---------------------------+
                           |  RIPart:showFormulaire()  |
@@ -74,7 +74,7 @@ import 'ol-ext/style/FontAwesomeDef'
 _Arbre des appels_
 */
 
-/** 
+/**
   Creation du compte > enregistrer les actions
   @fire select, show, locate
   @param {} options
@@ -130,7 +130,7 @@ RIPart.prototype.initialize = function(options) {
 
   // Overlay
   this.overlay = new ol_layer_Vector({
-    source: new ol_source_Vector({ features: new ol_Collection() }), 
+    source: new ol_source_Vector({ features: new ol_Collection() }),
     visible: false,
     style: [
       new ol_style_Style({
@@ -166,11 +166,11 @@ RIPart.prototype.initialize = function(options) {
     const defineStyle = function() {
       // Style
       var symb = {
-        glyph: "fa-circle", 
-        form: "marker", 
+        glyph: "fa-circle",
+        form: "marker",
         fontSize: 0.6,
-        fill: new ol_style_Fill({ color:[255,255,255, 1] }), 
-        stroke: new ol_style_Stroke( { color: "#fff", width:2 } ), 
+        fill: new ol_style_Fill({ color:[255,255,255, 1] }),
+        stroke: new ol_style_Stroke( { color: "#fff", width:2 } ),
         radius: 18,
         offsetY: -18
       };
@@ -207,9 +207,9 @@ RIPart.prototype.initialize = function(options) {
         }),
       };
       for (var i in style) {
-        style[i]= [ 
+        style[i]= [
           new ol_style_Style({
-            image: new ol_style_Shadow( { radius:12 } ) 
+            image: new ol_style_Shadow( { radius:12 } )
           }),
           style[i] ];
       }
@@ -235,7 +235,7 @@ RIPart.prototype.initialize = function(options) {
     }
   });
   this.geolocation.on('change', function() {
-    this.hasLocation = true; 
+    this.hasLocation = true;
     this.dispatchEvent({
       type: 'locate',
       geolocation: this.geolocation,
@@ -354,7 +354,7 @@ RIPart.prototype.initialize = function(options) {
     filter: (f, l) => {
       if (f.layer === this.croquis) return true;
       if (f.get('georem') || (!f.layer && !l)) return false;
-      return true; 
+      return true;
     }
   });
   this.selectInteraction.setActive(false);
@@ -377,16 +377,16 @@ RIPart.prototype.initialize = function(options) {
   });
 
   // Enregistement d'une remontee
-  $('.formulaire .save', formulaire).click(function(){ 
-    self.saveFormulaire ($('.formulaire', formulaire)); 
+  $('.formulaire .save', formulaire).click(function(){
+    self.saveFormulaire ($('.formulaire', formulaire));
   });
   // Lancer un signalement GPS
-  $('.formulaire .gps', formulaire).click(function(){ 
-    self.saveFormulaire ($('.formulaire', formulaire), true); 
+  $('.formulaire .gps', formulaire).click(function(){
+    self.saveFormulaire ($('.formulaire', formulaire), true);
   });
   // Action buttons
-  $('.fa-check', getActionBt('fiche')).click(function() { 
-    self.saveFormulaire ($('.formulaire', formulaire)); 
+  $('.fa-check', getActionBt('fiche')).click(function() {
+    self.saveFormulaire ($('.formulaire', formulaire));
   });
   $('#fiche').on('showpage showonglet', function() {
     showActionBt('fiche', false);
@@ -464,8 +464,8 @@ RIPart.prototype.saveFormulaire = function(form, gps) {
 
   // Preformatage
   var georem =  {
-    lon: Number($("input.lon", form).val()), 
-    lat: Number($("input.lat", form).val()), 
+    lon: Number($("input.lon", form).val()),
+    lat: Number($("input.lat", form).val()),
     sketch: undefined,
     comment: $(".comment", form).val(),
     photo: $('.photo img', form).data('photo') || false
@@ -494,7 +494,7 @@ RIPart.prototype.saveFormulaire = function(form, gps) {
         if (attr[a.att]===undefined || attr[a.att]==='') {
           obligatoire = a.att;
         }
-      } 
+      }
     });
     if (obligatoire) {
       alertDlg('Vous devez renseigner l\'attribut <b><i>"'+obligatoire+'"</i></b> dans la liste des attributs.')
@@ -587,7 +587,7 @@ RIPart.prototype.saveLocalRem = function(georem, current, cback) {
   }
   // save photo
   if (georem.photo && georem.photo!=oldphoto) {
-    CordovApp.File.moveFile (georem.photo, "TMP/georem-"+indice+".jpg", 
+    CordovApp.File.moveFile (georem.photo, "TMP/georem-"+indice+".jpg",
       function(file) {
         georem.photo = file.toURL();
         self.saveParam();
@@ -637,8 +637,8 @@ RIPart.prototype.postLocalRems = function(options) {
       var grem = self.param.georems[i];
       if (!grem.id) {
         n++;
-        self.postLocalRem (i, { 
-          info: "Envoi des signalements ("+n+"/"+nb+")", 
+        self.postLocalRem (i, {
+          info: "Envoi des signalements ("+n+"/"+nb+")",
           cback: postNext,
           error: options.error,
           onPost: options.onPost
@@ -709,10 +709,10 @@ RIPart.prototype.postLocalRem = function(i, options) {
           e.gremIndice = i;
           options.error(e, msg);
         } else {
-          messageDlg ( msg, 
+          messageDlg ( msg,
             "Connexion", {
-              ok: "ok", 
-              connect: (e.status===401) ? "Se connecter...":undefined 
+              ok: "ok",
+              connect: (e.status===401) ? "Se connecter...":undefined
             },
             function(b) {
               if (b=="connect") self.connectDialog();
@@ -794,7 +794,7 @@ RIPart.prototype.updateLocalRems = function() {
 RIPart.prototype.updateLocalRem = function(i, options) {
   var self = this;
   if (!options) options = {};
-  
+
   // Chercher l'indice correspondant a une remontee
   i = this.getIndice(i);
 
@@ -807,8 +807,8 @@ RIPart.prototype.updateLocalRem = function(i, options) {
         messageDlg ("Impossible d'accéder au signalement."
               +"<i class='error'><br/>Erreur : "+e.status+" - "+e.statusText+"</i>",
             "Connexion", {
-              ok:"ok", 
-              connect: (e.status===401) ? "Se connecter...":undefined 
+              ok:"ok",
+              connect: (e.status===401) ? "Se connecter...":undefined
             },
             function(b) {
               if (b=="connect") self.connectDialog();
@@ -822,7 +822,7 @@ RIPart.prototype.updateLocalRem = function(i, options) {
           if (grem.photo) self.param.georems[i].photo = grem.photo;
           if (grem.responses) {
             self.param.georems[i].responses = grem.responses;
-            // Post linked responses 
+            // Post linked responses
             self.postLocalReps(self.param.georems[i], {
               all: true,
               cback: () => {}
@@ -849,12 +849,12 @@ RIPart.prototype.updateLocalRem = function(i, options) {
 RIPart.prototype.delLocalRems = function() {
   var self = this;
   selectDialog ({
-      send: 'Tous les signalements envoyés', 
+      send: 'Tous les signalements envoyés',
       rep: 'Les signalements ayant eu une réponse',
       close: 'Seulement les signalements clos',
       all: 'Tous les signalements'
-    }, 
-    "", 
+    },
+    "",
     function(v) {
       var mess;
       switch (v) {
@@ -867,7 +867,7 @@ RIPart.prototype.delLocalRems = function() {
         case 'all': mess = '<i class="fa fa-exclamation-triangle fa-2x fa-fleft"></i> Attentions, vous allez supprimer tous les signalements, y compris des signalements qui n\'ont pas encore été envoyé...';
           break;
       }
-      messageDlg (mess, 
+      messageDlg (mess,
         "Suppression", {
           ok: "confirmer",
           cancel: "annuler"
@@ -875,10 +875,10 @@ RIPart.prototype.delLocalRems = function() {
         function (b) {
           if (b=="ok") {
             var all = (v==='all');
-            var t = { 
-              submit:["submit"], 
-              pending:["pending","pending0","pending1","pending2"], 
-              close:["valid","valid0","reject","reject0","dump"] 
+            var t = {
+              submit:["submit"],
+              pending:["pending","pending0","pending1","pending2"],
+              close:["valid","valid0","reject","reject0","dump"]
             };
             t.rep = t.pending.concat(t.close);
             t.send = t.rep.concat(t.submit);
@@ -901,7 +901,7 @@ RIPart.prototype.delLocalRems = function() {
     }, {
       title: "Supprimer...",
       confirm: true
-    } 
+    }
   );
 };
 
@@ -948,7 +948,7 @@ RIPart.prototype.addLocalRep = function(georem, options) {
   });
   dialog.show ( tp, {
     title: 'Répondre au signalement : #' + georem.id,
-    classe: "responseRIPart", 
+    classe: "responseRIPart",
     buttons: { cancel:"Annuler", submit:"Enregistrer"},
     callback: (bt) => {
       const comment = $('textarea', tp).val();
@@ -962,7 +962,7 @@ RIPart.prototype.addLocalRep = function(georem, options) {
         if (!localRem) {
           this.param.georems.push(georem);
         }
-        // Add 
+        // Add
         if (!georem.responses) georem.responses = [];
         georem.responses.push({
           id: georem.id,
@@ -1278,8 +1278,7 @@ RIPart.prototype.connectDialog = function (options) {
 const deconnect = RIPart.prototype.deconnect;
 RIPart.prototype.deconnect = function() {
   deconnect.call(this);
-  $("img.logo").attr("");
-  // $("body").attr("data-logo", "none");
+  $("img.logo").attr("src","img/ign.png");
   $(".userinfo").html("Espace collaboratif");
   /*
   // Clear credentials
@@ -1328,7 +1327,7 @@ RIPart.prototype.checkUserInfo = function(success, fail, allways) {
     }
     return null;
   };
-  
+
   this.getUserInfo (function(rep, error) {
     var i, g;
     if (error) {
@@ -1392,7 +1391,7 @@ RIPart.prototype.checkUserInfo = function(success, fail, allways) {
   });
 };
 
-/** Mettre a jour le profil 
+/** Mettre a jour le profil
   * @param {} id_goupe identifiant du groupe
   */
 RIPart.prototype.setProfil = function(id_groupe) {
@@ -1427,10 +1426,12 @@ RIPart.prototype.setProfil = function(id_groupe) {
   this.getLogo(this.param.profil, function(logo) {
     var groupe = this.param.profil ? this.param.profil.groupe : "";
     $(".title", this.profilElement).text(groupe||"");
+    logo = this.param.profil && this.param.profil.logo ? this.param.profil.logo : logo ;
     $("img", this.profilElement).attr("src", CordovApp.File.getFileURI(logo) || "");
+
     // Show user info
     $("img.logo").attr("src", CordovApp.File.getFileURI(logo) || "img/ign.png");
-    //$("body").attr("data-logo", logo ? "":"none");
+ 
     var info = (groupe ? groupe+"<br/>": "")
       + (this.param.user || "Espace collaboratif");
     $(".userinfo").html(info);
@@ -1489,7 +1490,7 @@ RIPart.prototype.isConnected = function() {
  * @param {boolean} select autoriser la selection, default true
  */
 RIPart.prototype.showFormulaire = function(grem, select) {
-  
+
   if (grem==='gps') {
     grem = false;
     $(this.formElement).parent().addClass('gps');
@@ -1497,21 +1498,21 @@ RIPart.prototype.showFormulaire = function(grem, select) {
     $(this.formElement).parent().removeClass('gps');
   }
   // Show the chek in the menu
-  setTimeout(function(){ 
+  setTimeout(function(){
     showActionBt('fiche');
   });
 
   var self = this;
   this.selectOverlay.getSource().clear();
-  
-  // Callback 
+
+  // Callback
   if (this.onShow) {
     this.onShow(this.formElement, grem);
     console.error('[DEPRECATED] RIPart.onshow')
   }
-  this.dispatchEvent({ 
+  this.dispatchEvent({
     type: 'show',
-    form: this.formElement, 
+    form: this.formElement,
     georem: grem
   });
 
@@ -1542,7 +1543,7 @@ RIPart.prototype.showFormulaire = function(grem, select) {
   help.show("formulaire-signaler");
   this.formElement.addClass('formulaire');
   $('.formulaire .movePosition', this.formElement).removeClass("tracking");
-    
+
   // Gestion des themes
   var theme = $('[data-input="select"][data-param="theme"]', this.formElement);
   $('[data-input-role="option"]', theme).remove();
@@ -1612,7 +1613,7 @@ RIPart.prototype.showFormulaire = function(grem, select) {
  * @param {Object} profil ex {"filtre": [{"group_id": 2, "themes": ["Test","mon thème","Parking vélo"]}], "groupe": "Groupe Test","status": "public", "comment": "Ceci est un test", "id_groupe": 2,"logo": "https://qlf-collaboratif.ign.fr/collaboratif-develop/document/image/95"}
  * @return {boolean} true si le theme est dans le profil false sinon
  */
-RIPart.prototype.isThemeInProfileFilter = function(theme, profil) 
+RIPart.prototype.isThemeInProfileFilter = function(theme, profil)
 {
   if (undefined == profil.filtre) {
     return false;
@@ -1650,8 +1651,8 @@ RIPart.prototype.selectTheme = function(th, atts, prompt) {
       $(".attributes", this.formElement).show()
         .data('attributes', theme.attributs)
         .unbind("click")
-        .click(function(){ 
-          self.formulaireAttribut(); 
+        .click(function(){
+          self.formulaireAttribut();
         });
       this.formulaireAttribut(atts, prompt);
       this.formElement.removeClass('valid');
@@ -1659,7 +1660,7 @@ RIPart.prototype.selectTheme = function(th, atts, prompt) {
       // Theme seul ou pas de themes
       $(".attributes", this.formElement).hide();
       this.formElement.addClass('valid');
-    } 
+    }
   } else {
     this.formElement.addClass('valid');
   }
@@ -1843,7 +1844,7 @@ RIPart.prototype.photo = function(noFile) {
         }
       }
     },
-    null,	
+    null,
     {
       prompt: 'Ajouter une photo',
       message: this.messagePhoto,
@@ -1853,7 +1854,7 @@ RIPart.prototype.photo = function(noFile) {
       targetWidth: self.param.imgWidth || 1200,
       targetHeight: self.param.imgHeight || 1200,
       correctOrientation: (self.param.imgOrient!==false)
-    }, 
+    },
     (hasPhoto || !noFile) ? undefined : Camera.PictureSourceType.CAMERA
   );
 };
@@ -1914,14 +1915,14 @@ RIPart.prototype.dispatchEvent = function(event) {
   * @param {any} g le groupe
   * @param {function} cback callback fonction qui renvoie le nom du fichier
   */
-RIPart.prototype.getLogo = function (g, cback, scope) {	
+RIPart.prototype.getLogo = function (g, cback, scope) {
   CordovApp.File.getFile (
-    "TMP/logo/"+(g ? g.id_groupe : '_nologo_'), 
-    function(fileEntry) { 
-      cback.call(scope, CordovApp.File.getFileURI(fileEntry.toURL())); 
-    }, 
-    function() { 
-      cback.call(scope, g ? g.logo : null); 
+    "TMP/logo/"+(g ? g.id_groupe : '_nologo_'),
+    function(fileEntry) {
+      cback.call(scope, CordovApp.File.getFileURI(fileEntry.toURL()));
+    },
+    function() {
+      cback.call(scope, g ? g.logo : null);
     }
   );
 };
