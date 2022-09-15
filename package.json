@@ -18,7 +18,9 @@
     "url": "http://sd-redmine.ign.fr/projects/guichet_mobile"
   },
   "homepage": "http://gitlab.dockerforge.ign.fr/express/cordovapp",
-  "dependencies": {},
+  "dependencies": {
+    "collaboratif-client-api": "git+http://gitlab.dockerforge.ign.fr/collaboratif/collaboratif-client-api.git"
+  },
   "devDependencies": {
     "eslint": "^6.2.1",
     "ink-docstrap": "^1.3.2",

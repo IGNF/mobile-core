@@ -11,6 +11,7 @@ import ol_geom_Polygon from 'ol/geom/Polygon'
 import {transform as ol_proj_transform} from 'ol/proj'
 import ol_format_GeoJSON from 'ol/format/GeoJSON'
 import Feature from 'ol/Feature';
+import ApiClient from 'collaboratif-client-api';
 
 /** @class RIPart
  * Recuperation des signalements de l'espace collaboratif.
@@ -32,6 +33,7 @@ var RIPart = function(options) {
   var url = options.url || defaultUrl;
   var user, pwd;
   this.param = {};
+  this.apiClient = new ApiClient("collaboratif-test", "bff62e35-c36e-49ba-a1dc-0792a2237bd1");
 
   /** Changement de l'url du service
   * @param {String} u url du service
