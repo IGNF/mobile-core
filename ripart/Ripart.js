@@ -11,7 +11,7 @@ import ol_geom_Polygon from 'ol/geom/Polygon'
 import {transform as ol_proj_transform} from 'ol/proj'
 import ol_format_GeoJSON from 'ol/format/GeoJSON'
 import Feature from 'ol/Feature';
-import ApiClient from 'collaboratif-client-api';
+import {ApiClient} from 'collaboratif-client-api';
 
 /** @class RIPart
  * Recuperation des signalements de l'espace collaboratif.
@@ -23,6 +23,10 @@ import ApiClient from 'collaboratif-client-api';
  * 	@param {string} options.url url du service, default https://espacecollaboratif.ign.fr/api/
  * 	@param {string} options.user utilisateur du service
  * 	@param {string} options.pwd mot de passe de l'utilisateur
+ *  @param {string} options.authBaseUrl url de base pour l' authentification monauthurl/openidconnect
+ *  @param {string} options.apiBaseUrl url de l'api, default https://espacecollaboratif.ign.fr/gcms/api/
+ *  @param {string} options.clientId l'identifiant du client pour l authentification
+ *  @param {string} options.clientSecret le secret du client pour l authentification
  */
 var RIPart = function(options) {
   options = options || {};
@@ -31,9 +35,10 @@ var RIPart = function(options) {
   var defaultUrl = 'https://espacecollaboratif.ign.fr/api/'
   // Url du service
   var url = options.url || defaultUrl;
+  let apiBaseUrl = options.apiBaseUrl || 'https://espacecollaboratif.ign.fr/gcms/api/'
   var user, pwd;
   this.param = {};
-  this.apiClient = new ApiClient("collaboratif-test", "bff62e35-c36e-49ba-a1dc-0792a2237bd1");
+  this.apiClient = new ApiClient(options.authBaseUrl, apiBaseUrl, options.clientId, options.clientSecret);
 
   /** Changement de l'url du service
   * @param {String} u url du service
