@@ -1,7 +1,7 @@
 ﻿/** @module ripart/RIPart
  */
 /* global wapp, FileUploadOptions, FileTransfer, FileTransferError */
-import * as CryptoJS from 'crypto-js';
+var CryptoJS = require("crypto-js")
 import CordovApp from '../CordovApp'
 import { wappStorage } from '../cordovapp/CordovApp'
 import ol_Feature from 'ol/Feature'
@@ -65,7 +65,8 @@ var RIPart = function(options) {
   /** Changement d'utilisateur
   * @param {String} user user name
   * @param {String} password user pwd
-  * @param {boolean} crypt encrypted password or not
+  * @param {boolean} b true to get the password (crypted)
+  * @TODOAPI plus de gestion de l utilisateur a ce niveau
   */
   this.setUser = function(u, p, cryp) {
     if (user && user !== u) {
@@ -73,6 +74,7 @@ var RIPart = function(options) {
     }
     user = u;
     if (!p) return;
+    this.apiClient.setCredentials(u, p);
     // Pass
     this.param.user = u;
     if (cryp) {
@@ -83,7 +85,7 @@ var RIPart = function(options) {
       pwd = CryptoJS.AES.decrypt(p, secret).toString(CryptoJS.enc.Utf8);
     }
   };
-  this.setUser (options.user, options.pwd, true);
+  this.setUser (options.user, options.pwd);
 
   /** Get the user name or pass
    * @param {boolean} b true to get the password (crypted)
@@ -348,6 +350,14 @@ var RIPart = function(options) {
   * @param {function} callback function (response, error)
   */
   this.getUserInfo = function (cback) {
+    if (!this.apiClient.username) {
+      if (cback) cback(null, { error:true, status: 401, statusText: "Unauthorized" });
+      return false;
+    }
+    
+    this.apiClient.getUser().then( (response) => response.json()).then((data) => {
+      console.log(data);
+    });
     // Origine
     var serviceHost = this.getServiceUrl().replace(/(^https:\/\/[^/]*)(.*)/,'$1');
     // Decodage de la reponse
