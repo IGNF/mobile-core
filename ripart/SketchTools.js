@@ -16,8 +16,12 @@ import LayerWFS from 'cordovapp/ol/layer/WFS'
  * @fires change:type
  * @param {*} options Options
  */
-var SketchTools = function(ripart) {
+var SketchTools = function(ripart,geomTypes ) {
   ol_Object.call(this);
+
+  if (geomTypes=== undefined ) {
+     geomTypes = ['Point', 'LineString', 'Polygon'];
+  }
 
   this.tools = [];
 
@@ -34,7 +38,7 @@ var SketchTools = function(ripart) {
     }
   });
   // Draw tools
-  ['Point', 'LineString', 'Polygon'].forEach((t) => {
+  geomTypes.forEach((t) => {
     picker.addButton({
       className: 'ol-button-geom '+t,
       click: () => {
@@ -111,6 +115,7 @@ SketchTools.prototype.addDraw = function(ripart) {
           draw.removeButton('ol-button-cancel');
         }
       });
+     
     }
   });
   draw.on('change:type', (e) => {
