@@ -537,7 +537,8 @@ VectorWebpart.prototype.save = function(onSuccess, onError) {
     password: this.password,
     */
     beforeSend: (xhr) => { 
-      xhr.setRequestHeader("Authorization", "Basic " + btoa(this.username + ":" + this.password)); 
+      const str = Buffer.from(this.username + ":" + this.password,'binary' ).toString('base64');
+      xhr.setRequestHeader("Authorization", "Basic " +str); 
       xhr.setRequestHeader("Accept-Language", null);
     },
     success: function(wfs) {
@@ -877,7 +878,8 @@ VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
       password: this.password,
       */
       beforeSend: (xhr) => { 
-        xhr.setRequestHeader("Authorization", "Basic " + btoa(this.username + ":" + this.password)); 
+        const str = Buffer.from(this.username + ":" + this.password,'binary' ).toString('base64');
+        xhr.setRequestHeader("Authorization", "Basic " +str); 
         xhr.setRequestHeader("Accept-Language", null);
       },
       success: onSuccess,

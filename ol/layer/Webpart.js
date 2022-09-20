@@ -7,6 +7,8 @@ import ol_ext_inherits from 'ol-ext/util/ext'
 
 import ol_style_Webpart from '../style/Webpart'
 
+import { Buffer } from 'buffer'
+
 /** @class VectorWebpart
  * @constructor
  * @extends {ol.layer.Vector}
@@ -53,7 +55,8 @@ const VectorWebpart = function(options, source_options) {
       password: options.password,
       */
       beforeSend: (xhr) => { 
-        xhr.setRequestHeader("Authorization", "Basic " + btoa(options.username + ":" + options.password)); 
+        const str = Buffer.from(options.username + ":" + options.password,'binary' ).toString('base64');
+        xhr.setRequestHeader("Authorization", "Basic " +str); 
         xhr.setRequestHeader("Accept-Language", null);
       },    
       data: { url: this.proxy_ ? url : undefined },
