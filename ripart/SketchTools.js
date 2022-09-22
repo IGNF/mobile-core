@@ -97,6 +97,7 @@ SketchTools.prototype.getActive = function() {
   return b;
 };
 
+
 /** Add draw tool
  */
 SketchTools.prototype.addDraw = function(ripart) {
@@ -116,8 +117,11 @@ SketchTools.prototype.addDraw = function(ripart) {
         }
       });
      
+      this.addActionOnDrawend();
     }
   });
+ 
+
   draw.on('change:type', (e) => {
     draw.addButton({
       className: 'ol-button-back', 
@@ -129,6 +133,12 @@ SketchTools.prototype.addDraw = function(ripart) {
   draw.setType('LineString');
   ripart.map.addInteraction(draw);
 };
+
+
+SketchTools.prototype.addActionOnDrawend = function(){
+   console.log('drawend');
+}
+
 
 /** Add modify tool
  */
