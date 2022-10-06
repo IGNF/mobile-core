@@ -6,6 +6,7 @@ import ol_source_Vector_Webpart from '../source/Webpart'
 import ol_ext_inherits from 'ol-ext/util/ext'
 
 import ol_style_Webpart from '../style/Webpart'
+import CordovApp from '../../CordovApp'
 
 /** @class VectorWebpart
  * @constructor
@@ -37,7 +38,7 @@ const VectorWebpart = function(options, source_options) {
   ol_layer_Vector.call(this, options);
   this.set('name', options.database+':'+options.name);
   if (options.cacheUrl) {
-    source_options.cacheUrl = options.cacheUrl;
+    source_options.cacheUrl = CordovApp.File.getFileURI(options.cacheUrl) //options.cacheUrl;
     source_options.online = (source_options.online != undefined) ? source_options.online : false;
     this.set('cache', true);
     this.createSource(options, source_options, options.featureType);
@@ -126,7 +127,8 @@ VectorWebpart.prototype.createSource = function(options, source_options, feature
 
   // Style of the feature style
   if (!options.style && ol_style_Webpart) {
-    this.setStyle (ol_style_Webpart.getFeatureStyleFn(featureType, options.cacheUrl, source_options));
+    //this.setStyle (ol_style_Webpart.getFeatureStyleFn(featureType, options.cacheUrl, source_options));
+    this.setStyle (ol_style_Webpart.getFeatureStyleFn(featureType, CordovApp.File.getFileURI(options.cacheUrl), source_options));
   }
 
   this.dispatchEvent({ type:"ready", source: vectorSource });
