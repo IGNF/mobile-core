@@ -1,4 +1,4 @@
-﻿/** @module ol/style/Webpart 
+﻿/** @module ol/style/Webpart
  */
 import CordovApp from '../../CordovApp'
 import {asArray as ol_color_asArray} from 'ol/color'
@@ -15,7 +15,7 @@ import geoportailStyle from 'ol-ext/style/geoportailStyle'
 
 import mongo from 'mongo-parse'
 
-/** 
+/**
 * @namespace ol_style_Webpart
 */
 const ol_style_Webpart = {};
@@ -35,7 +35,7 @@ ol_style_Webpart.formatProperties = function (format, feature) {
 };
 
 /** Format Style with pattern ${attr}
-*	@param {style} 
+*	@param {style}
 *	@param {ol.Feature} feature width properties
 */
 ol_style_Webpart.formatFeatureStyle = function (fstyle, feature) {
@@ -162,7 +162,7 @@ ol_style_Webpart.setImage = function (olStyle, fstyle, feature) {
       x: [ 4, radius, 0, Math.PI/4 ]
     }
     switch (fstyle.graphicName) {
-      case "cross": 
+      case "cross":
       case "star":
       case "rectangle":
       case "square":
@@ -264,7 +264,7 @@ ol_style_Webpart.loadSymbolCache = function() {
   if (!this.symbolCache && window.cordova) {
     this.symbolCache = {}
     CordovApp.File.listDirectory(
-      'FILE/cache/symbols', 
+      'FILE/cache/symbols',
       function(entries){
         for (var i=0, e; e=entries[i]; i++) {
           ol_style_Webpart.symbolCache[e.name] = e.nativeURL;
@@ -345,7 +345,7 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache, options) {
  * @param {number} width
  * @param {number} height
  * @param {ol.Feature} feature
- * @param {object} options user name and password 
+ * @param {object} options user name and password
  */
 ol_style_Webpart.getSymbolURI = function (featureType, name, width, height, feature, options) {
   var img;
@@ -353,7 +353,7 @@ ol_style_Webpart.getSymbolURI = function (featureType, name, width, height, feat
 
   // Allready in cache
   if (this.symbolCache && this.symbolCache[cacheName]) {
-    img = this.symbolCache[cacheName];
+    img = CordovApp.File.getFileURI(this.symbolCache[cacheName]);
   } else {
     // Load Image from server
     img = featureType.uri.replace(/gcms\/.*/,"")
@@ -398,12 +398,12 @@ ol_style_Webpart.zombie = function() {
   }
 
   return function (feature) {
-    var fstyle = {						
+    var fstyle = {
       strokeColor: getColor(feature, 1),
       strokeWidth: 2,
       fillColor: getColor(feature, 0.5)
-    }	
-    return [	
+    }
+    return [
       new ol_style_Style ({
         text: ol_style_Webpart.Text (fstyle),
         image: ol_style_Webpart.Image (fstyle),
@@ -419,11 +419,11 @@ ol_style_Webpart.zombie = function() {
 ol_style_Webpart.detruit = function() {
   return function (feature) {
     if (!feature.get('detruit')) return [];
-    var fstyle = {						
+    var fstyle = {
       strokeWidth: 2,
       strokeColor: [255,0,0,0.5]
-    }	
-    return [	
+    }
+    return [
       new ol_style_Style ({
         text: ol_style_Webpart.Text (fstyle),
         image: ol_style_Webpart.Image (fstyle),
@@ -439,11 +439,11 @@ ol_style_Webpart.detruit = function() {
 ol_style_Webpart.vivant = function() {
   return function (feature) {
     if (feature.get('detruit')) return [];
-    var fstyle = {						
+    var fstyle = {
       strokeWidth: 2,
       strokeColor: [0,0,255,0.5]
-    }	
-    return [	
+    }
+    return [
       new ol_style_Style ({
         text: ol_style_Webpart.Text (fstyle),
         image: ol_style_Webpart.Image (fstyle),
@@ -461,7 +461,7 @@ ol_style_Webpart.combine = function(style) {
   if (!(style instanceof Array)) style = [style];
   return function(feature, res) {
     var s0 = [];
-    for (var i=0; i<style.length; i++){ 
+    for (var i=0; i<style.length; i++){
       var s = style[i](feature, res);
       for (var k=0; k<s.length; k++) s0.push(s[k]);
     }
@@ -486,20 +486,20 @@ ol_style_Webpart.troncon_de_route = function(options) {
     if (!feature.get('importance')) return "magenta";
     if (feature.get('position_par_rapport_au_sol') != "0") {
       switch(feature.get('importance')) {
-        case "1": return "#B11BB1"; 
-        case "2": return "#B11B1B"; 
-        case "3": return "#D97700"; 
-        case "4": return "#FFE100"; 
-        case "5": return "#CCCCCC"; 
+        case "1": return "#B11BB1";
+        case "2": return "#B11B1B";
+        case "3": return "#D97700";
+        case "4": return "#FFE100";
+        case "5": return "#CCCCCC";
         default: return "#D3D3D3";
       }
     } else {
       switch(feature.get('importance')) {
-        case "1": return "#FF00FF"; 
-        case "2": return "red"; 
-        case "3": return "#FFA500"; 
-        case "4": return "yellow"; 
-        case "5": return "white"; 
+        case "1": return "#FF00FF";
+        case "2": return "red";
+        case "3": return "#FFA500";
+        case "4": return "yellow";
+        case "5": return "white";
         default: return "#D3D3D3";
       }
     }
@@ -522,11 +522,11 @@ ol_style_Webpart.troncon_de_route = function(options) {
   }
 
   return function (feature) {
-    var fstyle = {						
+    var fstyle = {
       strokeColor: getColor(feature),
       strokeWidth: getWidth(feature)
-    }	
-    return [	
+    }
+    return [
       new ol_style_Style ({
         stroke: ol_style_Webpart.Stroke(fstyle),
         zIndex: getZindex(feature)-100
@@ -541,11 +541,11 @@ ol_style_Webpart.troncon_de_route = function(options) {
 */
 ol_style_Webpart.sens = function(options) {
   if (!options) options = {
-    attribute:'sens_de_circulation', 
+    attribute:'sens_de_circulation',
     glyph: '\u203A', // '>',
     size: "20px",
-    direct:'Sens direct', 
-    inverse:'Sens inverse' 
+    direct:'Sens direct',
+    inverse:'Sens inverse'
   };
 
   function fleche(sens) {
@@ -569,12 +569,12 @@ ol_style_Webpart.sens = function(options) {
   return function (feature) {
     var sens = feature.get(options.attribute)
     var fstyle = {
-      label: fleche (sens), 
-      fontWeight: "bold", 
-      fontSize: options.size, 
+      label: fleche (sens),
+      fontWeight: "bold",
+      fontSize: options.size,
       labelRotation: lrot(sens, feature.getGeometry())
     }
-    return [ 
+    return [
       new ol_style_Style ({
         text: ol_style_Webpart.Text (fstyle)
       })
@@ -587,7 +587,7 @@ ol_style_Webpart.sens = function(options) {
 */
 ol_style_Webpart.toponyme = function(options) {
   if (!options) options = {
-    attribute:'nom', 
+    attribute:'nom',
     size: "12px"
   };
   if (!options.minResolution) options.minResolution = 0;
@@ -596,11 +596,11 @@ ol_style_Webpart.toponyme = function(options) {
   return function (feature, res) {
     if (res > options.maxResolution || res < options.minResolution) return [];
     var fstyle = {
-      label: feature.get(options.attribute), 
-      fontWeight: options.weight, 
+      label: feature.get(options.attribute),
+      fontWeight: options.weight,
       fontSize: options.size
     }
-    return [	
+    return [
       new ol_style_Style ({
         text: ol_style_Webpart.Text (fstyle)
       })
@@ -609,7 +609,7 @@ ol_style_Webpart.toponyme = function(options) {
 };
 
 /** Affichage de la couche batiment
-*	@param {Object} symbol (affiche un symbole Fontawesome), color (couleur du symbol) 
+*	@param {Object} symbol (affiche un symbole Fontawesome), color (couleur du symbol)
 */
 ol_style_Webpart.batiment = function(options) {
   if (!options) options = {};
@@ -618,7 +618,7 @@ ol_style_Webpart.batiment = function(options) {
     switch (feature.get('nature')) {
       case "Industriel, agricole ou commercial": return [51, 102, 153,opacity];
       case "Remarquable": return [0,192,0,opacity];
-      default: 
+      default:
         switch ( feature.get('fonction') ) {
           case "Indifférenciée": return [128,128,128,opacity];
           case "Sportive": return [51,153,102,opacity];
@@ -638,7 +638,7 @@ ol_style_Webpart.batiment = function(options) {
       default: return null;
     }
   }
-  
+
   return function (feature) {
     if (feature.get('detruit')) return [];
     var fstyle = {
