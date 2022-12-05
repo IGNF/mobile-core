@@ -17,6 +17,7 @@ import ol_style_Circle from 'ol/style/Circle'
 import ol_style_Stroke from 'ol/style/Stroke'
 import ol_style_Fill from 'ol/style/Fill'
 import ol_style_Text from 'ol/style/Text'
+import WKT from 'ol/format/wkt';
 
 var radius = 8;
 const symbol = {
@@ -76,7 +77,7 @@ const cluster = [];
 // Gestion des styles
 const georemStyle = function(feature) {
   if (feature.get('ripart')) {
-    switch (feature.get('ripart').statut) {
+    switch (feature.get('ripart').status) {
       case 'submit': return symbol.submit;
       case 'reject': return symbol.reject;
       case 'valid': return symbol.valid;
@@ -101,6 +102,8 @@ const georemStyle = function(feature) {
 };
 
 /** Signalement source
+ * Attention! Interdire de trop dezoomer sur la layer utilisatrice 
+ * sinon énormément de requêtes vers l'api car les tuiles sont calculees au niveau de zoom 10
  * @constructor
  * @extends {ol.source.Vector}
  * @trigger loadstart, loadend, overload
@@ -118,8 +121,8 @@ const RIPartSource = function(options, cache) {
   this._ripart = options.ripart;
   this._cache = cache;
   this._tileGrid = ol_tilegrid_createXYZ({   
-    minZoom: 8, 
-    maxZoom: 8, 
+    minZoom: 10, 
+    maxZoom: 10, 
     tileSize: 512  
   });
 
@@ -140,32 +143,54 @@ const RIPartSource = function(options, cache) {
 ol_ext_inherits(RIPartSource, ol_source_Vector);
 
 /** Load georems from server
+ * @TODO vider les features au changement de groupe actif? ou gérer le cache avec un nom de groupe
  * @private
  */
 RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
+  var self = this;
+  let profil = this._ripart.getProfil();
+  if (!profil || !profil.community_id) {
+    return; //on ne charge les georems que pour le groupe actif
+  }
+  const loadCache = function (self) {
+    if (self._cache && self._cache.loadCache) {
+      self._cache.loadCache({
+        tileCoord: self._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution),
+        success: (result) => {
+          loadFeatures(JSON.parse(result));
+        }
+      });
+    }
+  };
   const loadFeatures = function (result) {
     if (!result || !result.length) return;
     const features = [];
+    let format = new WKT();
     result.forEach((r)=> {
-      const p = ol_proj_fromLonLat([r.lon, r.lat]);
-      const f = new ol_Feature(new ol_geom_Point(p));
+      const f = format.readFeature(r.geometry, {
+        dataProjection: 'EPSG:4326',
+        featureProjection: projection
+      });
       f.setProperties({ ripart: r });
       features.push(f);
     });
     this.addFeatures(features);
-    if (result.length === 500) {
+    if (result.length === 100) {
       this.dispatchEvent({ type: 'overload' });
     }
-    //console.log(this.getFeatures().length);
   }.bind(this);
 
   const extent = ol_proj_transformExtent(extent0, projection, 'EPSG:4326');
   this.dispatchEvent({ type: 'loadstart' });
-  this._ripart.getGeorems({
+  let params = {
     box: extent.join(','),
     status: ['submit', 'pending', 'pending0', 'pending1', 'pending2'],
-    limit: 500
-  }, (result) => {
+    limit: 100,
+    communities: [profil.community_id]
+  };
+
+  //@TODO http://gitlab.dockerforge.ign.fr/rpg/oukile_v2/blob/master/assets/js/oukile/saisie_controle/services/layer-service.js
+  this._ripart.apiClient.getReports(params).then((result) => {
     this.dispatchEvent({ type: 'loadend' });
     // Charger le resultat
     if (result) {
@@ -174,15 +199,10 @@ RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
       }
       loadFeatures(result);
     } else {
-      if (this._cache.loadCache) {
-        this._cache.loadCache({
-          tileCoord: this._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution),
-          success: (result) => {
-            loadFeatures(JSON.parse(result));
-          }
-        });
-      }
+      loadCache(self)
     }
+  }).catch((error) => {
+    loadCache(self);
   });
 };
 

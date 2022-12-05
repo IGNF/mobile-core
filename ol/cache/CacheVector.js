@@ -102,70 +102,6 @@ CacheVector.prototype.getCurrentGuichet = function() {
   return this.currentGuichet;
 };
 
-/** Afficher les cartes en cache
- */
-CacheVector.prototype.showList = function() {
-console.warn('[DEPRECATED] showlist')
-/*
-return;
-  var ul = $('.offline ul.cartes', this.page);
-  var tmp = $('[data-role="template"]', ul);
-  ul.html('').append(tmp);
-  if (!this.wapp.param.vectorCache) return;
-  var guichet = this.getCurrentGuichet();
-  // Cache list
-  this.wapp.param.vectorCache.forEach((cache) => {
-    if (cache.id_guichet !== guichet.id_groupe) return;
-    var li = $("<li>").html(tmp.html())
-      .data('cache', cache)
-      .appendTo(ul);
-    var ddate = new Date() - new Date(cache.date);
-    if (ddate > 15*24*60*60*1000) li.addClass('err');
-    else if (ddate > 7*24*60*60*1000) li.addClass('warn');
-    var layerName = '';
-    cache.layers.forEach((l) => {
-      layerName += (layerName ? ' - ':'') + l.nom;
-    });
-    $(".info .layer", li).text(layerName);
-    $(".info .date", li).text(cache.date);
-    // Input
-    $('input', li).val(cache.nom)
-      .on('change', () => {
-        cache.nom = this.value;
-      });
-    // Buttons
-    $('.fa-map-o', li).click(() => {
-      this.loadCache(cache);
-    });
-    $('.tools-locate', li).click(() => {
-      this.locateCache(cache);
-    });
-    $('.fa-refresh', li).click(() => {
-      this.updateCache(cache);
-    });
-    $('.fa-trash', li).click(() => {
-      this.removeCache(cache);
-    });
-
-    // Comptage des objets dans le cache
-    let nb = 0;
-    $('.nb', li).hide();
-    for (var k=0; k<cache.layers.length; k++) {
-      const url = this.getCacheFileName(cache,k) + '/editions.txt';
-      CordovApp.File.read(
-        url, 
-        // Success
-        (data) => { 
-          data = JSON.parse(data);
-          nb += data.Insert + data.Update + data.Delete;
-          $('.nb', li).html(nb).show();
-        }
-      );
-    }
-  });
-  */
-};
-
 /**
  * Supprimer le cache
  * @param {*} cache 
@@ -231,14 +167,14 @@ CacheVector.prototype.removeLayerCache = function(cache, layer, cbk) {
  * @param {Array<ol.l.Vector>} toload
  */
 CacheVector.prototype.saveLayer = function(layers, cache, toload) {
-  console.log('LOADING', cache, this.wapp.ripart.getGroupById(cache.id_guichet))
-  this.setCurrentGuichet(this.wapp.ripart.getGroupById(cache.id_guichet));
+  console.log('LOADING', cache, this.wapp.userManager.getGroupById(cache.id_guichet))
+  this.setCurrentGuichet(this.wapp.userManager.getGroupById(cache.id_guichet));
   const l = layers.pop();
   if (!toload) toload = [];
   if (l) {
     // Find the layer indice in the layercache
     cache.layers.forEach((c, i) => {
-      if (c.featureType.database+':'+c.featureType.name === l.get('name')) {
+      if (c.featureType.database+':'+c.table.name === l.get('name')) {
         toload.push(i);
       }
     });
@@ -399,11 +335,12 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
     // Ready to load: some numrec are missing
     if (!hasNumrec) {
       // Still loading numrec on last sources (wait next call)
+      //@TODO a revoir idem autre todo
       if (loading) return;
       // Create layer cache
       layers.forEach((l, i) => {
         if (!toload || toload.indexOf(i) >= 0) {
-          var ft = cache.layers[i].featureType = l.getFeatureType();
+          var ft = cache.layers[i].table = l.getFeatureType();
           cache.layers[i].date = (new Date()).toISODateString();
           var param = l.getSource().getWFSParam(cache.extent, this.map.getView().getProjection());
           $.ajax({
@@ -515,7 +452,7 @@ CacheVector.prototype.getCacheFileName = function(cache, id_layer, tileCoord, nu
               + '-'
               + l.url.replace(/.*databasename=([^&]*).*/,"$1") 
               + '-' 
-              + l.nom 
+              + l.table.name 
             );
   if (numrec) base += '/diff';
   if (!tileCoord) return dir+'/'+base;
@@ -599,26 +536,13 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error, err
       var url = (t.source.proxy_ || t.source.featureType_.wfs) + p;
       // Destination
       var fileName = this.getCacheFileName(cache, t.id_layer, tcoord, t.numrec);
-/* www * /
-      console.log('url')
-      if (t.numrec) {
-        $.ajax({
-          url:url,
-          success: function(e)  {
-            console.log(e)
-          },
-          beforeSend: (xhr) => { 
-            xhr.setRequestHeader("Authorization", "Basic " + this.wapp.ripart.getHash());
-            xhr.setRequestHeader("Accept-Language", null);
-          },    
-        })
-      }
-/**/
+
+      //@TODO a revoir le hash n existe plus dans ripart il faut passer par l api cliente
       // Create dir if not exist
       CordovApp.File.getDirectory(
         this.getCacheFileName(cache),
         () => {
-          CordovApp.File.dowloadFile(
+          CordovApp.File.downloadFile(
             url,
             fileName,
             function() {
@@ -728,10 +652,10 @@ CacheVector.prototype.addDialog = function(cback) {
   var content = CordovApp.template('dialog-guichet');
   var ul = $('ul.layerselect', content);
   for (var i=0, l; l = guichet.layers[i]; i++) {
-    if (l.type === 'WFS' && l.tilezoom) {
+    if (l.table && l.table.tile_zoom_level) {
       $("<li>").addClass('selected')
         .attr('data-input','')
-        .text(l.nom)
+        .text(l.table.title)
         .data('layer', l)
         .click(function(){
           var li = $(this).toggleClass('selected').addClass('active');

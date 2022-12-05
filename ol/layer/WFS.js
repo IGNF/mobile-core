@@ -21,13 +21,14 @@ import ol_source_Vector_WFS from '../source/WFS'
  * @trigger ready (when source is ready), error (connexion error)
  * @param {} options
  *  @param {function} authentication function to return authentication in a callback
+ *  @param {Object} geoservice l objet geoservice renvoye par le collaboratif
  * @returns {ol.source.Vector.WFS}
  */
 const VectorWFS = function(options, cache) {
   if (!options) options = {};
-  if (!options.mask) options.mask = {};
+  if (!options.geoservice.input_mask) options.mask = {};
   // ** OLD VERSION
-  if (!options.once && (options.minzoom || options.maxzoom)) console.error('[VectorWFS] Use minZoom or maxZoom')
+  if (!options.once && (options.geoservice.min_zoom || options.max_zoom)) console.error('[VectorWFS] Use minZoom or maxZoom')
   // **
   var self = this;
 //  var secret = "WFS Espace Collaboratif IGN";
@@ -37,18 +38,17 @@ const VectorWFS = function(options, cache) {
     return pwd; //CryptoJS.AES.encrypt(pwd, secret).toString();
   };
 
-  if (!options.url) return;
+  if (!options.geoservice.url) return;
   
-  var cachedir = options.url.replace(/^((http[s]?|ftp):\/)?\/?([^:/\s]+)((\/\w+)*\/)([\w\-.]+[^#?\s]+)(.*)?(#[\w-]+)?$/,"$3").replace(/\./g,'_');
+  var cachedir = options.geoservice.url.replace(/^((http[s]?|ftp):\/)?\/?([^:/\s]+)((\/\w+)*\/)([\w\-.]+[^#?\s]+)(.*)?(#[\w-]+)?$/,"$3").replace(/\./g,'_');
 	ol_layer_Vector.call(this, { 
-    title: options.title,
-    description: options.description,
-    visible: options.visible,
+    title: options.geoservice.title,
+    description: options.geoservice.description,
+    visible: options.visibility,
     opacity: options.opacity,
-    //renderMode: "image",
-    name: cachedir +':'+ options.typename,
-    style: options.style || new ol_style_Style_WFS(options.mask.attributes),
-    search : options.mask.searchAttribute,
+    name: cachedir +':'+ options.geoservice.layers,
+    style: options.style || new ol_style_Style_WFS(options.geoservice.input_mask.attributes),
+    search : options.geoservice.input_mask.searchAttribute,
     logo: options.logo
   });
 
@@ -58,7 +58,7 @@ const VectorWFS = function(options, cache) {
   function createSource() {
     var source = new ol_source_Vector_WFS(options, cache);
     source.featureType_ = {
-      attributes: options.mask.attributes
+      attributes: options.geoservice.input_mask.attributes
     }
     self.setSource( source );
     setTimeout (function() { self.dispatchEvent({ type:"ready", source: source })}, 100);
@@ -72,7 +72,7 @@ const VectorWFS = function(options, cache) {
   if (options.getCapabilities !== false) {
     var getCapabilities = function () {
       $.ajax({
-        url: options.url,
+        url: options.geoservice.url,
         /*
         username: options.username, // G.Site - gestion10
         password: options.password, // ? CryptoJS.AES.decrypt(options.password, secret).toString(CryptoJS.enc.Utf8) : undefined, 
@@ -132,12 +132,14 @@ const VectorWFS = function(options, cache) {
 
   // Zoom level
   var v = new ol_View();
-	if (options.maxZoom && options.maxZoom<20) {
-    v.setZoom(options.maxZoom);
+  let maxZoom = options.geoservice.max_zoom;
+  let minZoom = options.geoservice.min_zoom;
+	if (maxZoom && maxZoom<20) {
+    v.setZoom(maxZoom);
 		this.setMinResolution(v.getResolution());
 	}
-	if (options.minZoom) {
-    v.setZoom(options.minZoom);
+	if (minZoom) {
+    v.setZoom(minZoom);
 		this.setMaxResolution(v.getResolution());
   }
 };

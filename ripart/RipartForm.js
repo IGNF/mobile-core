@@ -1,7 +1,7 @@
 ﻿/* global Camera */
 import _T from '../i18n'
 import CordovApp from '../CordovApp'
-import RIPart from './Ripart'
+import RIPart from 'cordovapp/ripart/Ripart'
 import {help} from '../cordovapp/help'
 import {dialog} from '../cordovapp/dialog'
 import {selectDialog} from '../cordovapp/dialog'
@@ -80,7 +80,6 @@ _Arbre des appels_
   @param {} options
     @param {Cordowapp} options.wapp current webapp
     @param {ol.Map} options.map current map
-    @param {Element} options.infoElement element pour l'info de connexion, default '#options .connect [data-input-role="info"] span.info'
     @param {Element} options.formElement formulaire de saisie d'un signalements, default '#fiche2 [data-role="onglet-li"][data-list="signal"]'
     @param {Element} options.countElement compteur de signalements locaux, default '.georemsCount span'
     @param {Element} options.listElement ul pour l'affichage de la liste des signalements (doit contenir un template), default '#signalements [data-role="content"]'
@@ -102,7 +101,6 @@ RIPart.prototype.initialize = function(options) {
   this.messagePhoto = options.messagePhoto;
 
   // List
-  this.infoElement = $(options.infoElement);
   this.formElement = $(options.formElement);
   this.countElement = $(options.countElement);
   this.listElement = $(options.listElement);
@@ -124,9 +122,6 @@ RIPart.prototype.initialize = function(options) {
       img: e.target
     });
   });
-
-  // Recuperation de l'utilisateur
-  if (this.param.user) this.setUser (this.param.user, this.param.pwd);
 
   // Overlay
   this.overlay = new ol_layer_Vector({
@@ -482,7 +477,7 @@ RIPart.prototype.saveFormulaire = function(form, gps) {
     georem.themes = '"'+theme+'"=>"1"';
     georem.theme = selectInputText($('[data-input="select"][data-param="theme"]', this.formElement));
   }
-  georem.id_groupe = this.param.profil.id_groupe;
+  georem.community_id = this.param.profil.community_id;
 
   // Attributs
   var attr = $('.attributes', this.formElement).data("vals");
@@ -1090,24 +1085,12 @@ RIPart.prototype.getLocalReps = function(georem) {
  */
 RIPart.prototype.onUpdate = function() {
   var self = this;
-
   // Id connexion
-  if (this.isConnected()) {
-    this.infoElement
-      .html(this.param.user+" / &#x25cf;&#x25cf;&#x25cf;&#x25cf;&#x25cf;")
-      .parent().addClass("connected");
+  if (this.param.profil && this.param.profil.length) {
     this.formElement.addClass("connected");
   } else {
-    this.infoElement.parent().removeClass("connected");
     this.formElement.removeClass("connected");
   }
-
-  // Affichage des groupes
-  /*
-  var profil = this.param.profil || {};
-  $("img", this.profilElement).attr("src", profil.logo || "");
-  $(".title", this.profilElement).text(profil.name || "");
-  */
 
   // Gestion de la liste des remontees
   var c = this.countLocalRems();
@@ -1229,261 +1212,37 @@ RIPart.prototype.delCurrentRem = function() {
   this.delLocalRem (this.georemPage.data('grem'));
 }
 
-/** Dialog de connexion a l'espace collaboratif
-* @param {} options
-*	- onConnect {function} a function called when connected/deconnected
-*	- onShow {function} a function called when the dialog is shown
-*	- onQuit {function} a function called when the dialog is closed
-*	- onError {function} a function called when an error occures
-*/
-RIPart.prototype.connectDialog = function (options) {
-  var self = this;
-  options = options || {};
-  var tp = CordovApp.template('dialog-connectripart');
-  var nom = $(".nom",tp);
-  var pwd = $(".pwd",tp);
-  dialog.show ( tp, {
-    title:"Connexion", 
-      classe: "connect", 
-      buttons: { cancel:"Annuler", deconnect: "Déconnexion", submit:"Connexion"},
-      callback: function(bt) {
-        if (bt == "submit") {
-          waitDlg("Connexion au serveur...");
-          self.setUser (nom.val().trim(), pwd.val().trim(), true);
-          self.checkUserInfo ( 
-            options.onConnect, 
-            (typeof (options.onError) == "function") ? options.onError : null,
-            function() { 
-              if (options.page) setTimeout(function(){ this.wapp.showPage(options.page); });
-              waitDlg(false); 
-            }
-          );
-        } 
-        else if (bt=="deconnect") {
-          self.deconnect()
-          if (typeof (options.onConnect) == "function") options.onConnect({connected:false});
-        }
-        if (typeof (options.onQuit) == "function") options.onQuit({ dialog:tp, target: this });
-        self.onUpdate();
-      }
-    });
-  nom.focus().val(this.getUser());
-  pwd.val(this.getUser(1))
-  if (typeof (options.onShow) == "function") options.onShow({ dialog:tp, target: this });
-  self.saveParam();
-};
 
-/** Deconnect current user
-*/
-const deconnect = RIPart.prototype.deconnect;
-RIPart.prototype.deconnect = function() {
-  deconnect.call(this);
-  $("img.logo").attr("src","img/ign.png");
-  $(".userinfo").html("Espace collaboratif");
-  /*
-  // Clear credentials
-  var win = window.open('logout.html','_blank','clearsessioncache=yes,hidden=yes');
-  if (win) setTimeout(function(){ win.close(); }, 100);
-  */
-};
 
-/** Check user info : getUserInfo + save informations
-  * @param {function} success on success callback
-  * @param {function} fail on fail callback
-  * @param {function} allways callback
-  */
-RIPart.prototype.checkUserInfo = function(success, fail, allways) {
-  var self = this;
-
-  if (typeof(success) != "function") {
-    success = function() {
-      notification(_T("Connecté au service..."),"2s")
-    }
-  }
-  if (typeof(fail) != "function") {
-    fail = function(error) {
-      switch (error.status) {
-        case 401: {
-          alertDlg ("Utilisateur inconnu.","Accès interdit");
-          break;
-        }
-        default: {
-          alertDlg (error.statusText);
-          break;
-        }
-      }
-    }
-  }
-
-  // Get layer by name
-  const getLayer = function(idgroupe,lname) {
-    var groupes = self.param.groupes;
-    for (var i=0, g; g=groupes[i]; i++) {
-      if (idgroupe===g.id_groupe) {
-        for (var j=0, l; l=g.layers[j]; j++) {
-          if (l.nom === lname) return l;
-        }
-      }
-    }
-    return null;
-  };
-
-  this.getUserInfo (function(rep, error) {
-    var i, g;
-    if (error) {
-      rep = {};
-    } else {
-      // offline mode
-      self.param.offline = rep.offline;
-      var groupes = self.param.groupes;
-      self.param.groupes = rep.groupes;
-      if (groupes) {
-        for (i=0; g=groupes[i]; i++) {
-          for(var j=0, l; l=g.layers[j]; j++) {
-            if (l.username) {
-              var layer = getLayer(g.id_groupe, l.nom);
-              if (layer) {
-                layer.username = l.username;
-                layer.password = l.password;
-              }
-            }
-          }
-        }
-      }
-    }
-    // allways trigger function
-    if (typeof(allways)==='function') allways(rep, error);
-    // Trigger function
-    if (error) {
-      if (error.status===401) {
-        self.deconnect();
-        self.setProfil(null);
-      } else {
-        if (self.param.profil) self.setProfil(self.param.profil.id_groupe);
-      }
-      fail(error);
-    } else {
-      // Recherche du profil :
-      // Themes globaux
-      if (rep.themes) {
-        self.param.themes = [];
-        var t;
-        for (i=0; t=rep.themes[i]; i++){
-          if (t.global) self.param.themes.push(t);
-        }
-      }
-      // profil courant
-      self.param.siteProfil = rep.profil;
-      if (self.param.profil && self.param.profil.id_groupe) {
-        self.setProfil(self.param.profil.id_groupe);
-      }
-      // Profil du site
-      else if (rep.profil && rep.profil.id_groupe) {
-        self.setProfil(rep.profil.id_groupe);
-      }
-      // Par defaut, premier groupe de l'utilisateur
-      else if (self.param.groupes && self.param.groupes.length) {
-        self.setProfil(self.param.groupes[0].id_groupe);
-      }
-      success(rep);
-    }
-    self.saveParam();
-  });
+/** Logout @todo to use*/
+RIPart.prototype.logout = function() {
+  this.param = { georems:[], nbrem:0 };
+  if (this.layer) this.layer.getSource().clear();
+  this.saveParam();
 };
 
 /** Mettre a jour le profil
-  * @param {} id_goupe identifiant du groupe
+  * @param {Object} g le groupe sur lequel on veut switcher
   */
-RIPart.prototype.setProfil = function(id_groupe) {
-  const g = this.getGroupById(id_groupe);
-//  if (!g || !g.active) return;
+RIPart.prototype.setProfil = function(g) {
   if (g) {
     this.param.profil = {
-      filtre: g.filter,
-      groupe: g.nom,
-      status: g.status,
-      comment: g.commentaire_georem,
-      id_groupe: id_groupe,
-      logo: g.logo
+      filtre: g.profile,
+      groupe: g.name,
+      shared_georem: g.shared_georem,
+      comment: g.default_comment,
+      community_id: g.id,
+      logo: g.logo_url
     }
     // Themes
-    if (!this.param.themes) this.param.themes = [];
-    // Conserver les themes globaux
-    for (var i=this.param.themes.length-1; i>=0; i--) {
-      var th = this.param.themes[i];
-      if (!th.global || th.id_groupe===id_groupe) {
-        this.param.themes.splice(i,1);
-      }
-    }
-    // Themes du groupe
-    for (var j=0, thg; thg = g.themes[j]; j++) {
-      this.param.themes.push(thg);
-    }
+    this.param.themes = g.profile;
   } else {
-    if (id_groupe===null) this.param.profil = null;
-    else this.param.profil = {};
-  }
-  this.getLogo(this.param.profil, function(logo) {
-    var groupe = this.param.profil ? this.param.profil.groupe : "";
-    $(".title", this.profilElement).text(groupe||"");
-    logo = this.param.profil && this.param.profil.logo ? this.param.profil.logo : logo ;
-    $("img", this.profilElement).attr("src", CordovApp.File.getFileURI(logo) || "");
-
-    // Show user info
-    $("img.logo").attr("src", CordovApp.File.getFileURI(logo) || "img/ign.png");
- 
-    var info = (groupe ? groupe+"<br/>": "")
-      + (this.param.user || "Espace collaboratif");
-    $(".userinfo").html(info);
-  }, this);
-
-  // Offline mode
-  if (this.param.offline) {
-    $('body').addClass('offline');
-  } else {
-    $('body').removeClass('offline');
+    this.param.profil = null;
   }
 
   // Sauvegarder
   this.saveParam();
-
-  // Dispatch event
-  this.dispatchEvent({ type:"changegroup", group: g });
 }
-
-/** Dialog de changement de profil
- * @param {function|undefined} onSelect function called with a group number on select
- */
-RIPart.prototype.choixProfil = function(title, onSelect) {
-  if (this.getProfil() && this.param.groupes.length<2) return;
-  var q = {};
-  var listClass = {};
-  var self = this;
-  function libelle(g) {
-    var d = $("<div>").html(g.nom);
-    self.getLogo(g, function(f){
-      $("<div>").addClass("listimage")
-        .append($("<img>").attr("src", CordovApp.File.getFileURI(f)))
-        .prependTo(d);
-    });
-    return d;
-  }
-  for (var i=0, g; g=this.param.groupes[i]; i++) {
-    q[g.id_groupe] = libelle (g);
-    listClass[g.id_groupe] = g.status + (g.active ? ' active' : ' inactive');
-  }
-  selectDialog(q, this.param.profil ? this.param.profil.id_groupe : -1, function(n) {
-    if (onSelect) onSelect(Number(n));
-    else self.setProfil(Number(n));
-  }, { title: title, search: (this.param.groupes.length>8), listClass: listClass, className: 'ripart_choix' });
-  //this.saveParam();
-}
-
-/** On a deja une connexion
- */
-RIPart.prototype.isConnected = function() {
-  return (this.param && this.param.profil) ? true:false;
-};
 
 /** Gestion de la page de signalement
  * @param {georem|false|undefined} grem une remontee non deja envoyee ou false vider la selection
@@ -1558,10 +1317,10 @@ RIPart.prototype.showFormulaire = function(grem, select) {
       // || this.param.themes[i].id_groupe == 140
     ) {
       $("<div>").attr("data-input-role","option")
-        .attr("data-val", this.param.themes[i].id_groupe+"::"+this.param.themes[i].nom)
+        .attr("data-val", this.param.themes[i].community_id+"::"+this.param.themes[i].nom)
         .html(this.param.themes[i].nom)
         .appendTo(theme);
-      if (valdef===false) valdef = this.param.themes[i].id_groupe+"::"+this.param.themes[i].nom;
+      if (valdef===false) valdef = this.param.themes[i].community_id+"::"+this.param.themes[i].nom;
       else valdef = "";
       nbth++;
     }
@@ -1609,8 +1368,9 @@ RIPart.prototype.showFormulaire = function(grem, select) {
 
 /**
  * Vérifie qu'un theme est dans le profil utilisateur
- * @param {Object} theme ex {"nom": "Parcelles, Cadastre", "id_groupe": 13, "global": true, "attributs": []}
- * @param {Object} profil ex {"filtre": [{"group_id": 2, "themes": ["Test","mon thème","Parking vélo"]}], "groupe": "Groupe Test","status": "public", "comment": "Ceci est un test", "id_groupe": 2,"logo": "https://qlf-collaboratif.ign.fr/collaboratif-develop/document/image/95"}
+ * @TODO a reprendre profil.filtre n existe plus
+ * @param {Object} theme ex {"nom": "Parcelles, Cadastre", "community_id": 13, "global": true, "attributs": []}
+ * @param {Object} profil ex {"filtre": [{"group_id": 2, "themes": ["Test","mon thème","Parking vélo"]}], "groupe": "Groupe Test","status": "public", "comment": "Ceci est un test", "community_id": 2,"logo": "https://qlf-collaboratif.ign.fr/collaboratif-develop/document/image/95"}
  * @return {boolean} true si le theme est dans le profil false sinon
  */
 RIPart.prototype.isThemeInProfileFilter = function(theme, profil)
@@ -1619,7 +1379,7 @@ RIPart.prototype.isThemeInProfileFilter = function(theme, profil)
     return false;
   }
   for (var i in profil.filtre) {
-    if (theme.id_groupe == profil.filtre[i].group_id && profil.filtre[i].themes.indexOf(theme.nom) != -1) return true;
+    if (theme.community_id == profil.filtre[i].group_id && profil.filtre[i].themes.indexOf(theme.nom) != -1) return true;
   }
   return false;
 }
@@ -1636,7 +1396,7 @@ RIPart.prototype.selectTheme = function(th, atts, prompt) {
   var themes = this.param.themes;
   var theme = null;
   for (var i=0; i<themes.length; i++) {
-    if (themes[i].id_groupe == group && themes[i].nom == th) {
+    if (themes[i].community_id == group && themes[i].nom == th) {
     theme = themes[i];
       break;
     }
@@ -1911,20 +1671,5 @@ RIPart.prototype.dispatchEvent = function(event) {
   $(document).trigger(event);
 };
 
-/** Recupere le logo d'un goupe
-  * @param {any} g le groupe
-  * @param {function} cback callback fonction qui renvoie le nom du fichier
-  */
-RIPart.prototype.getLogo = function (g, cback, scope) {
-  CordovApp.File.getFile (
-    "TMP/logo/"+(g ? g.id_groupe : '_nologo_'),
-    function(fileEntry) {
-      cback.call(scope, CordovApp.File.getFileURI(fileEntry.toURL()));
-    },
-    function() {
-      cback.call(scope, g ? g.logo : null);
-    }
-  );
-};
 
 export default RIPart
