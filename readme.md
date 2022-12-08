@@ -5,8 +5,8 @@ Celui-ci permet de créer des applications pour différentes plateformes (Androi
 
 La librairie prend en charge l'initialisation de l'application Cordova ainsi qu'un certain nombre de fonctionnalité génériques.    
 Elle intègre également des outils de avec [l'espace collaboratif de l'IGN](https://espacecollaboratif.ign.fr/) telle que 
-les remontées d'informaiton (RIPart) ou la gestion des flux WFS (ou couches Webpart des guichets).    
-Elle permet également la mise en cache des couches du Géoportail sur un mobile (CacheMap) ou de données vecteur (WFS, Layer Webpart).
+les remontées d'informaiton (RIPart) ou la gestion des flux WFS (ou couches Vecteur des guichets du collaboratif).    
+Elle permet également la mise en cache des couches du Géoportail sur un mobile (CacheMap) ou de données vecteur (WFS, Vecteur Collaboratif).
 
 ## Utilisation de la bibliothèque dans un projet
 

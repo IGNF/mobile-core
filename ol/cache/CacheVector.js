@@ -67,7 +67,7 @@ CacheVector.prototype.getLayers = function(guichet, cache) {
       var l;
       for (var k=0; l=c.layers[k]; k++) if (l.featureType) {
         cache.push(l);
-        l = this.wapp.layerWebpart(l, this.getCacheFileName(c,k)+'/', c.extent);
+        l = this.wapp.layerCollabVector(l, this.getCacheFileName(c,k)+'/', c.extent);
         // if (c.layers.length===1) l.set('displayInLayerSwitcher',false);
         g.getLayers().push(l);
         // Marquer le layer sur l'objet
@@ -287,7 +287,7 @@ CacheVector.prototype.uploadLayers = function(cache, update, toload) {
     }
     delete l.numrec;
     // Add new layer
-    var wp = this.wapp.layerWebpart(l);
+    var wp = this.wapp.layerCollabVector(l);
     layers.push(wp);
     // Upload when ready
     wp.on('ready', () => { 
@@ -340,11 +340,11 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
       // Create layer cache
       layers.forEach((l, i) => {
         if (!toload || toload.indexOf(i) >= 0) {
-          var ft = cache.layers[i].table = l.getFeatureType();
+          var table = cache.layers[i].table = l.getTable();
           cache.layers[i].date = (new Date()).toISODateString();
           var param = l.getSource().getWFSParam(cache.extent, this.map.getView().getProjection());
           $.ajax({
-            url: ft.uri + '/max-numrec?bbox=' + param.bbox,
+            url: table.uri + '/max-numrec?bbox=' + param.bbox,
             beforeSend: (xhr) => { 
               xhr.setRequestHeader("Authorization", "Basic " + this.wapp.ripart.getHash()); 
               xhr.setRequestHeader("Accept-Language", null);

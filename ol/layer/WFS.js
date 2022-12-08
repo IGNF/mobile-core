@@ -26,10 +26,8 @@ import ol_source_Vector_WFS from '../source/WFS'
  */
 const VectorWFS = function(options, cache) {
   if (!options) options = {};
-  if (!options.geoservice.input_mask) options.mask = {};
-  // ** OLD VERSION
-  if (!options.once && (options.geoservice.min_zoom || options.max_zoom)) console.error('[VectorWFS] Use minZoom or maxZoom')
-  // **
+  if (!options.geoservice.input_mask) options.geoservice.input_mask = {};
+  
   var self = this;
 //  var secret = "WFS Espace Collaboratif IGN";
 
@@ -41,14 +39,15 @@ const VectorWFS = function(options, cache) {
   if (!options.geoservice.url) return;
   
   var cachedir = options.geoservice.url.replace(/^((http[s]?|ftp):\/)?\/?([^:/\s]+)((\/\w+)*\/)([\w\-.]+[^#?\s]+)(.*)?(#[\w-]+)?$/,"$3").replace(/\./g,'_');
-	ol_layer_Vector.call(this, { 
+	let attributes = options.geoservice.input_mask ? options.geoservice.input_mask.attributes : null;
+  ol_layer_Vector.call(this, { 
     title: options.geoservice.title,
     description: options.geoservice.description,
     visible: options.visibility,
     opacity: options.opacity,
     name: cachedir +':'+ options.geoservice.layers,
-    style: options.style || new ol_style_Style_WFS(options.geoservice.input_mask.attributes),
-    search : options.geoservice.input_mask.searchAttribute,
+    style: options.style || new ol_style_Style_WFS(attributes),
+    search : options.geoservice.input_mask ? options.geoservice.input_mask.searchAttribute : null,
     logo: options.logo
   });
 
@@ -57,7 +56,7 @@ const VectorWFS = function(options, cache) {
 
   function createSource() {
     var source = new ol_source_Vector_WFS(options, cache);
-    source.featureType_ = {
+    source.table_ = {
       attributes: options.geoservice.input_mask.attributes
     }
     self.setSource( source );
@@ -73,10 +72,6 @@ const VectorWFS = function(options, cache) {
     var getCapabilities = function () {
       $.ajax({
         url: options.geoservice.url,
-        /*
-        username: options.username, // G.Site - gestion10
-        password: options.password, // ? CryptoJS.AES.decrypt(options.password, secret).toString(CryptoJS.enc.Utf8) : undefined, 
-        */
         beforeSend: (xhr) => { 
           xhr.setRequestHeader("Authorization", "Basic " + btoa(options.username + ":" + options.password)); 
           xhr.setRequestHeader("Accept-Language", null);
@@ -145,11 +140,11 @@ const VectorWFS = function(options, cache) {
 };
 ol_ext_inherits(VectorWFS, ol_layer_Vector);
 
-/** FeatureType of the layer
-*	@return {featureType} 
+/** Table of the layer
+*	@return {table} 
 */
-VectorWFS.prototype.getFeatureType = function()
-{	if (this.getSource()) return this.getSource().featureType_;
+VectorWFS.prototype.getTable = function()
+{	if (this.getSource()) return this.getSource().table_;
 	else return false;
 }
 

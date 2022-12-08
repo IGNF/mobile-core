@@ -7,7 +7,7 @@ import TouchCursor from 'ol-ext/interaction/TouchCursor'
 import TouchCursorSelect from 'ol-ext/interaction/TouchCursorSelect'
 import TouchCursorDraw from 'ol-ext/interaction/TouchCursorDraw'
 import TouchCursorModify from 'ol-ext/interaction/TouchCursorModify'
-import VectorWebpart from 'cordovapp/ol/layer/Webpart'
+import CollabVector from 'cordovapp/ol/layer/CollabVector'
 import LayerWFS from 'cordovapp/ol/layer/WFS'
 
 /** TouchCursor interaction + ModifyFeature
@@ -201,7 +201,7 @@ SketchTools.prototype.addTranslate = function(ripart) {
     click: () => {
       var features = translate.getMap().getFeaturesAtPixel(translate.getPixel(), {
         layerFilter: (l) => {
-          return l instanceof VectorWebpart || l instanceof LayerWFS;
+          return l instanceof CollabVector || l instanceof LayerWFS;
         },
         hitTolerance: 5
       });

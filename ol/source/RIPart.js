@@ -193,11 +193,11 @@ RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
   this._ripart.apiClient.getReports(params).then((result) => {
     this.dispatchEvent({ type: 'loadend' });
     // Charger le resultat
-    if (result) {
+    if (result.status == 200 || result.status == 206) {
       if (this._cache.saveCache) {
-        this._cache.saveCache(JSON.stringify(result), this._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution));
+        this._cache.saveCache(JSON.stringify(result.data), this._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution));
       }
-      loadFeatures(result);
+      loadFeatures(result.data);
     } else {
       loadCache(self)
     }

@@ -197,20 +197,25 @@ class UserManager {
     /**
      * Changer de groupe actif
      * @param {Integer} communityId l'identifiant du groupe
+     * @param {function} success fonction a appeler si le changement reussi, prendra en parametre une community
      */
-    setCommunity(communityId) {
+    setCommunity(communityId, success) {
         var self = this;
-        this.param.active_community = communityId;
-        this.saveParam();
         if (!communityId) return;
         
         var community = this.getGroupById(communityId);
+        this.param.active_community = communityId;
+        
         if (community.layers) {
             $(document).trigger({ type: groupEvent, community: community });
+            success(community);
+            this.saveParam();
             return community;
         }
         this.getLayersInfo(communityId).then((layers) => {
             community.layers = layers;
+            success(community);
+            this.saveParam();
             $(document).trigger({ type: groupEvent, community: community });
         }).catch((error) => {
             self.param.active_community = null;
@@ -219,7 +224,7 @@ class UserManager {
     }
 
     /**
-     * Recupere les layers du groupe et geoservice/featureType lies
+     * Recupere les layers du groupe et geoservice/table lies
      * @param {Integer} communityId identifiant du groupe
      * @returns les layers associees au groupe
      */
@@ -232,14 +237,32 @@ class UserManager {
         let layers = responseLayers.data;
 
         let promises = [];
+        // on doit egalement faire une requete sur la bd pour les layers associees a des tables 
+        // pour recuperer l extent
+        let dbIds = [];
+        let databasePromises = []; 
         for (let i in layers) {
             if (layers[i]["geoservice"]) {
                 promises[i] = this.apiClient.getGeoservice(layers[i]["geoservice"]["id"]);
             } else if (layers[i]["table"] && layers[i]["database"]) {
-                promises[i] = this.apiClient.getTable(layers[i]["database"], layers[i]["table"]);
+                let databaseId = layers[i]["database"];
+                promises[i] = this.apiClient.getTable(databaseId, layers[i]["table"]);
+
+                if (!dbIds[databaseId]) {
+                    databasePromises.push(this.apiClient.getDatabase(databaseId, {"fields": "extent,id"}));
+                    dbIds.push(databaseId);
+                }
+                
             } else {
                 promises[i] = null;
             }
+        }
+
+        let databaseResp = await Promise.all(databasePromises);
+        
+        let databasesExtents = [];
+        for (let i in databaseResp) {
+            databasesExtents[databaseResp[i].data.id] = databaseResp[i].data.extent;
         }
         
         let tableOrGeoserviceListResp = await Promise.all(promises);
@@ -247,7 +270,15 @@ class UserManager {
             if (layers[i]["geoservice"]) {
                 layers[i]["geoservice"] = tableOrGeoserviceListResp[i].data;
             } else if (layers[i]["table"] && layers[i]["database"]) {
-                layers[i]["table"] = tableOrGeoserviceListResp[i].data;
+                let table = tableOrGeoserviceListResp[i].data;
+                //on transforme les colonnes d un tableau indexe a un 3tableau cle valeur, la cle etant le nom
+                let columns = []
+                for (let i in table.columns) {
+                    columns[table.columns[i].name] = table.columns[i];
+                }
+                table.columns = columns;
+                layers[i].extent = databasesExtents[layers[i]["database"]].split(',');
+                layers[i]["table"] = table;
             }
         }
     
