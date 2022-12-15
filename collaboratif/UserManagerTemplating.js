@@ -17,25 +17,32 @@ class UserManagerTemplating extends UserManager {
         super(apiClient);
         this.infoElement = options.infoElement;
         this.profilElement = options.profilElement || ".profil";
-        var self = this;
         this.initialize();
         $(() => {
             $(document).on("changegroup", (e) => {
-                var groupe = e.community ? e.community : "";
-                self.getLogo(e.community, function(logo) {
-                    logo = e.community && e.community.logo_url ? e.community.logo_url : logo ;
-                    $("img", self.profilElement).attr("src", CordovApp.File.getFileURI(logo) || "");
-                
-                    // Show user info
-                    $("img.logo").attr("src", CordovApp.File.getFileURI(logo) || "img/ign.png");    
-                }, this);
-
-                $(".title", self.profilElement).text(groupe.name||"");
-                var info = (groupe ? groupe.name+"<br/>": "")
-                + (this.param.username || "Espace collaboratif");
-                $(".userinfo").html(info);
+                this.refreshGroupInfos(e.community);
             });
         });
+    }
+
+    /**
+     * Met a jour les informations du groupe (logo et nom) dans profilElement
+     * @param {Community} community 
+     */
+    refreshGroupInfos(community = "") {
+        var self = this;
+        self.getLogo(community, function(logo) {
+            logo = community && community.logo_url ? community.logo_url : logo ;
+            $("img", self.profilElement).attr("src", CordovApp.File.getFileURI(logo) || "");
+        
+            // Show user info
+            $("img.logo").attr("src", CordovApp.File.getFileURI(logo) || "img/ign.png");    
+        }, this);
+
+        $(".title", self.profilElement).text(community.name||"");
+        var info = (community ? community.name+"<br/>": "")
+        + (this.param.username || "Espace collaboratif");
+        $(".userinfo").html(info);
     }
 
     /**
@@ -46,6 +53,8 @@ class UserManagerTemplating extends UserManager {
         if (this.param.username && this.param.password) {
             this.setUser(this.param.username, this.param.password, true);
         }
+        var community = this.getGroupById(this.param.active_community);
+        if (community) this.refreshGroupInfos(community);
     }
 
     /** 

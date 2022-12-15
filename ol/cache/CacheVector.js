@@ -57,7 +57,7 @@ CacheVector.prototype.getLayers = function(guichet, cache) {
   var self = this;
 
   for (var i=0, c; c = this.wapp.param.vectorCache[i]; i++) {
-    if (c.id_guichet === guichet.id_groupe) {
+    if (c.id_guichet === guichet.id) {
       var g = new ol_layer_Group({
         title: c.nom, 
         name: c.id_guichet+'-'+c.id, 
@@ -123,7 +123,7 @@ CacheVector.prototype.removeCache = function(cache) {
   this.wapp.saveParam();
   this.showList();
   var guichet = this.getCurrentGuichet();
-  if (this.wapp.getIdGuichet()===guichet.id_groupe) {
+  if (this.wapp.getIdGuichet()===guichet.id) {
     this.wapp.setGuichet(guichet);
   }
 };
@@ -335,7 +335,6 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
     // Ready to load: some numrec are missing
     if (!hasNumrec) {
       // Still loading numrec on last sources (wait next call)
-      //@TODO a revoir idem autre todo
       if (loading) return;
       // Create layer cache
       layers.forEach((l, i) => {
@@ -343,43 +342,38 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
           var table = cache.layers[i].table = l.getTable();
           cache.layers[i].date = (new Date()).toISODateString();
           var param = l.getSource().getWFSParam(cache.extent, this.map.getView().getProjection());
-          $.ajax({
-            url: table.uri + '/max-numrec?bbox=' + param.bbox,
-            beforeSend: (xhr) => { 
-              xhr.setRequestHeader("Authorization", "Basic " + this.wapp.ripart.getHash()); 
-              xhr.setRequestHeader("Accept-Language", null);
-            },    
-            success: (result) => {
+          let url = table.uri + '/max-numrec?bbox=' + param.bbox;
+          this.wapp.userManager.apiClient.doRequest(url).then((response) => {
+            let result = response.data;
+            if (update) {
+              // get current numrec 
+              cache.layers[i].numrec = cache.layers[i].numrec0;
+              delete cache.layers[i].numrec0;
+              cache.layers[i].numrec2 = result.numrec;
+            } else {
+              cache.layers[i].numrec = result.numrec;
+            }
+            this.uploadLayers2(cache, update, toload, layers);
+            console.log('NUMREC', cache.layers[i].numrec)
+          }).catch((e) => {
+            if (e.response && (e.response.status === 403 || e.response.status === 404)) {
               if (update) {
                 // get current numrec 
                 cache.layers[i].numrec = cache.layers[i].numrec0;
                 delete cache.layers[i].numrec0;
-                cache.layers[i].numrec2 = result.numrec;
+                cache.layers[i].numrec2 = false;
               } else {
-                cache.layers[i].numrec = result.numrec;
+                cache.layers[i].numrec = false;
               }
               this.uploadLayers2(cache, update, toload, layers);
-              console.log('NUMREC', cache.layers[i].numrec)
-            },
-            error: (e) => {
-              if (e.status === 403 || e.status === 404) {
-                if (update) {
-                  // get current numrec 
-                  cache.layers[i].numrec = cache.layers[i].numrec0;
-                  delete cache.layers[i].numrec0;
-                  cache.layers[i].numrec2 = false;
-                } else {
-                  cache.layers[i].numrec = false;
-                }
-                this.uploadLayers2(cache, update, toload, layers);
-              } else {
-                wapp.wait(false);
-                this.wapp.alert ("Impossible de charger la couche <i>"
-                  +(l.get('name')||l.get('title'))
-                  +"</i>.<i class='error'><br/>"+e.status+" - "+e.error+"</i>");
-              }
+            } else {
+              wapp.wait(false);
+              let msg = e.response ? e.response.status + " - " + e.response.error : "Erreur inattendue";
+              this.wapp.alert ("Impossible de charger la couche <i>"
+                +(l.get('name')||l.get('title'))
+                +"</i>.<i class='error'><br/>"+msg+"</i>");
             }
-          })
+          });
         }
       });
     } else {
@@ -450,7 +444,7 @@ CacheVector.prototype.getCacheFileName = function(cache, id_layer, tileCoord, nu
   var base = CordovApp.File.fileName(
               cache.id 
               + '-'
-              + l.url.replace(/.*databasename=([^&]*).*/,"$1") 
+              + l.table.database 
               + '-' 
               + l.table.name 
             );
@@ -530,39 +524,38 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error, err
         parameters.filter = "{}";
       }
       parameters._T = (new Date()).getTime();         // Force refresh
-      var p = "";
-      for (var k in parameters) p += (p?'&':'?') +k+'='+parameters[k];
       // Chargement
-      var url = (t.source.proxy_ || t.source.featureType_.wfs) + p;
+      var url = (t.source.proxy_ || t.source.table_.wfs);
       // Destination
       var fileName = this.getCacheFileName(cache, t.id_layer, tcoord, t.numrec);
 
-      //@TODO a revoir le hash n existe plus dans ripart il faut passer par l api cliente
       // Create dir if not exist
       CordovApp.File.getDirectory(
         this.getCacheFileName(cache),
         () => {
-          CordovApp.File.downloadFile(
-            url,
-            fileName,
-            function() {
-              // Go on loading
-              self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
-              // Remove empty files
-              CordovApp.File.info(fileName, (e) => {
-                if (e.size < 5) CordovFile.delFile(fileName);
-              })
-            },
-            function() {
-              error++;
-              tileError.tiles.push(tcoord);
-              self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
-            },{	
-              headers: {
-                'Authorization': 'Basic '+ self.wapp.ripart.getHash()
+          self.wapp.userManager.apiClient.doRequest(url, "get", null, parameters).then((response) => {
+            CordovApp.File.saveData(
+              response.data,
+              fileName,
+              function() {
+                // Go on loading
+                self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
+                // Remove empty files
+                CordovApp.File.info(fileName, (e) => {
+                  if (e.size < 5) CordovFile.delFile(fileName);
+                })
+              },
+              function() {
+                error++;
+                tileError.tiles.push(tcoord);
+                self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
               }
-            }
-          );
+            );
+          }).catch((e) => {
+            error++;
+            tileError.tiles.push(tcoord);
+            self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
+          });
         },
         function() {
           error++;
@@ -631,7 +624,7 @@ CacheVector.prototype.addCache = function(name, layers) {
   }
   var cache = {
     id: id+1,
-    id_guichet: guichet.id_groupe,
+    id_guichet: guichet.id,
     nom: name,
     layers: layers,
     date: (new Date()).toISODateString(),

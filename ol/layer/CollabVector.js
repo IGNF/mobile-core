@@ -48,6 +48,7 @@ ol_ext_inherits(CollabVector, ol_layer_Vector);
  * @param {*} table
  */
  CollabVector.prototype.createSource = function(options, source_options, table) {
+  var self = this;
   source_options.table = table;
   // Check for source option
   if (options.checkSourceOptions) options.checkSourceOptions.call(this, source_options, table);
@@ -55,6 +56,7 @@ ol_ext_inherits(CollabVector, ol_layer_Vector);
   // CollabVector source
   var vectorSource = new ol_source_Vector_CollabVector(source_options);
   this.setSource(vectorSource);
+  setTimeout (function() { self.dispatchEvent({ type:"ready", source: vectorSource })}, 100);
 
   // CollabVector Layer
   this.set("title", table.title);

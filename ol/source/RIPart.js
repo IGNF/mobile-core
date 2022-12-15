@@ -189,22 +189,39 @@ RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
     communities: [profil.community_id]
   };
 
-  //@TODO http://gitlab.dockerforge.ign.fr/rpg/oukile_v2/blob/master/assets/js/oukile/saisie_controle/services/layer-service.js
-  this._ripart.apiClient.getReports(params).then((result) => {
-    this.dispatchEvent({ type: 'loadend' });
-    // Charger le resultat
-    if (result.status == 200 || result.status == 206) {
-      if (this._cache.saveCache) {
-        this._cache.saveCache(JSON.stringify(result.data), this._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution));
+  async function getReports () {
+    async function nextRequest(page = 1) {
+      params["page"] = page;
+      let result = await self._ripart.apiClient.getReports(params);
+      // Charger le resultat
+      let contentRangeParts = result.headers["content-range"].split('/');
+      let range = contentRangeParts[0].split('-');
+      if (result.status == 200 || (result.status == 206 && range[1] === contentRangeParts[1])) {
+        return result.data;
+      } else if (result.status == 206) {
+        page = page + 1;
+        let nextResult = await nextRequest(page);
+        let featuresResult = nextResult.concat(result.data);
+        return featuresResult;
+      } else {
+        loadCache(self);
+        return;
       }
-      loadFeatures(result.data);
-    } else {
-      loadCache(self)
     }
+    return await nextRequest();
+  }
+  
+  getReports().then((features) => {
+    self.dispatchEvent({ type: 'loadend' });
+    if (self._cache.saveCache) {
+      self._cache.saveCache(JSON.stringify(features), self._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution));
+    }
+    loadFeatures(features);
   }).catch((error) => {
+    console.log("error on loading reports: " + error);
     loadCache(self);
   });
 };
 
 export {georemStyle}
-export default RIPartSource
+export default RIPartSource;

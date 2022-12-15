@@ -1086,7 +1086,7 @@ RIPart.prototype.getLocalReps = function(georem) {
 RIPart.prototype.onUpdate = function() {
   var self = this;
   // Id connexion
-  if (this.param.profil && this.param.profil.length) {
+  if (this.param.profil && this.param.profil.filtre.length) {
     this.formElement.addClass("connected");
   } else {
     this.formElement.removeClass("connected");
@@ -1234,8 +1234,13 @@ RIPart.prototype.setProfil = function(g) {
       community_id: g.id,
       logo: g.logo_url
     }
-    // Themes
-    this.param.themes = g.profile;
+    // Themes du groupe actif
+    for (var i in g.profile) {
+      if (g.profile[i].community_id == g.id) {
+        this.param.themes = g.profile[g.profile[i].community_id] = g.profile[i].themes;
+        break;
+      }
+    }
   } else {
     this.param.profil = null;
   }
@@ -1313,8 +1318,6 @@ RIPart.prototype.showFormulaire = function(grem, select) {
     if (
       $.isEmptyObject(this.param.profil)
       || this.isThemeInProfileFilter(this.param.themes[i], this.param.profil)
-      // Operation tourisme 2017
-      // || this.param.themes[i].id_groupe == 140
     ) {
       $("<div>").attr("data-input-role","option")
         .attr("data-val", this.param.themes[i].community_id+"::"+this.param.themes[i].nom)
@@ -1369,7 +1372,7 @@ RIPart.prototype.showFormulaire = function(grem, select) {
 /**
  * Vérifie qu'un theme est dans le profil utilisateur
  * @TODO a reprendre profil.filtre n existe plus
- * @param {Object} theme ex {"nom": "Parcelles, Cadastre", "community_id": 13, "global": true, "attributs": []}
+ * @param {Object} theme ex {"nom": "Parcelles, Cadastre", "community_id": 13, "global": true, "attributes": []}
  * @param {Object} profil ex {"filtre": [{"group_id": 2, "themes": ["Test","mon thème","Parking vélo"]}], "groupe": "Groupe Test","status": "public", "comment": "Ceci est un test", "community_id": 2,"logo": "https://qlf-collaboratif.ign.fr/collaboratif-develop/document/image/95"}
  * @return {boolean} true si le theme est dans le profil false sinon
  */
@@ -1407,9 +1410,9 @@ RIPart.prototype.selectTheme = function(th, atts, prompt) {
   this.resetFormulaireAttribut();
 
   if (theme) {
-    if (theme.attributs.length) {
+    if (theme.attributes.length) {
       $(".attributes", this.formElement).show()
-        .data('attributes', theme.attributs)
+        .data('attributes', theme.attributes)
         .unbind("click")
         .click(function(){
           self.formulaireAttribut();

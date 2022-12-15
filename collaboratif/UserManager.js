@@ -105,6 +105,7 @@ class UserManager {
     disconnect() {
         this.apiClient.disconnect();
         this.param = {};
+        this.saveParam();
         $(document).trigger(disconnectEvent);
     }
 
@@ -130,7 +131,7 @@ class UserManager {
         let communities = [];
         for (var i in responseCommunities) {
             let community = responseCommunities[i].data;
-            community.profile = user.communities_member[i].profile; // @TODO voir ou est ce qu on reporte les attributs
+            community.profile = user.communities_member[i].profile;
             communities.push(community);
         }
         delete user.communities_member;
@@ -177,13 +178,15 @@ class UserManager {
                 }
             }
 
+            let active = null;
             if (self.param.active_community) {
-                self.setCommunity(self.param.active_community);
+                active = self.param.active_community;
             } else if (active_web_community) {
-                self.setCommunity(active_web_community.id);
+                active = active_web_community.id;
             } else if (self.param.communities && self.param.communities.length) {
-                self.setCommunity(self.param.communities[0].id);
+                active = self.param.communities[0].id;
             }
+            self.setCommunity(active);
             success(user);
             self.saveParam();
             if (typeof(allways)==='function') allways({});
@@ -196,10 +199,10 @@ class UserManager {
 
     /**
      * Changer de groupe actif
+     * grosso modo il faut juste changer le parametre active_community. Mais il faut aussi charger les layers si ce n est pas encore fait
      * @param {Integer} communityId l'identifiant du groupe
-     * @param {function} success fonction a appeler si le changement reussi, prendra en parametre une community
      */
-    setCommunity(communityId, success) {
+    async setCommunity(communityId) {
         var self = this;
         if (!communityId) return;
         
@@ -207,20 +210,15 @@ class UserManager {
         this.param.active_community = communityId;
         
         if (community.layers) {
-            $(document).trigger({ type: groupEvent, community: community });
-            success(community);
             this.saveParam();
+            $(document).trigger({ type: groupEvent, community: community });
+            return community;
+        } else {
+            community.layers = await this.getLayersInfo(communityId);
+            this.saveParam();
+            $(document).trigger({ type: groupEvent, community: community });
             return community;
         }
-        this.getLayersInfo(communityId).then((layers) => {
-            community.layers = layers;
-            success(community);
-            this.saveParam();
-            $(document).trigger({ type: groupEvent, community: community });
-        }).catch((error) => {
-            self.param.active_community = null;
-            self.saveParam();
-        });
     }
 
     /**
@@ -233,7 +231,7 @@ class UserManager {
             throw new Error('Unauthorized', {"code": 401});
         }
     
-        let responseLayers = await this.apiClient.getLayers(communityId);
+        let responseLayers = await this.apiClient.getLayers(communityId, {"limit": 100});
         let layers = responseLayers.data;
 
         let promises = [];
@@ -272,7 +270,7 @@ class UserManager {
             } else if (layers[i]["table"] && layers[i]["database"]) {
                 let table = tableOrGeoserviceListResp[i].data;
                 //on transforme les colonnes d un tableau indexe a un 3tableau cle valeur, la cle etant le nom
-                let columns = []
+                let columns = {};
                 for (let i in table.columns) {
                     columns[table.columns[i].name] = table.columns[i];
                 }
