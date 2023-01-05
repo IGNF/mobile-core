@@ -698,6 +698,9 @@ CollabVector.prototype.getWFSParam = function (extent, projection) {
 * @param {*} data
 */
 CollabVector.prototype._readFeatures = function (data, projection) {
+  if (typeof data === 'string') {
+    data = JSON.parse(data);
+  }
   projection = projection || 'EPSG:3857';
   let feature;
   const features = [];

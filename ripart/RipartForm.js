@@ -927,7 +927,7 @@ RIPart.prototype.addLocalRep = function(georem, options) {
     // pending0: RIPart.status.pending0,
     pending1: RIPart.status.pending1
   }
-  if (georem.autorisation === 'RW+') {
+  if (this.canReply(georem)) {
     available.valid = RIPart.status.valid;
     available.valid0 = RIPart.status.valid0;
     available.reject = RIPart.status.reject;
@@ -1032,15 +1032,25 @@ RIPart.prototype.postLocalReps = function(georem, options) {
  *  @param {function} options.cback callback when done
  */
 RIPart.prototype.postLocalRep = function(georem, georep, options) {
-  georep.id = georem.id;
-  this.postGeorep(georep, (grem, error) => {
-    if (!error) {
+  let body = {
+    "title": georep.title || '',
+    "status": georep.statut,
+    "content": georep.comment
+  };
+  
+  this.apiClient.addReply(georem.id, body).then((replyResponse) => {
+    this.apiClient.getReport(georem.id).then((reportResponse) => {
+      var grem =  reportResponse.data;
       this.delLocalRep(georem, georep, {
         cback: () => {
           const i = this.getIndice(georem);
           if (i!==false) {
             this.param.georems[i] = grem;
             this.param.georems[i].responses = georem.responses;
+            let replies = this.param.georems[i].replies;
+            for (var j in replies) {
+              replies[j]['author_name'] = replies[j].author.username;
+            }
             georep.error = false;
           } else {
             georep.error = true;
@@ -1050,25 +1060,26 @@ RIPart.prototype.postLocalRep = function(georem, georep, options) {
           if (options && options.cback) options.cback(grem);
         }
       });
-      return;
+    });
+  }).catch((error) => {
+    georep.error = true;
+    this.saveParam();
+    this.onUpdate();
+    if (options && options.cback) {
+      options.cback(georem, error);
     } else {
-      georep.error = true;
-      this.saveParam();
-      this.onUpdate();
-      if (options && options.cback) {
-        options.cback(georem, error);
+      var msg = "Impossible d'envoyer la réponse.<br/>";
+      if (!error.response) {
+        msg = $('<div>').html(msg+"Vérifiez votre connexion ou réessayez lorsque vous serez à nouveau connecté au réseau.");
       } else {
-        var msg = "Impossible d'envoyer la réponse.<br/>";
-        if (error.status==0) {
-          msg = $('<div>').html(msg+"Vérifiez votre connexion ou réessayez lorsque vous serez à nouveau connecté au réseau.");
-        } else {
-          msg = $('<div>').html(msg+"Réponse incorrecte...");
-        }
-        $("<i>").addClass('error')
-          .html("<br/>Erreur : "+error.status+" - "+error.statusText+"</i>")
-          .appendTo(msg);
-        this.wapp.alert(msg);
+        msg = $('<div>').html(msg+"Réponse incorrecte...");
       }
+      let errorTxt = (error.response && error.response.data) ? error.response.data.code + " : " + error.response.data.message : error.message;
+      errorTxt = errorTxt ? errorTxt : error;
+      $("<i>").addClass('error')
+        .html("<br/>Erreur : "+errorTxt+"</i>")
+        .appendTo(msg);
+      this.wapp.alert(msg);
     }
   });
 };
@@ -1114,6 +1125,7 @@ RIPart.prototype.onUpdate = function() {
         .on ("click", function() {
           self.georemShow($(this).data("grem"));
         });
+      
       dataAttributes(li, grems[i]);
       this.getLocalReps(grems[i]).forEach((r) => {
         if (r.error) li.addClass('badresponse');
@@ -1235,9 +1247,10 @@ RIPart.prototype.setProfil = function(g) {
       logo: g.logo_url
     }
     // Themes du groupe actif
+    this.param.themes = [];
     for (var i in g.profile) {
       if (g.profile[i].community_id == g.id) {
-        this.param.themes = g.profile[g.profile[i].community_id] = g.profile[i].themes;
+        this.param.themes.push(g.profile[i].themes);
         break;
       }
     }
@@ -1371,7 +1384,6 @@ RIPart.prototype.showFormulaire = function(grem, select) {
 
 /**
  * Vérifie qu'un theme est dans le profil utilisateur
- * @TODO a reprendre profil.filtre n existe plus
  * @param {Object} theme ex {"nom": "Parcelles, Cadastre", "community_id": 13, "global": true, "attributes": []}
  * @param {Object} profil ex {"filtre": [{"group_id": 2, "themes": ["Test","mon thème","Parking vélo"]}], "groupe": "Groupe Test","status": "public", "comment": "Ceci est un test", "community_id": 2,"logo": "https://qlf-collaboratif.ign.fr/collaboratif-develop/document/image/95"}
  * @return {boolean} true si le theme est dans le profil false sinon

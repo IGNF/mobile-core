@@ -143,7 +143,6 @@ const RIPartSource = function(options, cache) {
 ol_ext_inherits(RIPartSource, ol_source_Vector);
 
 /** Load georems from server
- * @TODO vider les features au changement de groupe actif? ou gérer le cache avec un nom de groupe
  * @private
  */
 RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {

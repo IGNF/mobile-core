@@ -17,7 +17,7 @@ class UserManager {
     constructor (apiClient) {
         this.apiClient = apiClient;
         this.defaultUrl = this.getServiceUrl();
-        this.param = wappStorage('user') || {};
+        this.param = wappStorage('user') || {'offline': true};
     }
 
     /**
@@ -208,6 +208,7 @@ class UserManager {
         
         var community = this.getGroupById(communityId);
         this.param.active_community = communityId;
+        this.param.offline = community.offline_allowed;
         
         if (community.layers) {
             this.saveParam();

@@ -6,6 +6,17 @@ import ol_geom_LineString from 'ol/geom/LineString'
 import ol_geom_Polygon from 'ol/geom/Polygon'
 
 class RIPart {
+    static status = {
+        "submit": "Reçu dans nos services", 
+        "pending": "En cours de traitement",
+        "pending1": "En attente de saisie", 
+        "pending2": "En attente de validation", 
+        "valid": "Pris en compte",
+        "valid0": "Déjà pris en compte",
+        "reject": "Rejeté (hors spéc.)",
+        "reject0": "Rejeté (hors propos)",
+        "pending0": "En demande de qualification"
+    };
     /**
      * @constructor
      * @param {ApiClient} apiClient
@@ -14,18 +25,6 @@ class RIPart {
         this.options = options || {};
         this.param = {};
         this.apiClient = apiClient;
-        
-        this.status = {
-            "submit": "Reçu dans nos services", 
-            "pending": "En cours de traitement",
-            "pending1": "En attente de saisie", 
-            "pending2": "En attente de validation", 
-            "valid": "Pris en compte",
-            "valid0": "Déjà pris en compte",
-            "reject": "Rejeté (hors spéc.)",
-            "reject0": "Rejeté (hors propos)",
-            "pending0": "En demande de qualification"
-        };
 
         this.loadParam();
         this.initialize(options);
@@ -242,6 +241,21 @@ class RIPart {
     getProfil() {
         return this.param.profil;
     };
+
+    /**
+     * definit si l utilisateur courant a les droits de repondre a une alerte
+     * ses groupes doivent etre passes en parametre
+     * @param {Object} georem 
+     * @returns {Boolean}
+     */
+    canReply(georem) {
+        let communities = wapp.userManager.param.communities;
+        let communityIds = communities.map(c => c.id);
+        for (var i in georem.attributes) {
+            if (communityIds.indexOf(georem.attributes[i].community) == -1) return false;
+        }
+        return true;
+    }
 }
 
 export default RIPart;

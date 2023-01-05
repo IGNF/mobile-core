@@ -394,21 +394,21 @@ CordovApp.File.moveFile = function(file, name, success, fail) {
 CordovApp.File.saveData = function(data, name, success, fail, binary = false) {
   if (!success) success = this.success;
   if (!fail) fail = this.fail;
-  var self = this;
   // Recherche du repertoire
   var dir = this.getDir(name);
   name = this.getFileName(name);
   this.getDirectory (
     dir,
     function(fileEntry) {
-      let file = data;
       if (binary) {
-        file = new Blob([JSON.stringify(file)]); 
-      }
-      if (file) {
-        let url =  window.URL.createObjectURL(file);
-        CordovApp.File.moveFile(url, fileEntry.toURL()+name, success, fail);
-      }
+        let blob = new Blob([JSON.stringify(data)]);
+        if (blob) {
+            let url =  window.URL.createObjectURL(blob);
+            CordovApp.File.moveFile(url, fileEntry.toURL()+name, success, fail);
+        }
+      } else {
+          CordovApp.File.write(fileEntry.toURL()+name, data, success, fail);
+      }      
     },
     fail,
     true

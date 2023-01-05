@@ -24,17 +24,9 @@ var CacheVector = function(wapp, options) {
 
   if (!this.wapp.param.vectorCache) this.wapp.param.vectorCache = [];
 
-/* DEPRECATED
-  this.page = $(options.page || '#guichet');
-  $('.addmap', this.page).click(function(){
-    self.addDialog();
-  });
-*/
-
   this.loadPage = $(options.loadPage || '#loadGuichet');
 
   $('.cancel', this.loadPage).click(() => {
-    // wapp.showPage(self.page.attr('id'));
     this.wapp.hidePage();
   });
   $('.ok', this.loadPage).click(() => {
@@ -65,10 +57,9 @@ CacheVector.prototype.getLayers = function(guichet, cache) {
         baseLayer: true 
       });
       var l;
-      for (var k=0; l=c.layers[k]; k++) if (l.featureType) {
+      for (var k=0; l=c.layers[k]; k++) if (l.table) {
         cache.push(l);
         l = this.wapp.layerCollabVector(l, this.getCacheFileName(c,k)+'/', c.extent);
-        // if (c.layers.length===1) l.set('displayInLayerSwitcher',false);
         g.getLayers().push(l);
         // Marquer le layer sur l'objet
         l.getSource().on('addfeature', function (e) {
@@ -121,7 +112,6 @@ CacheVector.prototype.removeCache = function(cache) {
   });
   // Update
   this.wapp.saveParam();
-  this.showList();
   var guichet = this.getCurrentGuichet();
   if (this.wapp.getIdGuichet()===guichet.id) {
     this.wapp.setGuichet(guichet);
@@ -139,7 +129,7 @@ CacheVector.prototype.removeLayerCache = function(cache, layer, cbk) {
   if (!layer) return false;
   let layerId = false;
   cache.layers.forEach((c, i) => {
-    if (c.featureType.database+':'+c.featureType.name == layer.get('name')) {
+    if (c.table.database+':'+c.table.name == layer.get('name')) {
       layerId = i;
     }
   });
@@ -174,7 +164,7 @@ CacheVector.prototype.saveLayer = function(layers, cache, toload) {
   if (l) {
     // Find the layer indice in the layercache
     cache.layers.forEach((c, i) => {
-      if (c.featureType.database+':'+c.table.name === l.get('name')) {
+      if (c.table.database+':'+c.table.name === l.get('name')) {
         toload.push(i);
       }
     });
@@ -396,7 +386,6 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
       // load tile
       this.uploadTiles(cache, tiles);
       this.wapp.saveParam();
-      if (guichet) this.showList();
       cache.loaded = true;
     }
   }
@@ -495,7 +484,6 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error, err
     pos++;
     if (this.canceled) {
       this.wapp.wait(false);
-      // wapp.vectorCache.removeCache(wapp.getCache(wapp.guichet).cache);
       this.removeCache(cache);
       wapp.hidePage();
       return;
