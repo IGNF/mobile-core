@@ -1,4 +1,4 @@
-/** @module ol/source/RIPart
+/** @module ol/source/Report
  */
 import ol_source_Vector from 'ol/source/Vector'
 import ol_Collection from 'ol/Collection'
@@ -76,8 +76,8 @@ const cluster = [];
 
 // Gestion des styles
 const georemStyle = function(feature) {
-  if (feature.get('ripart')) {
-    switch (feature.get('ripart').status) {
+  if (feature.get('report')) {
+    switch (feature.get('report').status) {
       case 'submit': return symbol.submit;
       case 'reject': return symbol.reject;
       case 'valid': return symbol.valid;
@@ -108,17 +108,17 @@ const georemStyle = function(feature) {
  * @extends {ol.source.Vector}
  * @trigger loadstart, loadend, overload
  * @param {any} options
- *  @param {module:ripart/RIPart~RIPart} options.ripart 
+ *  @param {module:report/Report~Report} options.report 
  *  @param {string} options.attribution
  *  @param {boolean} options.wrapX
  * @param {*} cache 
  *  @param {function} saveCache a function that takes response, extent, resolution dans save response
  *  @param {function} loadCache a function that take options: { extent, resolution, success and error collback }
- * @returns {RIPartSource}
+ * @returns {ReportSource}
  */
-const RIPartSource = function(options, cache) {
+const ReportSource = function(options, cache) {
 
-  this._ripart = options.ripart;
+  this._report = options.report;
   this._cache = cache;
   this._tileGrid = ol_tilegrid_createXYZ({   
     minZoom: 10, 
@@ -140,14 +140,14 @@ const RIPartSource = function(options, cache) {
   });
 
 };
-ol_ext_inherits(RIPartSource, ol_source_Vector);
+ol_ext_inherits(ReportSource, ol_source_Vector);
 
 /** Load georems from server
  * @private
  */
-RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
+ReportSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
   var self = this;
-  let profil = this._ripart.getProfil();
+  let profil = this._report.getProfil();
   if (!profil || !profil.community_id) {
     return; //on ne charge les georems que pour le groupe actif
   }
@@ -170,7 +170,7 @@ RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
         dataProjection: 'EPSG:4326',
         featureProjection: projection
       });
-      f.setProperties({ ripart: r });
+      f.setProperties({ report: r });
       features.push(f);
     });
     this.addFeatures(features);
@@ -191,7 +191,7 @@ RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
   async function getReports () {
     async function nextRequest(page = 1) {
       params["page"] = page;
-      let result = await self._ripart.apiClient.getReports(params);
+      let result = await self._report.apiClient.getReports(params);
       // Charger le resultat
       let contentRangeParts = result.headers["content-range"].split('/');
       let range = contentRangeParts[0].split('-');
@@ -223,4 +223,4 @@ RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
 };
 
 export {georemStyle}
-export default RIPartSource;
+export default ReportSource;

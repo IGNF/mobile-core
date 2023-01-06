@@ -5,7 +5,7 @@ import ol_geom_Point from 'ol/geom/Point'
 import ol_geom_LineString from 'ol/geom/LineString'
 import ol_geom_Polygon from 'ol/geom/Polygon'
 
-class RIPart {
+class Report {
     static status = {
         "submit": "Reçu dans nos services", 
         "pending": "En cours de traitement",
@@ -199,7 +199,7 @@ class RIPart {
      * @returns {void}
      */
      loadParam() {
-        this.param = wappStorage('ripart') || { georems: [], nbrem: 0};
+        this.param = wappStorage('report') || { georems: [], nbrem: 0};
     }
 
     /**
@@ -230,7 +230,7 @@ class RIPart {
      * @returns {void}
      */
     saveParam() {
-        wappStorage('ripart', this.param);
+        wappStorage('report', this.param);
         this.onUpdate();
     }
 
@@ -258,4 +258,4 @@ class RIPart {
     }
 }
 
-export default RIPart;
+export default Report;

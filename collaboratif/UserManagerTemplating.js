@@ -69,7 +69,7 @@ class UserManagerTemplating extends UserManager {
     connectDialog(options) {
         var self = this;
         options = options || {};
-        var tp = CordovApp.template('dialog-connectripart');
+        var tp = CordovApp.template('dialog-connectreport');
         var nom = $(".nom",tp);
         var pwd = $(".pwd",tp);
         pwd.on("keyup", () => {

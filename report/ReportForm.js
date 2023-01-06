@@ -1,14 +1,14 @@
 ﻿/* global Camera */
-import _T from '../i18n'
-import CordovApp from '../CordovApp'
-import RIPart from 'cordovapp/ripart/Ripart'
-import {help} from '../cordovapp/help'
-import {dialog} from '../cordovapp/dialog'
-import {selectDialog} from '../cordovapp/dialog'
-import {selectInput} from '../cordovapp/param'
-import {notification} from '../cordovapp/dialog'
-import {getActionBt} from '../cordovapp/page'
-import {showActionBt} from '../cordovapp/page'
+import _T from 'cordovapp/i18n'
+import CordovApp from 'cordovapp/CordovApp'
+import Report from 'cordovapp/report/Report'
+import {help} from 'cordovapp/cordovapp/help'
+import {dialog} from 'cordovapp/cordovapp/dialog'
+import {selectDialog} from 'cordovapp/cordovapp/dialog'
+import {selectInput} from 'cordovapp/cordovapp/param'
+import {notification} from 'cordovapp/cordovapp/dialog'
+import {getActionBt} from 'cordovapp/cordovapp/page'
+import {showActionBt} from 'cordovapp/cordovapp/page'
 
 import ol_layer_Vector from 'ol/layer/Vector'
 import ol_source_Vector from 'ol/source/Vector'
@@ -29,25 +29,25 @@ import {click as ol_events_condition_click} from 'ol/events/condition'
 import ol_interaction_Select from 'ol/interaction/Select'
 import {fromLonLat as ol_proj_fromLonLat} from 'ol/proj'
 
-import SketchTools from './SketchTools'
+import SketchTools from 'cordovapp/report/SketchTools'
 
-import { waitDlg } from '../cordovapp/dialog'
-import { messageDlg } from '../cordovapp/dialog'
-import { alertDlg } from '../cordovapp/dialog'
-import { selectInputVal } from '../cordovapp/param'
-import { selectInputText } from '../cordovapp/param'
-import { dataAttributes } from '../cordovapp/param'
+import { waitDlg } from 'cordovapp/cordovapp/dialog'
+import { messageDlg } from 'cordovapp/cordovapp/dialog'
+import { alertDlg } from 'cordovapp/cordovapp/dialog'
+import { selectInputVal } from 'cordovapp/cordovapp/param'
+import { selectInputText } from 'cordovapp/cordovapp/param'
+import { dataAttributes } from 'cordovapp/cordovapp/param'
 
 import 'ol-ext/style/FontAwesomeDef'
 
-/** @module ripart/RIPartForm
+/** @module report/ReportForm
  * @description
  * Gestion de connexion avec l'espace collaboratif pour la remontee d'informations
  * Gestion des dialogues dans l'application (connexion, formulaire de saisie d'une remontee)
  * Connexion avec la carte et les elements de l'application
 ````
                           +---------------------------+
-                          |  RIPart:showFormulaire()  |
+                          |  Report:showFormulaire()  |
                           +---------------------------+
                                 +--------v--------+
                                 |  cback:onShow() |
@@ -58,17 +58,17 @@ import 'ol-ext/style/FontAwesomeDef'
       +---+---+   +--+-----+             +--+----+                               +---+-----+
            |         |                      |                                        |
 +----------+-----+   |   +------------------+-------------------------+  +-----------+----------------+
-| RIPart:photo() |   |   | RIPart:saveFormulaire()                    |  |  RIPart:cancelFormulaire() |
+| Report:photo() |   |   | Report:saveFormulaire()                    |  |  Report:cancelFormulaire() |
 +----------------+   |   +--------------------------------------------+  +----------------------------+
                      |   | cback:formatGeorem()                       |
           +----------+   +-----------------------+--------------------+
-          |              | RIPart:saveLocalRem() |                    |
+          |              | Report:saveLocalRem() |                    |
 +---------+--------+     +-----------------------+                    |
-|RIPart:selectTheme|     | RIPart:saveParam()    |                    |
+|Report:selectTheme|     | Report:saveParam()    |                    |
 +---------+--------+     |                       |                    |
-          |              | RIPart:onUpdate()     |  RIPart.onSelect() |
+          |              | Report:onUpdate()     |  Report.onSelect() |
 +----------+----------+  +-----------------------+--------------------+
-|RIPart:formulaireAttr|  | RIPart:cancelFormulaire()                  |
+|Report:formulaireAttr|  | Report:cancelFormulaire()                  |
 +---------------------+  +--------------------------------------------+
 ````
 _Arbre des appels_
@@ -91,7 +91,7 @@ _Arbre des appels_
     @param {function(georem, form)} options.formatGeorem formater une georem avant envoi, revoit un georem + formulaire, renvoi true si ok pour la sauvegarde, false pour annuler
     @param {String} options.messagePhoto Message pour la prise de photo (text/html)
 */
-RIPart.prototype.initialize = function(options) {
+Report.prototype.initialize = function(options) {
   var self = this;
 
   this.map = options.map;
@@ -243,7 +243,7 @@ RIPart.prototype.initialize = function(options) {
       speed: this.geolocation.getSpeed() || 0
     });
     if (typeof (this.onLocate) =="function") {
-      console.error('[DEPRECATED] RIPart.onlocate');
+      console.error('[DEPRECATED] Report.onlocate');
       this.onLocate.call (this,{
         geolocation: this.geolocation,
         position: this.geolocation.getPosition(),
@@ -396,7 +396,7 @@ RIPart.prototype.initialize = function(options) {
  * @param {georem|number} grem the georem or an indice
  * @return {number|boolean} indice or false if doesn't exist
  */
-RIPart.prototype.getIndice = function(grem){
+Report.prototype.getIndice = function(grem){
   if (typeof(grem) != 'number'){
     for (var k=0; k<this.param.georems.length; k++){
       if (
@@ -412,7 +412,7 @@ RIPart.prototype.getIndice = function(grem){
 };
 
 /** Cancel tracking map mode */
-RIPart.prototype.cancelTracking = function() {
+Report.prototype.cancelTracking = function() {
   this.target.setVisible(false);
   this.drawInteraction.setActive(false);
   $('body').removeClass("trackingGeorem fullscreenMap");
@@ -422,7 +422,7 @@ RIPart.prototype.cancelTracking = function() {
  * @param {Object} i  the georem or an indice
  * @param {boolean} silent set to true to prevent updating, default false
  */
-RIPart.prototype.delLocalRem = function(i, silent) {
+Report.prototype.delLocalRem = function(i, silent) {
   i = this.getIndice(i);
 
   var grem = this.param.georems[i];
@@ -446,7 +446,7 @@ RIPart.prototype.delLocalRem = function(i, silent) {
 /** Sauvegarde de la remontee depuis le formulaire
  * @param {} form le formulaire
 */
-RIPart.prototype.saveFormulaire = function(form, gps) {
+Report.prototype.saveFormulaire = function(form, gps) {
   var theme = selectInputVal($('[data-input="select"][data-param="theme"]', this.formElement));
 
   // Check valid attributes
@@ -540,7 +540,7 @@ RIPart.prototype.saveFormulaire = function(form, gps) {
       notification (e.info);
       if (self.onSelect) {
         self.onSelect(georem, true);
-        console.warn('[DEPRECATED] RIPart.onSelect')
+        console.warn('[DEPRECATED] Report.onSelect')
       }
       self.dispatchEvent({
         type: 'select',
@@ -563,7 +563,7 @@ RIPart.prototype.saveFormulaire = function(form, gps) {
 * @param {georem} current current georem
 * @param {function} cback a callback function
 */
-RIPart.prototype.saveLocalRem = function(georem, current, cback) {
+Report.prototype.saveLocalRem = function(georem, current, cback) {
   // Forcer la date au moment de la remontee
   if (!georem.date) georem.date = (new Date()).toISODateString();
 
@@ -605,7 +605,7 @@ RIPart.prototype.saveLocalRem = function(georem, current, cback) {
 /** Get the local rems
   * @return {Array<georem>}
 */
-RIPart.prototype.getLocalRems = function() {
+Report.prototype.getLocalRems = function() {
   return this.param.georems;
 }
 
@@ -614,7 +614,7 @@ RIPart.prototype.getLocalRems = function() {
  *  @param {function} error a function that takes an error and a message on error
  *  @param {function} onPost a function called when a georem is posted
  */
-RIPart.prototype.postLocalRems = function(options) {
+Report.prototype.postLocalRems = function(options) {
   options = options || {};
   var self = this;
   var nb = this.countLocalRems();
@@ -650,7 +650,7 @@ RIPart.prototype.postLocalRems = function(options) {
 
 /** Post local rem to server
 */
-RIPart.prototype.postLocalRem = function(i, options) {
+Report.prototype.postLocalRem = function(i, options) {
   var self = this;
   if (!options) options = {};
 
@@ -736,7 +736,7 @@ RIPart.prototype.postLocalRem = function(i, options) {
 /** Nombre de georems en attente
  * @param boolean countErrors compter les signalements en erreur
 */
-RIPart.prototype.countLocalRems = function(countErrors = true) {
+Report.prototype.countLocalRems = function(countErrors = true) {
   var c = 0;
   for (var i=0; i<this.param.georems.length; i++) {
     if (!this.param.georems[i].id && (countErrors || !this.param.georems[i].error)) c++;
@@ -746,7 +746,7 @@ RIPart.prototype.countLocalRems = function(countErrors = true) {
 
 /** Nombre de georeps en attente
 */
-RIPart.prototype.countLocalReps = function() {
+Report.prototype.countLocalReps = function() {
   var c = 0;
   this.param.georems.forEach((georem) => {
     c += this.getLocalReps(georem).length;
@@ -757,7 +757,7 @@ RIPart.prototype.countLocalReps = function() {
 
 /** Mettre a jour les signalements
 */
-RIPart.prototype.updateLocalRems = function() {
+Report.prototype.updateLocalRems = function() {
   var self = this;
   var n = 0;
   var nb = self.param.georems.length;
@@ -786,7 +786,7 @@ RIPart.prototype.updateLocalRems = function() {
 
 /** Mettre a jour un signalements
  */
-RIPart.prototype.updateLocalRem = function(i, options) {
+Report.prototype.updateLocalRem = function(i, options) {
   var self = this;
   if (!options) options = {};
 
@@ -841,7 +841,7 @@ RIPart.prototype.updateLocalRem = function(i, options) {
 
 /** Supprimer les remontees + dialogue de confirmation / type de réponse
 */
-RIPart.prototype.delLocalRems = function() {
+Report.prototype.delLocalRems = function() {
   var self = this;
   selectDialog ({
       send: 'Tous les signalements envoyés',
@@ -901,7 +901,7 @@ RIPart.prototype.delLocalRems = function() {
 };
 
 /** Get a local rem by ID */
-RIPart.prototype.getLocalRem = function(id) {
+Report.prototype.getLocalRem = function(id) {
   for (var i = 0, georem; georem = this.param.georems[i]; i++) {
     if (georem.id === id) return georem;
   }
@@ -913,37 +913,37 @@ RIPart.prototype.getLocalRem = function(id) {
  * @param {*} options
  *  @param {function} options.cback callback when done
  */
-RIPart.prototype.addLocalRep = function(georem, options) {
+Report.prototype.addLocalRep = function(georem, options) {
   // One response at a time
   if (georem.responses) return;
   // New response
-  var tp = CordovApp.template('dialog-responseRIPart');
+  var tp = CordovApp.template('dialog-responseReport');
   if (!tp.length) {
-    console.error('[RIPart::addLocalRep] No dialog "responseRIPart"...')
+    console.error('[Report::addLocalRep] No dialog "responseReport"...')
   }
   // Available status
   const available = {
-    pending: RIPart.status.pending,
-    // pending0: RIPart.status.pending0,
-    pending1: RIPart.status.pending1
+    pending: Report.status.pending,
+    // pending0: Report.status.pending0,
+    pending1: Report.status.pending1
   }
   if (this.canReply(georem)) {
-    available.valid = RIPart.status.valid;
-    available.valid0 = RIPart.status.valid0;
-    available.reject = RIPart.status.reject;
-    available.reject0 = RIPart.status.reject0;
+    available.valid = Report.status.valid;
+    available.valid0 = Report.status.valid0;
+    available.reject = Report.status.reject;
+    available.reject0 = Report.status.reject0;
   }
   // Select status
   let status = '';
   const select = $('span', tp).click(() => {
     selectDialog(available, null, (val) => {
       status = val;
-      select.text(RIPart.status[val]);
+      select.text(Report.status[val]);
     });
   });
   dialog.show ( tp, {
     title: 'Répondre au signalement : #' + georem.id,
-    classe: "responseRIPart",
+    classe: "responseReport",
     buttons: { cancel:"Annuler", submit:"Enregistrer"},
     callback: (bt) => {
       const comment = $('textarea', tp).val();
@@ -979,7 +979,7 @@ RIPart.prototype.addLocalRep = function(georem, options) {
  * @param {*} options
  *  @param {function} options.cback callback when done
  */
-RIPart.prototype.delLocalRep = function(georem, georep, options) {
+Report.prototype.delLocalRep = function(georem, georep, options) {
   for (let r, k = georem.responses.length-1; r = georem.responses[k]; k--) {
     if (georep === r) {
       georem.responses.splice(k,1);
@@ -998,7 +998,7 @@ RIPart.prototype.delLocalRep = function(georem, georep, options) {
  *  @param {function} options.cback callback when done
  *  @param {boolean} all post all responses, default false
  */
-RIPart.prototype.postLocalReps = function(georem, options) {
+Report.prototype.postLocalReps = function(georem, options) {
   const reps = this.getLocalReps(georem);
   // Reset all response errors
   if (options.all) {
@@ -1031,7 +1031,7 @@ RIPart.prototype.postLocalReps = function(georem, options) {
  * @param {*} options
  *  @param {function} options.cback callback when done
  */
-RIPart.prototype.postLocalRep = function(georem, georep, options) {
+Report.prototype.postLocalRep = function(georem, georep, options) {
   let body = {
     "title": georep.title || '',
     "status": georep.statut,
@@ -1088,13 +1088,13 @@ RIPart.prototype.postLocalRep = function(georem, georep, options) {
  * @param {*} georem
  * @return {*} a list of responses
  */
-RIPart.prototype.getLocalReps = function(georem) {
+Report.prototype.getLocalReps = function(georem) {
   return georem.responses || [];
 };
 
 /** Afficher l'id de connexion dans les options
  */
-RIPart.prototype.onUpdate = function() {
+Report.prototype.onUpdate = function() {
   var self = this;
   // Id connexion
   if (this.param.profil && this.param.profil.filtre.length) {
@@ -1137,7 +1137,7 @@ RIPart.prototype.onUpdate = function() {
 
 /** Get feature in the layer
 */
-RIPart.prototype.getFeature = function(grem) {
+Report.prototype.getFeature = function(grem) {
   var f;
   if (this.layer) {
     var features = this.layer.getSource().getFeatures();
@@ -1150,7 +1150,7 @@ RIPart.prototype.getFeature = function(grem) {
 
 /** Update layer according to grems
 */
-RIPart.prototype.updateLayer = function() {
+Report.prototype.updateLayer = function() {
   if (this.layer) {
     var source = this.layer.getSource();
     source.clear();
@@ -1180,7 +1180,7 @@ RIPart.prototype.updateLayer = function() {
 /** Afficher les info de la remontee
 * @param {} georem la remontee a afficher
 */
-RIPart.prototype.georemShow = function(grem) {
+Report.prototype.georemShow = function(grem) {
   var page = this.georemPage.data('grem', grem);
   this.wapp.showPage(this.georemPage.attr("id"));
   // Affichage
@@ -1200,7 +1200,7 @@ RIPart.prototype.georemShow = function(grem) {
   // Select georem
   if (this.onSelect) {
     this.onSelect (grem);
-    console.error('[DEPRECATED] RIPart.onSelect')
+    console.error('[DEPRECATED] Report.onSelect')
   }
   this.dispatchEvent({
     type: 'select',
@@ -1213,13 +1213,13 @@ RIPart.prototype.georemShow = function(grem) {
 
 /** Envoyer la remontee courante
 */
-RIPart.prototype.postCurrentRem = function() {
+Report.prototype.postCurrentRem = function() {
   this.postLocalRem (this.georemPage.data('grem'));
 };
 
 /** Supprimer le signalement courant
 */
-RIPart.prototype.delCurrentRem = function() {
+Report.prototype.delCurrentRem = function() {
   this.wapp.hidePage();
   this.delLocalRem (this.georemPage.data('grem'));
 }
@@ -1227,7 +1227,7 @@ RIPart.prototype.delCurrentRem = function() {
 
 
 /** Logout @todo to use*/
-RIPart.prototype.logout = function() {
+Report.prototype.logout = function() {
   this.param = { georems:[], nbrem:0 };
   if (this.layer) this.layer.getSource().clear();
   this.saveParam();
@@ -1236,7 +1236,7 @@ RIPart.prototype.logout = function() {
 /** Mettre a jour le profil
   * @param {Object} g le groupe sur lequel on veut switcher
   */
-RIPart.prototype.setProfil = function(g) {
+Report.prototype.setProfil = function(g) {
   if (g) {
     this.param.profil = {
       filtre: g.profile,
@@ -1266,7 +1266,7 @@ RIPart.prototype.setProfil = function(g) {
  * @param {georem|false|undefined} grem une remontee non deja envoyee ou false vider la selection
  * @param {boolean} select autoriser la selection, default true
  */
-RIPart.prototype.showFormulaire = function(grem, select) {
+Report.prototype.showFormulaire = function(grem, select) {
 
   if (grem==='gps') {
     grem = false;
@@ -1285,7 +1285,7 @@ RIPart.prototype.showFormulaire = function(grem, select) {
   // Callback
   if (this.onShow) {
     this.onShow(this.formElement, grem);
-    console.error('[DEPRECATED] RIPart.onshow')
+    console.error('[DEPRECATED] Report.onshow')
   }
   this.dispatchEvent({
     type: 'show',
@@ -1388,7 +1388,7 @@ RIPart.prototype.showFormulaire = function(grem, select) {
  * @param {Object} profil ex {"filtre": [{"group_id": 2, "themes": ["Test","mon thème","Parking vélo"]}], "groupe": "Groupe Test","status": "public", "comment": "Ceci est un test", "community_id": 2,"logo": "https://qlf-collaboratif.ign.fr/collaboratif-develop/document/image/95"}
  * @return {boolean} true si le theme est dans le profil false sinon
  */
-RIPart.prototype.isThemeInProfileFilter = function(theme, profil)
+Report.prototype.isThemeInProfileFilter = function(theme, profil)
 {
   if (undefined == profil.filtre) {
     return false;
@@ -1403,7 +1403,7 @@ RIPart.prototype.isThemeInProfileFilter = function(theme, profil)
 * @param {string} th theme par defaut
 * @param {string} atts attributs par defaut
 */
-RIPart.prototype.selectTheme = function(th, atts, prompt) {
+Report.prototype.selectTheme = function(th, atts, prompt) {
   if (!th) th = "";
   th = th.split("::");
   var group = parseInt(th[0]);
@@ -1443,7 +1443,7 @@ RIPart.prototype.selectTheme = function(th, atts, prompt) {
 
 /** Remise a zero du formulaire
 */
-RIPart.prototype.resetFormulaireAttribut = function() {
+Report.prototype.resetFormulaireAttribut = function() {
   var input = $(".attributes", this.formElement).data("vals", false);
   $('[data-input-role="info"]', input).text("");
 };
@@ -1452,7 +1452,7 @@ RIPart.prototype.resetFormulaireAttribut = function() {
 * @param {Object} valdef liste de valeurs par defaut
 * @param {bool} prompt afficher le dialogue d'attributs, defaut: true
 */
-RIPart.prototype.formulaireAttribut = function(valdef, prompt) {
+Report.prototype.formulaireAttribut = function(valdef, prompt) {
   var self = this;
   var input = $(".attributes", this.formElement);
   var att = input.data('attributes');
@@ -1571,7 +1571,7 @@ RIPart.prototype.formulaireAttribut = function(valdef, prompt) {
 /** Cancel formulaire: showFormulaire (false)
  * @param {string} type submit or cancel
  */
-RIPart.prototype.cancelFormulaire = function(type, georem) {
+Report.prototype.cancelFormulaire = function(type, georem) {
   if (!this.formElement.hasClass('formulaire')) return;
   this.formElement.removeClass('formulaire');
   this.overlay.setVisible(false);
@@ -1598,7 +1598,7 @@ RIPart.prototype.cancelFormulaire = function(type, georem) {
 /** Take a photo using the camera
  * @param {boolean} noFile prevent loading file from SD card
  */
-RIPart.prototype.photo = function(noFile) {
+Report.prototype.photo = function(noFile) {
   var self = this;
   var photoElt = $('.photo', this.formElement);
   var hasPhoto = $('img', photoElt).attr('src');
@@ -1625,7 +1625,7 @@ RIPart.prototype.photo = function(noFile) {
       message: this.messagePhoto,
       name: 'TMP/photo.jpg',
       buttons: hasPhoto ? { photo:'Caméra', album:'Album', del:'supprimer', cancel:'annuler' } : { photo:'Caméra', album:'Album', cancel:'annuler' },
-      className: hasPhoto ? 'ripart photo photodel' : 'ripart photo',
+      className: hasPhoto ? 'report photo photodel' : 'report photo',
       targetWidth: self.param.imgWidth || 1200,
       targetHeight: self.param.imgHeight || 1200,
       correctOrientation: (self.param.imgOrient!==false)
@@ -1638,7 +1638,7 @@ RIPart.prototype.photo = function(noFile) {
   * @param {ol_Feature | Array<ol_Feature> } features les features a ajouter
   * @return {*} a list of added/removed features
   */
-RIPart.prototype.addFeature = function(features) {
+Report.prototype.addFeature = function(features) {
   var result = {
     added: [],
     removed: []
@@ -1663,28 +1663,28 @@ RIPart.prototype.addFeature = function(features) {
 
 /** Attach an event handler function for one or more events to the selected elements
   */
-RIPart.prototype.on = function(events, handler) {
-  $(document).on ('ripart-'+events, handler);
+Report.prototype.on = function(events, handler) {
+  $(document).on ('report-'+events, handler);
 };
 
 /** Remove an event handler.
   */
-RIPart.prototype.un = function(events, handler) {
-  $(document).off ('ripart-'+events, handler);
+Report.prototype.un = function(events, handler) {
+  $(document).off ('report-'+events, handler);
 };
 
 /** Attach a handler to an event for the elements. The handler is executed at most once per element per event type.
   */
-RIPart.prototype.once = function(events, handler) {
-  $(document).one ('ripart-'+events, handler);
+Report.prototype.once = function(events, handler) {
+  $(document).one ('report-'+events, handler);
 };
 
 /** Dispatch an event.
   */
-RIPart.prototype.dispatchEvent = function(event) {
-  event.type = 'ripart-'+event.type;
+Report.prototype.dispatchEvent = function(event) {
+  event.type = 'report-'+event.type;
   $(document).trigger(event);
 };
 
 
-export default RIPart
+export default Report
