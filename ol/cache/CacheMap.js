@@ -741,7 +741,7 @@ const CacheMap = function(wapp, layerGroup, options) {
       var cache = new ol_cache_Tile (layercache, {
         read: function(tile, callback) {
           if (wapp.isCordova) {
-            callback (getPath()+smap.layer+"/"+tile.id);
+            callback (CordovApp.File.getFileURI(getPath()+smap.layer+"/"+tile.id));
           } else {
             callback(tile.src);
           }
