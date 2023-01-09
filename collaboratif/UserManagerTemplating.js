@@ -1,4 +1,5 @@
 import UserManager from "cordovapp/collaboratif/UserManager";
+import wapp from "../../../src/wapp";
 import CordovApp from '../CordovApp';
 import { wappStorage } from '../cordovapp/CordovApp';
 import {dialog, waitDlg} from '../cordovapp/dialog';
@@ -26,20 +27,16 @@ class UserManagerTemplating extends UserManager {
     }
 
     /**
-     * Met a jour les informations du groupe (logo et nom) dans profilElement
+     * Met a jour les informations du groupe (logo et nom) dans l encadre dedie
      * @param {Community} community 
      */
     refreshGroupInfos(community = "") {
         var self = this;
         self.getLogo(community, function(logo) {
-            logo = community && community.logo_url ? community.logo_url : logo ;
-            $("img", self.profilElement).attr("src", CordovApp.File.getFileURI(logo) || "");
-        
             // Show user info
             $("img.logo").attr("src", CordovApp.File.getFileURI(logo) || "img/ign.png");    
         }, this);
 
-        $(".title", self.profilElement).text(community.name||"");
         var info = (community ? community.name+"<br/>": "")
         + (this.param.username || "Espace collaboratif");
         $(".userinfo").html(info);

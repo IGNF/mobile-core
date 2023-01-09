@@ -284,7 +284,6 @@ const CacheMap = function(wapp, layerGroup, options) {
         }
       }
       smap.length = 0;
-      updateCacheMapInfo (smap);
       wapp.wait(false);
     }
 

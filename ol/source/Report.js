@@ -147,8 +147,8 @@ ol_ext_inherits(ReportSource, ol_source_Vector);
  */
 ReportSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
   var self = this;
-  let profil = this._report.getProfil();
-  if (!profil || !profil.community_id) {
+  let activeCommunity = wapp.userManager.param.active_community;
+  if (!activeCommunity) {
     return; //on ne charge les georems que pour le groupe actif
   }
   const loadCache = function (self) {
@@ -185,7 +185,7 @@ ReportSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
     box: extent.join(','),
     status: ['submit', 'pending', 'pending0', 'pending1', 'pending2'],
     limit: 100,
-    communities: [profil.community_id]
+    communities: [activeCommunity]
   };
 
   async function getReports () {

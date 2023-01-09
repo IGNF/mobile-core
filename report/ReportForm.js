@@ -23,6 +23,7 @@ import ol_Geolocation from 'ol/Geolocation'
 import ol_control_Target from 'ol-ext/control/Target'
 import ol_Feature from 'ol/Feature'
 import ol_geom_Point from 'ol/geom/Point'
+import WKT from 'ol/format/wkt'
 import {transform as ol_proj_transform} from 'ol/proj'
 import ol_interaction_Modify from 'ol/interaction/Modify'
 import {click as ol_events_condition_click} from 'ol/events/condition'
@@ -647,6 +648,19 @@ Report.prototype.postLocalRems = function(options) {
   else messageDlg ("Tous les signalements ont déjà été envoyés..."," ");
 };
 
+/**
+ * met a jour les informations du groupe dans l element profilElement
+ */
+Report.prototype.refreshProfileInfo = function(community = "") {
+  var self = this;
+  wapp.UserManager.getLogo(community, function(logo) {
+      logo = community && community.logo_url ? community.logo_url : logo ;
+      $("img", self.profilElement).attr("src", CordovApp.File.getFileURI(logo) || "");
+  });
+
+  $(".title", self.profilElement).text(community.name||"");
+}
+
 
 /** Post local rem to server
 */
@@ -1159,11 +1173,26 @@ Report.prototype.updateLayer = function() {
       this.croquis.getSource().clear();
       croquis = this.croquis.getSource();
     }
+    
+    let format = new WKT();
+    
     this.param.georems.forEach((grem) => {
-      const g = new ol_Feature ({
-        geometry: new ol_geom_Point( ol_proj_transform([grem.lon, grem.lat],'EPSG:4326', this.map.getView().getProjection()) ),
-        georem: grem
-      });
+      let g = null;
+      if (grem.geometry) {
+        g = format.readFeature(grem.geometry, {
+          dataProjection: 'EPSG:4326',
+          featureProjection: this.map.getView().getProjection()
+        });
+        g.setProperties({georem: grem});
+      } else {
+        g = new ol_Feature ({
+          geometry: new ol_geom_Point( ol_proj_transform([grem.lon, grem.lat],'EPSG:4326', this.map.getView().getProjection()) ),
+          georem: grem
+        });
+      }
+      
+      if (!g) return;
+
       source.addFeature(g);
       if (grem.sketch && this.croquis) {
         const features = this.sketch2feature(grem.sketch);
@@ -1185,18 +1214,19 @@ Report.prototype.georemShow = function(grem) {
   this.wapp.showPage(this.georemPage.attr("id"));
   // Affichage
   dataAttributes(page, grem);
-  /*
-  // Gestion de la photo
-  if (grem.photo) $(".photo", page).attr('src', grem.photo).show();
-  else $(".photo", page).attr('src', "").hide();
-  */
+
   if (grem.id) {
     $(".send", page).hide();
   } else {
     $(".send", page).show();
   }
   // Centrer la carte
-  this.map.getView().setCenter (ol_proj_fromLonLat([ grem.lon, grem.lat ]));
+  let format = new WKT();
+  const g = format.readGeometry(grem.geometry, {
+    dataProjection: 'EPSG:4326',
+    featureProjection: this.map.getView().getProjection()
+  });
+  this.map.getView().setCenter(g.flatCoordinates);
   // Select georem
   if (this.onSelect) {
     this.onSelect (grem);
@@ -1250,10 +1280,11 @@ Report.prototype.setProfil = function(g) {
     this.param.themes = [];
     for (var i in g.profile) {
       if (g.profile[i].community_id == g.id) {
-        this.param.themes.push(g.profile[i].themes);
+        this.param.themes = g.profile[i].themes;
         break;
       }
     }
+    refreshProfileInfo(g);
   } else {
     this.param.profil = null;
   }
@@ -1321,22 +1352,25 @@ Report.prototype.showFormulaire = function(grem, select) {
   this.formElement.addClass('formulaire');
   $('.formulaire .movePosition', this.formElement).removeClass("tracking");
 
+  //Gestion des groupes
+  var groupDom = $('[data-input="select"][data-param="group"]', this.formElement);
+  $('[data-input-role="option"]', groupDom).remove();
+
   // Gestion des themes
   var theme = $('[data-input="select"][data-param="theme"]', this.formElement);
   $('[data-input-role="option"]', theme).remove();
   $("<div>").attr("data-input-role","option").attr("data-val", "").html("<i>choisissez un thème...</i>").appendTo(theme);
   var valdef = false;
   var nbth = 0;
-  for (var i=0; i<this.param.themes.length; i++) {
-    if (
-      $.isEmptyObject(this.param.profil)
-      || this.isThemeInProfileFilter(this.param.themes[i], this.param.profil)
-    ) {
+  for (var i in this.param.profil.filtre) {
+    let communityId = this.param.profil.filtre[i].community_id;
+    let themes = this.param.profil.filtre[i].themes;
+    for (var j in themes) {
       $("<div>").attr("data-input-role","option")
-        .attr("data-val", this.param.themes[i].community_id+"::"+this.param.themes[i].nom)
-        .html(this.param.themes[i].nom)
+        .attr("data-val", communityId+"::"+themes[j].theme)
+        .html(themes[j].theme)
         .appendTo(theme);
-      if (valdef===false) valdef = this.param.themes[i].community_id+"::"+this.param.themes[i].nom;
+      if (valdef===false) valdef = communityId+"::"+themes[j].theme;
       else valdef = "";
       nbth++;
     }
@@ -1408,10 +1442,10 @@ Report.prototype.selectTheme = function(th, atts, prompt) {
   th = th.split("::");
   var group = parseInt(th[0]);
   th = th[1];
-  var themes = this.param.themes;
+  var themes = this.param.profil.filtre;
   var theme = null;
   for (var i=0; i<themes.length; i++) {
-    if (themes[i].community_id == group && themes[i].nom == th) {
+    if (themes[i].community_id == group && themes[i].theme == th) {
     theme = themes[i];
       break;
     }
