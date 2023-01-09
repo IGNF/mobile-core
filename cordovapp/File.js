@@ -382,6 +382,39 @@ CordovApp.File.moveFile = function(file, name, success, fail) {
   ); 
 };
 
+/**
+ * Sauvegarde de donnees dans un fichier 'name'
+ * @memberof CordovApp.File
+ * @param {String} data les donnees a sauvegarder
+ * @param {String} name URI referring to a local file to move to
+ * @param {function} success callback
+ * @param {function} fail callback invoked on error
+ * @param {Boolean} binary are binary data (default false)
+ */
+CordovApp.File.saveData = function(data, name, success, fail, binary = false) {
+  if (!success) success = this.success;
+  if (!fail) fail = this.fail;
+  // Recherche du repertoire
+  var dir = this.getDir(name);
+  name = this.getFileName(name);
+  this.getDirectory (
+    dir,
+    function(fileEntry) {
+      if (binary) {
+        let blob = new Blob([JSON.stringify(data)]);
+        if (blob) {
+            let url =  window.URL.createObjectURL(blob);
+            CordovApp.File.moveFile(url, fileEntry.toURL()+name, success, fail);
+        }
+      } else {
+          CordovApp.File.write(fileEntry.toURL()+name, data, success, fail);
+      }      
+    },
+    fail,
+    true
+  );
+};
+
 /** Load a file from a remote adresse + save it to 'name'
  * @memberof CordovApp.File
  * @param {String} url URI referring to a remote file 

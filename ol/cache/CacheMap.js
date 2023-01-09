@@ -284,7 +284,6 @@ const CacheMap = function(wapp, layerGroup, options) {
         }
       }
       smap.length = 0;
-      updateCacheMapInfo (smap);
       wapp.wait(false);
     }
 
@@ -367,33 +366,11 @@ const CacheMap = function(wapp, layerGroup, options) {
   }
   this.removeCacheMap = removeCacheMap;
 
-  /* Mettre a jour les info de la carte
-  *	@param {CacheMap} smap carte a afficher
-  */
-  function updateCacheMapInfo (smap) {
-    console.warn('[DEPRECATED] updateCacheMapInfo')
-/*
-    var li, l = $('li', self.listMap);
-    for (var i=0; i<l.length; i++) {
-      if ($(l[i]).data("map")===smap) {
-        li = l[i];
-        break;
-      }
-    }
-    if (li) {
-      var layerName = new ol_layer_Geoportail(smap.layer).get('name')
-      $(".info .layer", li).text(layerName+" : z"+smap.minZoom);
-      $(".info .dalle", li).text(smap.length);
-      $(".info .date", li).text(smap.date);
-    }
-*/
-  }
-
   /* Page de chargement
   *	@param {CacheMap} smap carte a charger
   */
   function loadCacheMap(smap)	{	
-    if (wapp.ripart.param.offline) {
+    if (wapp.userManager.param.offline) {
       currentMap = smap;
       wapp.showPage(self.loadPage.attr('id'));
     }
@@ -408,7 +385,7 @@ const CacheMap = function(wapp, layerGroup, options) {
    * @param {CacheMap} smap carte courante
    */
   function setCurrentMap(smap) {
-    if (wapp.ripart.param.offline) {
+    if (wapp.userManager.param.offline) {
       currentMap = smap;
     }
     else {
@@ -421,7 +398,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   *	@param {CacheMap} smap carte a charger
   */
   function refreshCacheMap (smap)	{	
-    if (wapp.ripart.param.offline) {
+    if (wapp.userManager.param.offline) {
       wapp.wait("Mise à jour...");
       window.plugins.insomnia.keepAwake();
       setTimeout (function() {
@@ -433,7 +410,6 @@ const CacheMap = function(wapp, layerGroup, options) {
           downloadTiles(t, smap.layer, function(){
             // Mise a jour
             smap.date = (new Date()).toISODateString();
-            updateCacheMapInfo (smap);
             setLayerCache(smap);
             window.plugins.insomnia.allowSleepAgain();
             wapp.wait(false);
@@ -603,10 +579,8 @@ const CacheMap = function(wapp, layerGroup, options) {
       downloadTiles (t, layercache.get("layer"), function(){
         setLayerCache (currentMap);
         currentMap.date = (new Date()).toISODateString();
-        updateCacheMapInfo (currentMap);
         getCacheFiles (currentMap, function(l,n) {
-          currentMap.length = n; 
-          updateCacheMapInfo (currentMap);
+          currentMap.length = n;
           if (typeof(cbk) === 'function') cbk();
         });
       });
@@ -779,7 +753,6 @@ const CacheMap = function(wapp, layerGroup, options) {
   function loadCacheFile(name) {
     console.log(name);
     wapp.dialog.close();
-    // addCacheMap(smap)
     CordovApp.File.read (name, function(cache){
       var smap = JSON.parse(cache);
       smap.length = 0;
@@ -895,9 +868,6 @@ const CacheMap = function(wapp, layerGroup, options) {
     layercache.set('cacheMap', smap);
     layerGroup.getLayers().push(layercache);
     setLayerCache (smap);
- 
-    updateCacheMapInfo (smap);
-
   }
   this.addCacheMap = addCacheMap;
 

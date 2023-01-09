@@ -70,16 +70,16 @@ const VectorWFS = function(options, cache) {
     wrapX: options.wrapX
   });
 
-  this.set('url', options.url);
-  var cachedir = options.url.replace(/^((http[s]?|ftp):\/)?\/?([^:/\s]+)((\/\w+)*\/)([\w\-.]+[^#?\s]+)(.*)?(#[\w-]+)?$/,"$3").replace(/\./g,'_');
-  this.set('cache', cachedir + '/' + options.typename);
+  this.set('url', options.geoservice.url);
+  var cachedir = options.geoservice.url.replace(/^((http[s]?|ftp):\/)?\/?([^:/\s]+)((\/\w+)*\/)([\w\-.]+[^#?\s]+)(.*)?(#[\w-]+)?$/,"$3").replace(/\./g,'_');
+  this.set('cache', cachedir + '/' + options.geoservice.layers);
   this.set('once', options.once);
-  this.set('typename', options.typename);
-  this.set('version', options.version);
+  this.set('typename', options.geoservice.layers);
+  this.set('version', options.geoservice.version);
   this.set('projection', options.srs||'EPSG:4326');
-  this.set('id', options.mask ? options.mask.id : -1);
+  this.set('id', options.geoservice.input_mask ? options.geoservice.input_mask.id : -1);
   this.set('maxFeatures', options.maxFeatures);
-  this.set('format', options.format);
+  this.set('format', options.geoservice.format);
 };
 ol_ext_inherits(VectorWFS, ol_source_Vector);
 
@@ -108,7 +108,6 @@ VectorWFS.prototype.loaderFn_ = function(extent0, resolution, projection) {
     outputFormat: this.get('format'),
     typeName: this.get('typename'),
 		bbox: this.get('once') ? undefined : extent.join(','),             // WFS standard ?
-//    boundedBy: extent.join(','),      // ??? sylvamap ???
     maxFeatures: this.get('maxFeature'),
     filter: this.featureFilter_,
     srsname:'EPSG:4326',
@@ -290,8 +289,8 @@ VectorWFS.prototype.hasFeature = function(feature) {
  * No Feature type
  * @return {any}
  */
-VectorWFS.prototype.getFeatureType = function() {
-  return this.featureType_ || {};
+VectorWFS.prototype.getTable = function() {
+  return this.table_ || {};
 };
 
 export default VectorWFS

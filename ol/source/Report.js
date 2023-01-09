@@ -1,4 +1,4 @@
-/** @module ol/source/RIPart
+/** @module ol/source/Report
  */
 import ol_source_Vector from 'ol/source/Vector'
 import ol_Collection from 'ol/Collection'
@@ -17,6 +17,7 @@ import ol_style_Circle from 'ol/style/Circle'
 import ol_style_Stroke from 'ol/style/Stroke'
 import ol_style_Fill from 'ol/style/Fill'
 import ol_style_Text from 'ol/style/Text'
+import WKT from 'ol/format/wkt';
 
 var radius = 8;
 const symbol = {
@@ -75,8 +76,8 @@ const cluster = [];
 
 // Gestion des styles
 const georemStyle = function(feature) {
-  if (feature.get('ripart')) {
-    switch (feature.get('ripart').statut) {
+  if (feature.get('report')) {
+    switch (feature.get('report').status) {
       case 'submit': return symbol.submit;
       case 'reject': return symbol.reject;
       case 'valid': return symbol.valid;
@@ -101,25 +102,27 @@ const georemStyle = function(feature) {
 };
 
 /** Signalement source
+ * Attention! Interdire de trop dezoomer sur la layer utilisatrice 
+ * sinon énormément de requêtes vers l'api car les tuiles sont calculees au niveau de zoom 10
  * @constructor
  * @extends {ol.source.Vector}
  * @trigger loadstart, loadend, overload
  * @param {any} options
- *  @param {module:ripart/RIPart~RIPart} options.ripart 
+ *  @param {module:report/Report~Report} options.report 
  *  @param {string} options.attribution
  *  @param {boolean} options.wrapX
  * @param {*} cache 
  *  @param {function} saveCache a function that takes response, extent, resolution dans save response
  *  @param {function} loadCache a function that take options: { extent, resolution, success and error collback }
- * @returns {RIPartSource}
+ * @returns {ReportSource}
  */
-const RIPartSource = function(options, cache) {
+const ReportSource = function(options, cache) {
 
-  this._ripart = options.ripart;
+  this._report = options.report;
   this._cache = cache;
   this._tileGrid = ol_tilegrid_createXYZ({   
-    minZoom: 8, 
-    maxZoom: 8, 
+    minZoom: 10, 
+    maxZoom: 10, 
     tileSize: 512  
   });
 
@@ -137,54 +140,87 @@ const RIPartSource = function(options, cache) {
   });
 
 };
-ol_ext_inherits(RIPartSource, ol_source_Vector);
+ol_ext_inherits(ReportSource, ol_source_Vector);
 
 /** Load georems from server
  * @private
  */
-RIPartSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
+ReportSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
+  var self = this;
+  let activeCommunity = wapp.userManager.param.active_community;
+  if (!activeCommunity) {
+    return; //on ne charge les georems que pour le groupe actif
+  }
+  const loadCache = function (self) {
+    if (self._cache && self._cache.loadCache) {
+      self._cache.loadCache({
+        tileCoord: self._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution),
+        success: (result) => {
+          loadFeatures(JSON.parse(result));
+        }
+      });
+    }
+  };
   const loadFeatures = function (result) {
     if (!result || !result.length) return;
     const features = [];
+    let format = new WKT();
     result.forEach((r)=> {
-      const p = ol_proj_fromLonLat([r.lon, r.lat]);
-      const f = new ol_Feature(new ol_geom_Point(p));
-      f.setProperties({ ripart: r });
+      const f = format.readFeature(r.geometry, {
+        dataProjection: 'EPSG:4326',
+        featureProjection: projection
+      });
+      f.setProperties({ report: r });
       features.push(f);
     });
     this.addFeatures(features);
-    if (result.length === 500) {
+    if (result.length === 100) {
       this.dispatchEvent({ type: 'overload' });
     }
-    //console.log(this.getFeatures().length);
   }.bind(this);
 
   const extent = ol_proj_transformExtent(extent0, projection, 'EPSG:4326');
   this.dispatchEvent({ type: 'loadstart' });
-  this._ripart.getGeorems({
+  let params = {
     box: extent.join(','),
     status: ['submit', 'pending', 'pending0', 'pending1', 'pending2'],
-    limit: 500
-  }, (result) => {
-    this.dispatchEvent({ type: 'loadend' });
-    // Charger le resultat
-    if (result) {
-      if (this._cache.saveCache) {
-        this._cache.saveCache(JSON.stringify(result), this._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution));
-      }
-      loadFeatures(result);
-    } else {
-      if (this._cache.loadCache) {
-        this._cache.loadCache({
-          tileCoord: this._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution),
-          success: (result) => {
-            loadFeatures(JSON.parse(result));
-          }
-        });
+    limit: 100,
+    communities: [activeCommunity]
+  };
+
+  async function getReports () {
+    async function nextRequest(page = 1) {
+      params["page"] = page;
+      let result = await self._report.apiClient.getReports(params);
+      // Charger le resultat
+      let contentRangeParts = result.headers["content-range"].split('/');
+      let range = contentRangeParts[0].split('-');
+      if (result.status == 200 || (result.status == 206 && range[1] === contentRangeParts[1])) {
+        return result.data;
+      } else if (result.status == 206) {
+        page = page + 1;
+        let nextResult = await nextRequest(page);
+        let featuresResult = nextResult.concat(result.data);
+        return featuresResult;
+      } else {
+        loadCache(self);
+        return;
       }
     }
+    return await nextRequest();
+  }
+  
+  getReports().then((features) => {
+    self.dispatchEvent({ type: 'loadend' });
+    if (self._cache.saveCache) {
+      self._cache.saveCache(JSON.stringify(features), self._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution));
+    }
+    loadFeatures(features);
+  }).catch((error) => {
+    console.log("error on loading reports: " + error);
+    loadCache(self);
   });
 };
 
 export {georemStyle}
-export default RIPartSource
+export default ReportSource;

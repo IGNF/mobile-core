@@ -24,17 +24,9 @@ var CacheVector = function(wapp, options) {
 
   if (!this.wapp.param.vectorCache) this.wapp.param.vectorCache = [];
 
-/* DEPRECATED
-  this.page = $(options.page || '#guichet');
-  $('.addmap', this.page).click(function(){
-    self.addDialog();
-  });
-*/
-
   this.loadPage = $(options.loadPage || '#loadGuichet');
 
   $('.cancel', this.loadPage).click(() => {
-    // wapp.showPage(self.page.attr('id'));
     this.wapp.hidePage();
   });
   $('.ok', this.loadPage).click(() => {
@@ -57,7 +49,7 @@ CacheVector.prototype.getLayers = function(guichet, cache) {
   var self = this;
 
   for (var i=0, c; c = this.wapp.param.vectorCache[i]; i++) {
-    if (c.id_guichet === guichet.id_groupe) {
+    if (c.id_guichet === guichet.id) {
       var g = new ol_layer_Group({
         title: c.nom, 
         name: c.id_guichet+'-'+c.id, 
@@ -65,10 +57,9 @@ CacheVector.prototype.getLayers = function(guichet, cache) {
         baseLayer: true 
       });
       var l;
-      for (var k=0; l=c.layers[k]; k++) if (l.featureType) {
+      for (var k=0; l=c.layers[k]; k++) if (l.table) {
         cache.push(l);
-        l = this.wapp.layerWebpart(l, this.getCacheFileName(c,k)+'/', c.extent);
-        // if (c.layers.length===1) l.set('displayInLayerSwitcher',false);
+        l = this.wapp.layerCollabVector(l, this.getCacheFileName(c,k)+'/', c.extent);
         g.getLayers().push(l);
         // Marquer le layer sur l'objet
         l.getSource().on('addfeature', function (e) {
@@ -102,70 +93,6 @@ CacheVector.prototype.getCurrentGuichet = function() {
   return this.currentGuichet;
 };
 
-/** Afficher les cartes en cache
- */
-CacheVector.prototype.showList = function() {
-console.warn('[DEPRECATED] showlist')
-/*
-return;
-  var ul = $('.offline ul.cartes', this.page);
-  var tmp = $('[data-role="template"]', ul);
-  ul.html('').append(tmp);
-  if (!this.wapp.param.vectorCache) return;
-  var guichet = this.getCurrentGuichet();
-  // Cache list
-  this.wapp.param.vectorCache.forEach((cache) => {
-    if (cache.id_guichet !== guichet.id_groupe) return;
-    var li = $("<li>").html(tmp.html())
-      .data('cache', cache)
-      .appendTo(ul);
-    var ddate = new Date() - new Date(cache.date);
-    if (ddate > 15*24*60*60*1000) li.addClass('err');
-    else if (ddate > 7*24*60*60*1000) li.addClass('warn');
-    var layerName = '';
-    cache.layers.forEach((l) => {
-      layerName += (layerName ? ' - ':'') + l.nom;
-    });
-    $(".info .layer", li).text(layerName);
-    $(".info .date", li).text(cache.date);
-    // Input
-    $('input', li).val(cache.nom)
-      .on('change', () => {
-        cache.nom = this.value;
-      });
-    // Buttons
-    $('.fa-map-o', li).click(() => {
-      this.loadCache(cache);
-    });
-    $('.tools-locate', li).click(() => {
-      this.locateCache(cache);
-    });
-    $('.fa-refresh', li).click(() => {
-      this.updateCache(cache);
-    });
-    $('.fa-trash', li).click(() => {
-      this.removeCache(cache);
-    });
-
-    // Comptage des objets dans le cache
-    let nb = 0;
-    $('.nb', li).hide();
-    for (var k=0; k<cache.layers.length; k++) {
-      const url = this.getCacheFileName(cache,k) + '/editions.txt';
-      CordovApp.File.read(
-        url, 
-        // Success
-        (data) => { 
-          data = JSON.parse(data);
-          nb += data.Insert + data.Update + data.Delete;
-          $('.nb', li).html(nb).show();
-        }
-      );
-    }
-  });
-  */
-};
-
 /**
  * Supprimer le cache
  * @param {*} cache 
@@ -185,9 +112,8 @@ CacheVector.prototype.removeCache = function(cache) {
   });
   // Update
   this.wapp.saveParam();
-  this.showList();
   var guichet = this.getCurrentGuichet();
-  if (this.wapp.getIdGuichet()===guichet.id_groupe) {
+  if (this.wapp.getIdGuichet()===guichet.id) {
     this.wapp.setGuichet(guichet);
   }
 };
@@ -203,7 +129,7 @@ CacheVector.prototype.removeLayerCache = function(cache, layer, cbk) {
   if (!layer) return false;
   let layerId = false;
   cache.layers.forEach((c, i) => {
-    if (c.featureType.database+':'+c.featureType.name == layer.get('name')) {
+    if (c.table.database+':'+c.table.name == layer.get('name')) {
       layerId = i;
     }
   });
@@ -231,14 +157,14 @@ CacheVector.prototype.removeLayerCache = function(cache, layer, cbk) {
  * @param {Array<ol.l.Vector>} toload
  */
 CacheVector.prototype.saveLayer = function(layers, cache, toload) {
-  console.log('LOADING', cache, this.wapp.ripart.getGroupById(cache.id_guichet))
-  this.setCurrentGuichet(this.wapp.ripart.getGroupById(cache.id_guichet));
+  console.log('LOADING', cache, this.wapp.userManager.getGroupById(cache.id_guichet))
+  this.setCurrentGuichet(this.wapp.userManager.getGroupById(cache.id_guichet));
   const l = layers.pop();
   if (!toload) toload = [];
   if (l) {
     // Find the layer indice in the layercache
     cache.layers.forEach((c, i) => {
-      if (c.featureType.database+':'+c.featureType.name === l.get('name')) {
+      if (c.table.database+':'+c.table.name === l.get('name')) {
         toload.push(i);
       }
     });
@@ -351,7 +277,7 @@ CacheVector.prototype.uploadLayers = function(cache, update, toload) {
     }
     delete l.numrec;
     // Add new layer
-    var wp = this.wapp.layerWebpart(l);
+    var wp = this.wapp.layerCollabVector(l);
     layers.push(wp);
     // Upload when ready
     wp.on('ready', () => { 
@@ -403,46 +329,41 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
       // Create layer cache
       layers.forEach((l, i) => {
         if (!toload || toload.indexOf(i) >= 0) {
-          var ft = cache.layers[i].featureType = l.getFeatureType();
+          var table = cache.layers[i].table = l.getTable();
           cache.layers[i].date = (new Date()).toISODateString();
           var param = l.getSource().getWFSParam(cache.extent, this.map.getView().getProjection());
-          $.ajax({
-            url: ft.uri + '/max-numrec?bbox=' + param.bbox,
-            beforeSend: (xhr) => { 
-              xhr.setRequestHeader("Authorization", "Basic " + this.wapp.ripart.getHash()); 
-              xhr.setRequestHeader("Accept-Language", null);
-            },    
-            success: (result) => {
+          let url = table.uri + '/max-numrec?bbox=' + param.bbox;
+          this.wapp.userManager.apiClient.doRequest(url).then((response) => {
+            let result = response.data;
+            if (update) {
+              // get current numrec 
+              cache.layers[i].numrec = cache.layers[i].numrec0;
+              delete cache.layers[i].numrec0;
+              cache.layers[i].numrec2 = result.numrec;
+            } else {
+              cache.layers[i].numrec = result.numrec;
+            }
+            this.uploadLayers2(cache, update, toload, layers);
+            console.log('NUMREC', cache.layers[i].numrec)
+          }).catch((e) => {
+            if (e.response && (e.response.status === 403 || e.response.status === 404)) {
               if (update) {
                 // get current numrec 
                 cache.layers[i].numrec = cache.layers[i].numrec0;
                 delete cache.layers[i].numrec0;
-                cache.layers[i].numrec2 = result.numrec;
+                cache.layers[i].numrec2 = false;
               } else {
-                cache.layers[i].numrec = result.numrec;
+                cache.layers[i].numrec = false;
               }
               this.uploadLayers2(cache, update, toload, layers);
-              console.log('NUMREC', cache.layers[i].numrec)
-            },
-            error: (e) => {
-              if (e.status === 403 || e.status === 404) {
-                if (update) {
-                  // get current numrec 
-                  cache.layers[i].numrec = cache.layers[i].numrec0;
-                  delete cache.layers[i].numrec0;
-                  cache.layers[i].numrec2 = false;
-                } else {
-                  cache.layers[i].numrec = false;
-                }
-                this.uploadLayers2(cache, update, toload, layers);
-              } else {
-                wapp.wait(false);
-                this.wapp.alert ("Impossible de charger la couche <i>"
-                  +(l.get('name')||l.get('title'))
-                  +"</i>.<i class='error'><br/>"+e.status+" - "+e.error+"</i>");
-              }
+            } else {
+              wapp.wait(false);
+              let msg = e.response ? e.response.status + " - " + e.response.error : "Erreur inattendue";
+              this.wapp.alert ("Impossible de charger la couche <i>"
+                +(l.get('name')||l.get('title'))
+                +"</i>.<i class='error'><br/>"+msg+"</i>");
             }
-          })
+          });
         }
       });
     } else {
@@ -465,7 +386,6 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
       // load tile
       this.uploadTiles(cache, tiles);
       this.wapp.saveParam();
-      if (guichet) this.showList();
       cache.loaded = true;
     }
   }
@@ -513,9 +433,9 @@ CacheVector.prototype.getCacheFileName = function(cache, id_layer, tileCoord, nu
   var base = CordovApp.File.fileName(
               cache.id 
               + '-'
-              + l.url.replace(/.*databasename=([^&]*).*/,"$1") 
+              + l.table.database 
               + '-' 
-              + l.nom 
+              + l.table.name 
             );
   if (numrec) base += '/diff';
   if (!tileCoord) return dir+'/'+base;
@@ -564,7 +484,6 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error, err
     pos++;
     if (this.canceled) {
       this.wapp.wait(false);
-      // wapp.vectorCache.removeCache(wapp.getCache(wapp.guichet).cache);
       this.removeCache(cache);
       wapp.hidePage();
       return;
@@ -593,52 +512,38 @@ CacheVector.prototype.uploadTiles = function(cache, tiles, pos, size, error, err
         parameters.filter = "{}";
       }
       parameters._T = (new Date()).getTime();         // Force refresh
-      var p = "";
-      for (var k in parameters) p += (p?'&':'?') +k+'='+parameters[k];
       // Chargement
-      var url = (t.source.proxy_ || t.source.featureType_.wfs) + p;
+      var url = (t.source.proxy_ || t.source.table_.wfs);
       // Destination
       var fileName = this.getCacheFileName(cache, t.id_layer, tcoord, t.numrec);
-/* www * /
-      console.log('url')
-      if (t.numrec) {
-        $.ajax({
-          url:url,
-          success: function(e)  {
-            console.log(e)
-          },
-          beforeSend: (xhr) => { 
-            xhr.setRequestHeader("Authorization", "Basic " + this.wapp.ripart.getHash());
-            xhr.setRequestHeader("Accept-Language", null);
-          },    
-        })
-      }
-/**/
+
       // Create dir if not exist
       CordovApp.File.getDirectory(
         this.getCacheFileName(cache),
         () => {
-          CordovApp.File.dowloadFile(
-            url,
-            fileName,
-            function() {
-              // Go on loading
-              self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
-              // Remove empty files
-              CordovApp.File.info(fileName, (e) => {
-                if (e.size < 5) CordovFile.delFile(fileName);
-              })
-            },
-            function() {
-              error++;
-              tileError.tiles.push(tcoord);
-              self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
-            },{	
-              headers: {
-                'Authorization': 'Basic '+ self.wapp.ripart.getHash()
+          self.wapp.userManager.apiClient.doRequest(url, "get", null, parameters).then((response) => {
+            CordovApp.File.saveData(
+              response.data,
+              fileName,
+              function() {
+                // Go on loading
+                self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
+                // Remove empty files
+                CordovApp.File.info(fileName, (e) => {
+                  if (e.size < 5) CordovFile.delFile(fileName);
+                })
+              },
+              function() {
+                error++;
+                tileError.tiles.push(tcoord);
+                self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
               }
-            }
-          );
+            );
+          }).catch((e) => {
+            error++;
+            tileError.tiles.push(tcoord);
+            self.uploadTiles(cache, tiles, pos, size, error, errorTiles);
+          });
         },
         function() {
           error++;
@@ -707,7 +612,7 @@ CacheVector.prototype.addCache = function(name, layers) {
   }
   var cache = {
     id: id+1,
-    id_guichet: guichet.id_groupe,
+    id_guichet: guichet.id,
     nom: name,
     layers: layers,
     date: (new Date()).toISODateString(),
@@ -728,10 +633,10 @@ CacheVector.prototype.addDialog = function(cback) {
   var content = CordovApp.template('dialog-guichet');
   var ul = $('ul.layerselect', content);
   for (var i=0, l; l = guichet.layers[i]; i++) {
-    if (l.type === 'WFS' && l.tilezoom) {
+    if (l.table && l.table.tile_zoom_level) {
       $("<li>").addClass('selected')
         .attr('data-input','')
-        .text(l.nom)
+        .text(l.table.title)
         .data('layer', l)
         .click(function(){
           var li = $(this).toggleClass('selected').addClass('active');

@@ -1,6 +1,6 @@
-﻿/** @module ol/source/Webpart
+﻿/** @module ol/source/CollabVector
  */
-import CordovApp from '../../CordovApp'
+import CordovApp from 'cordovapp/CordovApp'
 import proj4 from 'proj4'
 import {register as ol_proj_proj4_register} from 'ol/proj/proj4.js';
 import * as Papa from 'papaparse';
@@ -17,6 +17,7 @@ import {createXYZ as ol_tilegrid_createXYZ} from 'ol/tilegrid'
 
 import {ol_geom_createFromType} from 'ol-ext/geom/GeomUtils'
 import ol_ext_inherits from 'ol-ext/util/ext'
+import { param } from 'jquery';
 
 /** Need proj4js to load projections
  */
@@ -42,18 +43,16 @@ ol_proj_proj4_register(proj4);
 
 const editionCacheDir = 'FILE/layer-edition-cache/';
 
-/** VectorWebpart
+/** CollabVector
 * @constructor
-* @extends {ol.source.Vector}
+* @extends {ol.source.CollabVector}
 * @trigger savestart, saveend, loadstart, loadend, overload
-* @param {olx.source.WebpartOptions} options
-*  @param {string} options.proxy proxy path, default none
-*  @param {string} options.username authentification
-*  @param {string} options.password authentification
+* @param {olx.source.CollabVectorOptions} options
 *  @param {integer} options.maxFeatures max number of feature to load before overload, default 5000
 *  @param {integer} options.maxReload max number of feature before reload (for tiled layers), default +Infinity
-*  @param {featureType} options.featureType
-*  @param {Object} options.filter Webpart filter, ie: {detruit:false}, default {}
+*  @param {table} options.table
+*  @param {ApiClient} options.client
+*  @param {Object} options.filter vector filter, ie: {detruit:false}, default {}
 *  @param {string} options.outputFormat CSV or JSON
 *  @param {integer} options.tileZoom tile zoom for tiled layers (tile size are requested at tileZoom)
 *  @param {integer|undefined} options.tileSize size for tiles, default 256
@@ -61,33 +60,35 @@ const editionCacheDir = 'FILE/layer-edition-cache/';
 *  @param {ol.Attribution} options.attribution source attribution
 *  @param {bool} options.wrapX
 *  @param {bool} options.online default true : la source doit elle se charger en ligne
-* @returns {VectorWebpart}
+* @returns {CollabVector}
 */
-const VectorWebpart = function(opt_options) {
+const CollabVector = function(opt_options) {
   var options = opt_options || {};
-  
+
   // Proxy to load features
   this.proxy_ = options.proxy;
-
-  // Authentification
-  this.username = options.username;
-  this.password = options.password;
+  
+  // client collaboratif
+  if (options.client === undefined) {
+    throw 'client must be defined.';
+  }
+  this.client = options.client;
 
     // Source is loading
   this.tileloading_	= 0;
   this.isloading_     = false;
-  if (options.featureType === undefined) {
-    throw 'featureType must be defined.';
+  if (options.table === undefined) {
+    throw 'table must be defined.';
   }
-  this.featureType_ 	= options.featureType;
+  this.table_ 	= options.table;
 
   // Document uri
-  this.featureType_.docURI = this.featureType_.wfs.replace(/\/gcms\/.*/,"/document/");
+  this.table_.docURI = this.table_.wfs.replace(/\/gcms\/.*/,"/document/");
 
   this.maxFeatures_	= options.maxFeatures || 5000;
   this._outputformat = options.outputFormat;
   
-  var crs = this.featureType_.attributes[this.featureType_.geometryName];
+  var crs = this.table_.columns[this.table_.geometry_name];
   crs = crs ? crs.crs : 'IGNF:LAMB93';
   this.srsName_  = crs || 'IGNF:LAMB93'; // 'EPSG:4326';
 
@@ -98,9 +99,9 @@ const VectorWebpart = function(opt_options) {
   // Filter
   this.featureFilter_ = options.filter || {};
   // Filter / deleted objects
-  if (this.featureType_.attributes.detruit) {
+  if (this.table_.columns.detruit) {
     this.featureFilter_ = {detruit:false};
-  } else if (this.featureType_.attributes.gcms_detruit) {
+  } else if (this.table_.columns.gcms_detruit) {
     this.featureFilter_ = {gcms_detruit:false};
   }
   
@@ -131,7 +132,7 @@ const VectorWebpart = function(opt_options) {
   
   // Lecture en cache
   this._cacheUrl = options.cacheUrl;
-  this.editionCacheFile = editionCacheDir + CordovApp.File.fileName( this.featureType_.database +'-'+ this.featureType_.name + '-editions.txt');
+  this.editionCacheFile = editionCacheDir + CordovApp.File.fileName( this.table_.database +'-'+ this.table_.name + '-editions.txt');
   
   this._formatWKT = new ol_format_WKT();
   
@@ -157,7 +158,7 @@ const VectorWebpart = function(opt_options) {
   this.setLoader(this.loaderFn_);
 }
 };
-ol_ext_inherits(VectorWebpart, ol_source_Vector);
+ol_ext_inherits(CollabVector, ol_source_Vector);
 
 /** Editing states for vector features
  */
@@ -217,13 +218,13 @@ ol_Feature.prototype.unset = function(key) {
 
 /** Get number of modif in the source
 */
-VectorWebpart.prototype.nbModifications = function() {
+CollabVector.prototype.nbModifications = function() {
   return this.delete_.length + this.update_.length + this.insert_.length;
 };
 
 /** Load changes (differentiels) and read updates
 */
-VectorWebpart.prototype.loadDifferentiels = function() {
+CollabVector.prototype.loadDifferentiels = function() {
   this.differentiel_ = [];
   if (!this._cacheUrl) {
     this.setLoader(this.loaderFn_);
@@ -269,7 +270,7 @@ VectorWebpart.prototype.loadDifferentiels = function() {
 
 /** Read new features in a file
 */
-VectorWebpart.prototype.loadChanges = function() {
+CollabVector.prototype.loadChanges = function() {
   const url = this.editionCacheFile;
   CordovApp.File.read(
     url, 
@@ -277,7 +278,7 @@ VectorWebpart.prototype.loadChanges = function() {
     (data) => {
       data = JSON.parse(data);
       const features = [];
-      const geometryAttribute = this.featureType_.geometryName;
+      const geometryAttribute = this.table_.geometry_name;
       // Add save actions
       data.actions.forEach((action) => {
         // Create new feature
@@ -317,7 +318,7 @@ VectorWebpart.prototype.loadChanges = function() {
 /** Save new change in a cache file
 * 
 */
-VectorWebpart.prototype.writeChanges = function(force) {
+CollabVector.prototype.writeChanges = function(force) {
   // Write in cache
   if (!this._writeUpdate) this._writeUpdate = 0;
   // Prevent many update at once
@@ -352,20 +353,20 @@ VectorWebpart.prototype.writeChanges = function(force) {
 /** Get layer's tile grid
  * @return { ol.tilegrid.TileGrid }
  */
-VectorWebpart.prototype.getTileGrid = function() {
+ CollabVector.prototype.getTileGrid = function() {
   return this._tileGrid;
 }
 
-/** Get the layer featureType
- * @return { featureType }
+/** Get the layer table
+ * @return { table }
  */
-VectorWebpart.prototype.getFeatureType = function() {
-  return this.featureType_;
+ CollabVector.prototype.getTable = function() {
+  return this.table_;
 }
 
 /** Reset edition 
  */
-VectorWebpart.prototype.reset = function() {
+ CollabVector.prototype.reset = function() {
   this.insert_ = [];
   this.delete_ = [];
   this.update_ = [];
@@ -377,7 +378,7 @@ VectorWebpart.prototype.reset = function() {
 /** Force source reload
  * @warning use this function instead of clear() to avoid delete events on reload
  */
-VectorWebpart.prototype.reload = function() {
+ CollabVector.prototype.reload = function() {
   this.isloading_ = true;
   this.un ('removefeature', this.onDeleteFeature_bind);
   // Clear without event ???
@@ -395,38 +396,38 @@ VectorWebpart.prototype.reload = function() {
 * @param {boolean} full true to get full feature, default false
 * @return {*}
 */
-VectorWebpart.prototype.getFeatureAction = function(f, full) {
+CollabVector.prototype.getFeatureAction = function(f, full) {
   const updates = f.getUpdates();
-  const a = { feature: {}, state: f.getState(), typeName: this.featureType_.name };
+  const a = { data: {}, state: f.getState(), table: this.table_.name };
   if (full) {
     // Get all properties
-    a.feature = f.getProperties();
-    delete a.feature.geometry;
+    a.data = f.getProperties();
+    delete a.data.geometry;
     a.updates = updates;
   } else {
     // Id
-    const idName = this.featureType_.idName;
-    a.feature[idName] = f.get(idName);
+    const idName = this.table_.id_name;
+    a.data[idName] = f.get(idName);
     // Get changed properties
     for (let i in f.getProperties()) {
       if (updates[i] || i==='gcms_fingerprint') {
-        a.feature[i] = f.get(i);
+        a.data[i] = f.get(i);
       }
     }
   }
   // Get geometry
   if (full || updates.geometry) {
-    const geometryAttribute = this.featureType_.geometryName;
+    const geometryAttribute = this.table_.geometry_name;
     const geom = f.getGeometry();
     if (full) {
-      a.feature[geometryAttribute] = {
+      a.data[geometryAttribute] = {
         type: geom.getType(),
         coordinates: geom.getCoordinates()
       };
     } else {
       const g = geom.getGeometry().clone();
       g.transform (this.projection_, this.srsName_);
-      a.feature[geometryAttribute] = this._formatWKT.writeGeometry(g);
+      a.data[geometryAttribute] = this._formatWKT.writeGeometry(g);
     }
   }
   return a;
@@ -436,10 +437,10 @@ VectorWebpart.prototype.getFeatureAction = function(f, full) {
 * @param {boolean} full true to get full feature, default false
 * @return list of save actions + number of features in each states
 */
-VectorWebpart.prototype.getSaveActions = function(full) {
+CollabVector.prototype.getSaveActions = function(full) {
   var self = this;
-  // var idName = this.featureType_.idName;
-  // var geometryAttribute = this.featureType_.geometryName;
+  // var idName = this.table_.id_name;
+  // var geometryAttribute = this.table_.geometry_name;
   var actions = [];
 
   function getActions (t, state){
@@ -470,7 +471,7 @@ VectorWebpart.prototype.getSaveActions = function(full) {
 /** Return all update features
 * @return { Array<ol.Feature> }
 */
-VectorWebpart.prototype.getFeatureUpdate = function() {
+CollabVector.prototype.getFeatureUpdate = function() {
   var updates = [];
   this.insert_.forEach((f) => { updates.push(f); });
   this.delete_.forEach((f) => { updates.push(f); });
@@ -481,7 +482,7 @@ VectorWebpart.prototype.getFeatureUpdate = function() {
 * @param {ol.Feature} feature
 * @return {boolean}
 */
-VectorWebpart.prototype.removeFeatureUpdate = function(feature) {
+CollabVector.prototype.removeFeatureUpdate = function(feature) {
   let index;
   index = this.insert_.indexOf(feature);
   if (index > -1) {
@@ -503,7 +504,7 @@ VectorWebpart.prototype.removeFeatureUpdate = function(feature) {
 
 /** Save changes
  */
-VectorWebpart.prototype.save = function(onSuccess, onError) {
+ CollabVector.prototype.save = function(onSuccess, onError) {
   var self = this;
   var actions = this.getSaveActions().actions;
   
@@ -517,48 +518,20 @@ VectorWebpart.prototype.save = function(onSuccess, onError) {
   // Post changes
   var param = {
     "actions": JSON.stringify(actions), 
-    "databases": '{"'+this.featureType_.database+'":["'+this.featureType_.name+'"]}',
-    "typeName": this.featureType_.name
-//    "url": this.featureType_.wfs+"transaction/"	
+    "comment": "source vecteur: " +this.table_.database+'":"'+this.table_.name
   };
 
-  //var url = this.featureType_.wfstransaction.replace(/\/$/,'');
-  var url = this.featureType_.wfs_transactions;
-    
-  if (this.proxy_) param.url = url;
-  $.ajax({
-    url: this.proxy_ || url,
-    method: 'POST',
-    data: param,
-    dataType: 'xml',
-    // Authentification
-    /* BUG Chrome 
-    username: this.username,
-    password: this.password,
-    */
-    beforeSend: (xhr) => { 
-      const str = Buffer.from(this.username + ":" + this.password,'binary' ).toString('base64');
-      xhr.setRequestHeader("Authorization", "Basic " +str); 
-      xhr.setRequestHeader("Accept-Language", null);
-    },
-    success: function(wfs) {
-      const info = $(wfs).find('wfs\\:Message').text();
-      const url = $(wfs).find('wfs\\:TransactionURL').text();
-      if ($(wfs).find('wfs\\:SUCCESS').length) {
-        // Clear history
-        self.reset();
-        self.dispatchEvent({ type:"saveend", error: info, transaction: url });
-        if (onSuccess) onSuccess(info, url);
-      } else {
-        self.dispatchEvent({ type:"saveend", error: info, transaction: url });
-        if (onError) onError(info, url);
-      }
-    },
-    error: function(jqXHR, status, error) {
-      console.log(error)
-      self.dispatchEvent({ type:"saveend", status:status, error:error });
-      if (onError) onError(error);
-    }
+  this.client.addTransaction(this.table_.database_id, null, param).then((response) => {
+    let info = response.data.message;
+    let url = self.client.getBaseUrl()+"/databases/"+this.table_.database_id+"/transactions/"+response.data.id;
+    // Clear history
+    self.reset();
+    self.dispatchEvent({ type:"saveend", error: info, transaction: url });
+    if (onSuccess) onSuccess(info, url);
+  }).catch((error) => {
+    console.log(error)
+    self.dispatchEvent({ type:"saveend", status:"error", error:error });
+    if (onError) onError(error);
   });
 }
 
@@ -566,16 +539,16 @@ VectorWebpart.prototype.save = function(onSuccess, onError) {
 * Triggered when a feature is added / update add actions
 * @param {type} e
 */
-VectorWebpart.prototype.onAddFeature_ = function(e) {
+CollabVector.prototype.onAddFeature_ = function(e) {
   var f = e.feature;
   f.getGeometry().on('change', () => {
     f.getUpdates().geometry = true;
   });
   if (this.isloading_) return;
   f.setState(ol_Feature.State.INSERT);
-  // Add attributes according to featureType
-  var atts = this.getFeatureType().attributes;
-  var gname= this.getFeatureType().geometryName;
+  // Add attributes according to table
+  var atts = this.getTable().columns;
+  var gname= this.getTable().geometry_name;
   for (var i in atts) if (i!=gname) {
     if (!f.get(i)) f.set(i,null);
   }
@@ -589,7 +562,7 @@ VectorWebpart.prototype.onAddFeature_ = function(e) {
 * Triggered when a feature is removed / update remove actions
 * @param {type} e
 */
-VectorWebpart.prototype.onDeleteFeature_ = function(e) {
+CollabVector.prototype.onDeleteFeature_ = function(e) {
   if (this.isloading_) return;
   
   function removeFeature(features, f) {
@@ -622,7 +595,7 @@ VectorWebpart.prototype.onDeleteFeature_ = function(e) {
 * Triggered when a feature is updated / update update actions
 * @param {type} e
 */
-VectorWebpart.prototype.onUpdateFeature_ = function(e) {
+CollabVector.prototype.onUpdateFeature_ = function(e) {
   if (this.isloading_) return;
     
   // if feature has already a state attribute (INSERT),
@@ -641,8 +614,8 @@ VectorWebpart.prototype.onUpdateFeature_ = function(e) {
 *	@param {Array<ol.feature>} an array to search in
 *	@return {ol.feature|null}
 */
-VectorWebpart.prototype.findFeatureByFid = function(fid, features) {
-  var idName = this.featureType_.idName;
+CollabVector.prototype.findFeatureByFid = function(fid, features) {
+  var idName = this.table_.id_name;
   var l = features.length;
   for (var i=0; i<l; i++) {
     if (features[i].get(idName)===fid) {
@@ -656,8 +629,8 @@ VectorWebpart.prototype.findFeatureByFid = function(fid, features) {
  * @param {ol.Feature}
  * @private
  */
-VectorWebpart.prototype.findFeature_ = function(f) {
-  var idName = this.featureType_.idName;
+ CollabVector.prototype.findFeature_ = function(f) {
+  var idName = this.table_.id_name;
   var fid = f.get(idName);
 
   // Find feature in table
@@ -702,7 +675,7 @@ VectorWebpart.prototype.findFeature_ = function(f) {
 * @param {ol.extent} extent
 * @param {ol.projection} projection
 */
-VectorWebpart.prototype.getWFSParam = function (extent, projection) {
+CollabVector.prototype.getWFSParam = function (extent, projection) {
   var bbox = ol_proj_transformExtent(extent, projection, this.srsName_);
   var bboxStr = bbox.join(',');
 
@@ -711,56 +684,36 @@ VectorWebpart.prototype.getWFSParam = function (extent, projection) {
     service	: 'WFS',
     request: 'GetFeature',
     outputFormat: this._outputformat || 'JSON',
-    typeName: this.featureType_.name,
+    typeName: this.table_.name,
     bbox: bboxStr,
     filter: JSON.stringify(this.featureFilter_),
     maxFeatures: this.maxFeatures_,
     version: '1.1.0'
   };
-  if (this.proxy_) parameters.url = this.featureType_.wfs;
+  if (this.proxy_) parameters.url = this.table_.wfs;
   return parameters;
 };
 
 /** Read features from file
 * @param {*} data
 */
-VectorWebpart.prototype._readFeatures = function (data, projection) {
+CollabVector.prototype._readFeatures = function (data, projection) {
+  if (typeof data === 'string') {
+    data = JSON.parse(data);
+  }
   projection = projection || 'EPSG:3857';
   let feature;
   const features = [];
-  const geometryAttribute = this.featureType_.geometryName;
+  const geometryAttribute = this.table_.geometry_name;
   const typing = {};
-  for (let i in this.featureType_.attributes) {
-    typing[i] = /^Double$|^Integer$/.test(this.featureType_.attributes[i].type);
+  for (let i in this.table_.columns) {
+    typing[i] = /^Double$|^Integer$/.test(this.table_.columns[i].type);
   }
-  switch (this._outputformat) {
-    case 'CSV': {
-      data = Papa.parse(
-        // DEBUG: OLD VERSION
-        data.replace(/(ST_AsEWKT(.*)ASgeometrie)/, geometryAttribute), {
-          dynamicTyping: typing,
-          header: true 
-        }
-      );
-      data = data.data;
-      break;
-    }
-    default: {
-      try{
-        data = JSON.parse(data);
-      } catch(e) { 
-        onError(null, 'JSON', 'Bad JSON response'); 
-        return;
-      }
-      break;
-    }
-  }
+  
   var format = new ol_format_WKT();
   var r3d = /([-+]?(\d*[.])?\d+) ([-+]?(\d*[.])?\d+) ([-+]?(\d*[.])?\d+)/g;
   //
   for (var f=0; f<data.length; f++) {
-    // CSV empty lines
-    if (!data[f] || !data[f][geometryAttribute]) continue;
     // Get data
     var geom = data[f][geometryAttribute];
     // 
@@ -797,7 +750,7 @@ VectorWebpart.prototype._readFeatures = function (data, projection) {
 * The loader function used to load features
 * @private
 */
-VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
+CollabVector.prototype.loaderFn_ = function (extent, resolution, projection) {
   // if (resolution > this.maxResolution_) return;
   var self = this;
 
@@ -841,10 +794,9 @@ VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
     if (data.length == self.maxFeatures_) self.dispatchEvent({ type:"overload" });
   }
 
-  function onError(jqXHR, status, error) {
+  function onError(status, error) {
     if (status !== 'abort') {
-      // console.log(jqXHR);
-      self.dispatchEvent({ type:"loadend", error:error, status:status, remains:--self.tileloading_ });
+      self.dispatchEvent({ type:"loadend", error:error.message, status:status, remains:--self.tileloading_ });
     } else {
       self.dispatchEvent({ type:"loadend", remains:--self.tileloading_ });
     }
@@ -863,28 +815,13 @@ VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
     // WFS parameters
     var parameters = this.getWFSParam(extent, projection);
 
-    // Abort existing request
-    if (this.request_ && !this.tiled_) this.request_.abort();
+    // Abort existing request @TODO https://axios-http.com/fr/docs/cancellation
+    //if (this.request_ && !this.tiled_) this.request_.abort();
 
-    // Ajax request to get features in bbox
-    this.request_ = $.ajax({
-      url: this.proxy_ || this.featureType_.wfs,
-      dataType: 'text', 
-      data: parameters,
-
-      // Authentification
-      /* BUG Chrome 
-      username: this.username,
-      password: this.password,
-      */
-      beforeSend: (xhr) => { 
-        const str = Buffer.from(this.username + ":" + this.password,'binary' ).toString('base64');
-        xhr.setRequestHeader("Authorization", "Basic " +str); 
-        xhr.setRequestHeader("Accept-Language", null);
-      },
-      success: onSuccess,
-      // Error
-      error: onError
+    this.client.doRequest(this.table_.wfs, "get", null, parameters).then((response) => {
+      onSuccess(response.data);
+    }).catch((error) => {
+      onError("error", error);
     });
   }
 };
@@ -893,19 +830,19 @@ VectorWebpart.prototype.loaderFn_ = function (extent, resolution, projection) {
  *	@param {number} document ID
 *	@return {url} 
 */
-VectorWebpart.prototype.getDocumentUrl = function (id) {
-  return this.featureType_.docURI+"download/"+id;
+CollabVector.prototype.getDocumentUrl = function (id) {
+  return this.table_.docURI+"download/"+id;
 }
 
 /** Gestion des documents
  *	@param {number} document ID
 *	@param {function} callback
 */
-VectorWebpart.prototype.getDocument = function (id, cback) {
+CollabVector.prototype.getDocument = function (id, cback) {
   if (!id) { cback(); }
     
   $.ajax({
-    url: this.featureType_.docURI+"get/"+id,
+    url: this.table_.docURI+"get/"+id,
     type: "GET",
     async: false,
     data: null,
@@ -925,11 +862,11 @@ VectorWebpart.prototype.getDocument = function (id, cback) {
 * @param {File}
 * @param {function} callback
 */
-VectorWebpart.prototype.addDocument = function (file, cback) {
+CollabVector.prototype.addDocument = function (file, cback) {
   var data = new FormData();
   data.append('fileToUpload', file);
   $.ajax({
-    url: this.featureType_.docURI+"add",
+    url: this.table_.docURI+"add",
     type: "POST",
     data: data,
     processData: false,  // jQuery don't process data
@@ -947,9 +884,9 @@ VectorWebpart.prototype.addDocument = function (file, cback) {
 * @param {number} document id
 * @param {function} callback
 */
-VectorWebpart.prototype.deleteDocument = function (id, cback) {
+CollabVector.prototype.deleteDocument = function (id, cback) {
   $.ajax({
-    url: this.featureType_.docURI+"delete/"+id,
+    url: this.table_.docURI+"delete/"+id,
     success: function(results) {
       if (cback) cback (results);
     },
@@ -959,5 +896,5 @@ VectorWebpart.prototype.deleteDocument = function (id, cback) {
   });
 }
 
-export default VectorWebpart
+export default CollabVector
  

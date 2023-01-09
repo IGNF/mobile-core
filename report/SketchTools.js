@@ -1,4 +1,4 @@
-import './SketchTools.css'
+import 'cordovapp/report/SketchTools.css'
 
 import ol_Object from 'ol/Object'
 import ol_ext_inherits from 'ol-ext/util/ext'
@@ -7,7 +7,7 @@ import TouchCursor from 'ol-ext/interaction/TouchCursor'
 import TouchCursorSelect from 'ol-ext/interaction/TouchCursorSelect'
 import TouchCursorDraw from 'ol-ext/interaction/TouchCursorDraw'
 import TouchCursorModify from 'ol-ext/interaction/TouchCursorModify'
-import VectorWebpart from 'cordovapp/ol/layer/Webpart'
+import CollabVector from 'cordovapp/ol/layer/CollabVector'
 import LayerWFS from 'cordovapp/ol/layer/WFS'
 
 /** TouchCursor interaction + ModifyFeature
@@ -34,7 +34,7 @@ var SketchTools = function(ripart,geomTypes ) {
   picker.addButton({
     className: 'ol-button-back',
     click: () => {
-      ripart.cancelTracking();
+      report.cancelTracking();
     }
   });
   // Draw tools
@@ -64,17 +64,17 @@ var SketchTools = function(ripart,geomTypes ) {
   });
 
   // Translate
-  this.addTranslate(ripart);
+  this.addTranslate(report);
 
   // Modify interaction
-  this.addModify(ripart);
+  this.addModify(report);
 
   // Draw interaction
-  this.addDraw(ripart);
+  this.addDraw(report);
 
   // Start interaction
   picker.setActive(false);
-  ripart.map.addInteraction(picker);
+  report.map.addInteraction(picker);
 };
 ol_ext_inherits(SketchTools, ol_Object);
 
@@ -100,7 +100,7 @@ SketchTools.prototype.getActive = function() {
 
 /** Add draw tool
  */
-SketchTools.prototype.addDraw = function(ripart) {
+SketchTools.prototype.addDraw = function(report) {
   var draw = this.tools.draw = new TouchCursorDraw({
     className: 'draw sketch'
   });
@@ -108,11 +108,11 @@ SketchTools.prototype.addDraw = function(ripart) {
   draw.on('drawend', (e) => {
     if (e.feature && e.valid) {
       draw.removeButton('ol-button-cancel');
-      var feature = ripart.addFeature(e.feature);
+      var feature = report.addFeature(e.feature);
       draw.addButton({
         className: 'ol-button-cancel', 
         click: () => {
-          ripart.addFeature(feature.added);
+          report.addFeature(feature.added);
           draw.removeButton('ol-button-cancel');
         }
       });
@@ -131,7 +131,7 @@ SketchTools.prototype.addDraw = function(ripart) {
     });
   })
   draw.setType('LineString');
-  ripart.map.addInteraction(draw);
+  report.map.addInteraction(draw);
 };
 
 
@@ -142,13 +142,13 @@ SketchTools.prototype.addActionOnDrawend = function(){
 
 /** Add modify tool
  */
-SketchTools.prototype.addModify = function(ripart) {
+SketchTools.prototype.addModify = function(report) {
   var modify = this.tools.modify = new TouchCursorModify({
     className: 'sketch modify',
-    source: ripart.selectOverlay.getSource()
+    source: report.selectOverlay.getSource()
   });
   modify.setActive(false);
-  ripart.map.addInteraction(modify);
+  report.map.addInteraction(modify);
   modify.addButton({
     className: 'ol-button-back', 
     click: () => {
@@ -160,18 +160,18 @@ SketchTools.prototype.addModify = function(ripart) {
 
 /** Add translate tool
  */
-SketchTools.prototype.addTranslate = function(ripart) {
+SketchTools.prototype.addTranslate = function(report) {
   var translating = false;
 
   // Translate
   var translate = this.tools.translate = new TouchCursorSelect({
     className: 'sketch translate',
     layerFilter: (l) => { 
-      return l===ripart.selectOverlay;
+      return l===report.selectOverlay;
     }
   });
   translate.setActive(false);
-  ripart.map.addInteraction(translate);
+  report.map.addInteraction(translate);
 
   translate.on('change:active', () => {
     translate.removeButton('ol-button-cancel');
@@ -216,17 +216,17 @@ SketchTools.prototype.addTranslate = function(ripart) {
     click: () => {
       var features = translate.getMap().getFeaturesAtPixel(translate.getPixel(), {
         layerFilter: (l) => {
-          return l instanceof VectorWebpart || l instanceof LayerWFS;
+          return l instanceof CollabVector || l instanceof LayerWFS;
         },
         hitTolerance: 5
       });
       if (features.length && !translate.getSelection()) {
         translate.removeButton('ol-button-cancel');
-        var feature = ripart.addFeature(features[0]);
+        var feature = report.addFeature(features[0]);
         translate.addButton({
           className: 'ol-button-cancel', 
           click: () => {
-            ripart.addFeature(feature.added);
+            report.addFeature(feature.added);
             translate.removeButton('ol-button-cancel');
           }
         });
@@ -241,11 +241,11 @@ SketchTools.prototype.addTranslate = function(ripart) {
       if (selection) {
         translate.removeButton('ol-button-cancel');
         selection.setStyle();
-        var feature = ripart.addFeature(selection);
+        var feature = report.addFeature(selection);
         translate.addButton({
           className: 'ol-button-cancel', 
           click: () => {
-            ripart.addFeature(feature.removed);
+            report.addFeature(feature.removed);
             translate.removeButton('ol-button-cancel');
           }
         });
