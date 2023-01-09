@@ -16,7 +16,7 @@ import LayerWFS from 'cordovapp/ol/layer/WFS'
  * @fires change:type
  * @param {*} options Options
  */
-var SketchTools = function(ripart,geomTypes ) {
+var SketchTools = function(report, geomTypes ) {
   ol_Object.call(this);
 
   if (geomTypes=== undefined ) {

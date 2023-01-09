@@ -98,7 +98,7 @@ ol_ext_inherits(CollabVector, ol_layer_Vector);
 
   // Style of the feature style
   if (!options.style && ol_style_Collaboratif) {
-    this.setStyle (ol_style_Webpart.getFeatureStyleFn(featureType, CordovApp.File.getFileURI(options.cacheUrl), source_options));
+    this.setStyle (ol_style_Collaboratif.getFeatureStyleFn(table, CordovApp.File.getFileURI(options.cacheUrl), source_options));
   }
 
   this.dispatchEvent({ type:"ready", source: vectorSource });

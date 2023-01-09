@@ -653,7 +653,7 @@ Report.prototype.postLocalRems = function(options) {
  */
 Report.prototype.refreshProfileInfo = function(community = "") {
   var self = this;
-  wapp.UserManager.getLogo(community, function(logo) {
+  wapp.userManager.getLogo(community, function(logo) {
       logo = community && community.logo_url ? community.logo_url : logo ;
       $("img", self.profilElement).attr("src", CordovApp.File.getFileURI(logo) || "");
   });
@@ -1284,7 +1284,7 @@ Report.prototype.setProfil = function(g) {
         break;
       }
     }
-    refreshProfileInfo(g);
+    this.refreshProfileInfo(g);
   } else {
     this.param.profil = null;
   }
