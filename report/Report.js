@@ -53,8 +53,7 @@ class Report {
         // Post parameters
         var post = {
             comment: params.comment,
-            geometry: params.geometry || "POINT("+params.lon+" "+params.lat+")",
-            territory: params.territory || "FXX",
+            geometry: params.geometry || "POINT("+params.lon+" "+params.lat+")"
         };
         // Optional attributes
         if (params.sketch) {
@@ -62,19 +61,21 @@ class Report {
         } else if (params.features) {
             post.sketch = this.feature2sketch(params.features, params.proj);
         }
-        if (params.community_id>0) post.group = params.community_id;
+        if (params.community_id>0) post.community = params.community_id;
         if (params.themes) {
-            post.attributes = params.themes;
-            if (params.attributes) post.attributes += params.attributes;
+            let th = params.themes.split("::");
+            var group = parseInt(th[0]);
+            post.attributes = {
+                "community": group,
+                "theme": params.theme,
+                "attributes": JSON.parse(params.attributes)
+            }
         }
-        if (params.insee) post.insee = params.insee;
-        if (params.protocol) post.protocol = params.protocol;
-        if (params.version) post.version = params.version;
         if (params.photo) post.photo = params.photo;
 
         if (photo) console.log('TODO');
         else {
-            await this.apiClient.postGeorem(post);
+            return await this.apiClient.addReport(post);
         }
     }
 

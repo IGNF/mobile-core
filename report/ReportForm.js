@@ -40,6 +40,7 @@ import { selectInputText } from 'cordovapp/cordovapp/param'
 import { dataAttributes } from 'cordovapp/cordovapp/param'
 
 import 'ol-ext/style/FontAwesomeDef'
+import wapp from '../../../src/wapp'
 
 /** @module report/ReportForm
  * @description
@@ -276,9 +277,13 @@ Report.prototype.initialize = function(options) {
     var track = !self.target.getVisible();
     if (track) {
       $('body').addClass("trackingGeorem fullscreenMap");
-      var lon = Number($("input.lon", formulaire).val());
-      var lat = Number($("input.lat", formulaire).val());
-      self.map.getView().setCenter(ol_proj_fromLonLat([ lon, lat ]));
+      let geometry = $("input.geometry", formulaire).val();
+      let format = new WKT();
+      const g = format.readGeometry(geometry, {
+        dataProjection: 'EPSG:4326',
+        featureProjection: self.map.getView().getProjection()
+      });
+      self.map.getView().setCenter(g.flatCoordinates);
       self.modifyInteraction.setActive(true);
     } else {
       $('body').removeClass("trackingGeorem fullscreenMap");
@@ -286,15 +291,15 @@ Report.prototype.initialize = function(options) {
     }
     self.target.setVisible(track);
   });
-  this.map.getView().on("change:center", function() {
+  self.map.getView().on("change:center", function() {
     if (this.target.getVisible()) {
       var pos = self.map.getView().getCenter();
       self.overlay.getSource().clear();
       self.overlay.getSource().addFeature( new ol_Feature (new ol_geom_Point(pos)));
       self.overlay.setVisible(true);
       pos = ol_proj_transform(pos, self.map.getView().getProjection(),'EPSG:4326');
-      $("input.lon", formulaire).val(pos[0].toFixed(8));
-      $("input.lat", formulaire).val(pos[1].toFixed(8));
+      let wkt="POINT(" + pos[0] + " " + pos[1] + ")";
+      $("input.geometry", formulaire).val(wkt);
     }
   }.bind(this));
 
@@ -460,8 +465,7 @@ Report.prototype.saveFormulaire = function(form, gps) {
 
   // Preformatage
   var georem =  {
-    lon: Number($("input.lon", form).val()),
-    lat: Number($("input.lat", form).val()),
+    geometry: $("input.geometry", form).val(),
     sketch: undefined,
     comment: $(".comment", form).val(),
     photo: $('.photo img', form).data('photo') || false
@@ -475,7 +479,7 @@ Report.prototype.saveFormulaire = function(form, gps) {
 
   // Theme
   if (theme) {
-    georem.themes = '"'+theme+'"=>"1"';
+    georem.themes = theme;
     georem.theme = selectInputText($('[data-input="select"][data-param="theme"]', this.formElement));
   }
   georem.community_id = this.param.profil.community_id;
@@ -486,9 +490,9 @@ Report.prototype.saveFormulaire = function(form, gps) {
     // Gestion des attributs obligatoires
     var obligatoire = '';
     $('.attributes', this.formElement).data("attributes").forEach((a) => {
-      if (a.obligatoire) {
-        if (attr[a.att]===undefined || attr[a.att]==='') {
-          obligatoire = a.att;
+      if (a.mandatory) {
+        if (attr[a.name]===undefined || attr[a.name]==='') {
+          obligatoire = a.name;
         }
       }
     });
@@ -499,12 +503,7 @@ Report.prototype.saveFormulaire = function(form, gps) {
   }
 
   // Remplissage des attributs
-  georem.attributes = "";
-  for (var i in attr) {
-    var a = attr[i];
-    a = (typeof(attr[i])=="boolean") ?  (a?"1":"0") : a.replace(/"/g,"''");
-    georem.attributes += ',"'+theme+"::"+i+'"=>"'+a+'"';
-  }
+  georem.attributes = JSON.stringify(attr);
   georem.attText =  $('.attributes [data-input-role="info"]', this.formElement).text();
 
   // Ajout des features
@@ -527,7 +526,7 @@ Report.prototype.saveFormulaire = function(form, gps) {
   }
 
   // oops
-  if (isNaN(georem.lon) || isNaN(georem.lat)) {
+  if (!georem.geometry) {
     isok = false;
     alertDlg ("aucune coordonnée...");
   }
@@ -681,68 +680,70 @@ Report.prototype.postLocalRem = function(i, options) {
   var grem = self.param.georems[i];
   if (grem && !grem.id) {
     if (!options.onPost) waitDlg(options.info || "Envoi en cours...");
-    self.postGeorem ( grem, function(resp,e) {
-      if (e) {
-        if (!options.onPost) waitDlg(false);
-        var msg = "Impossible d'envoyer le signalement.<br/>";
-        if (e.status==='BADREM') {
-          msg += "Remontée mal formatée...";
-        } else if (e.status===401) {
-          msg += "Vous devez être connecté...";
-        } else {
-          switch (e.status) {
-            case '400': {
-              msg = $('<div>').html(msg+"Erreur dans la remontée...");
-              break;
-            }
-            default: {
-              msg = $('<div>').html(msg+"Vérifiez votre connexion ou réessayez lorsque vous serez à nouveau connecté au réseau.");
-              break;
-            }
-          }
-          $('<i>').addClass('fa fa-info-circle')
-            .css({	position: "absolute",
-                top: 0,
-                right: 0,
-                margin: "0.4em",
-                color:"#ccc",
-                'font-size': "1.5em"
-              })
-            .click(function(){ $(this).next().toggle(); })
-            .appendTo(msg);
-          $("<i>").addClass('error')
-            .html("<br/>Erreur : "+e.status+" - "+e.statusText+"</i>")
-            .appendTo(msg);
-        }
-        if (typeof(options.error)=='function') {
-          e.gremIndice = i;
-          options.error(e, msg);
-        } else {
-          messageDlg ( msg,
-            "Connexion", {
-              ok: "ok",
-              connect: (e.status===401) ? "Se connecter...":undefined
-            },
-            function(b) {
-              if (b=="connect") self.connectDialog();
-            }
-          );
-        }
-        self.saveParam();
-        self.onUpdate();
+    self.postGeorem(grem).then((response) => {
+      self.param.georems[i] = response.data;
+      if (grem.photo) self.param.georems[i].photo = grem.photo;
+      self.updateLayer();
+      // Done
+      if (!options.onPost) notification ("signalement envoyé au serveur ("+response.data.id+").");
+      else options.onPost(i, resp);
+      // Post Next
+      if (typeof(options.cback)=='function') options.cback(response.data);
+      else if (!options.onPost) waitDlg(false);
+      self.saveParam();
+      self.onUpdate();
+    }).catch((e) => {
+      if (!options.onPost) waitDlg(false);
+      var msg = "Impossible d'envoyer le signalement.<br/>";
+      if (typeof(e) === "string") { 
+        msg += e;
+      } else if(e.status==='BADREM') {
+        msg += "Remontée mal formatée...";
+      } else if (e.response && e.response.data.code ===401) {
+        msg += "Vous devez être connecté...";
       } else {
-        self.param.georems[i] = resp;
-        if (grem.photo) self.param.georems[i].photo = grem.photo;
-        self.updateLayer();
-        // Done
-        if (!options.onPost) notification ("signalement envoyé au serveur ("+resp.id+").");
-        else options.onPost(i, resp);
-        // Post Next
-        if (typeof(options.cback)=='function') options.cback(resp);
-        else if (!options.onPost) waitDlg(false);
-        self.saveParam();
-        self.onUpdate();
+        switch (e.response && e.response.data.code) {
+          case '400': {
+            msg = $('<div>').html(msg+"Erreur dans la remontée...");
+            break;
+          }
+          default: {
+            msg = $('<div>').html(msg+"Vérifiez votre connexion ou réessayez lorsque vous serez à nouveau connecté au réseau.");
+            break;
+          }
+        }
+        $('<i>').addClass('fa fa-info-circle')
+          .css({	position: "absolute",
+              top: 0,
+              right: 0,
+              margin: "0.4em",
+              color:"#ccc",
+              'font-size': "1.5em"
+            })
+          .click(function(){ $(this).next().toggle(); })
+          .appendTo(msg);
+        let errorTxt = (e.response && e.response.data) ? e.response.data.code+" - "+e.response && e.response.data.message : "";
+        $("<i>").addClass('error')
+          .html("<br/>Erreur : "+errorTxt+"</i>")
+          .appendTo(msg);
       }
+
+      if (typeof(options.error)=='function') {
+        e.gremIndice = i;
+        options.error(e, msg);
+      } else {
+        messageDlg ( msg,
+          "Connexion", {
+            ok: "ok",
+            connect: (e.status===401) ? "Se connecter...":undefined
+          },
+          function(b) {
+            if (b=="connect") self.connectDialog();
+          }
+        );
+      }
+      self.saveParam();
+      self.onUpdate();
     });
   }
 };
@@ -1267,6 +1268,7 @@ Report.prototype.logout = function() {
   * @param {Object} g le groupe sur lequel on veut switcher
   */
 Report.prototype.setProfil = function(g) {
+  if (Number.isInteger(g)) g = wapp.userManager.getGroupById(g);
   if (g) {
     this.param.profil = {
       filtre: g.profile,
@@ -1293,12 +1295,39 @@ Report.prototype.setProfil = function(g) {
   this.saveParam();
 }
 
+/** 
+ * Dialog de changement de profil
+ * @param {function|undefined} onSelect function called with a group number on select
+ */
+Report.prototype.choixProfil = function(title, onSelect) {
+  if (this.getProfil() && wapp.userManager.param.communities.length<2) return;
+  var q = {};
+  var listClass = {};
+  var self = this;
+  function libelle(g) {
+    var d = $("<div>").html(g.name);
+    wapp.userManager.getLogo(g, function(f){
+      $("<div>").addClass("listimage")
+        .append($("<img>").attr("src", CordovApp.File.getFileURI(f)))
+        .prependTo(d);
+    });
+    return d;
+  }
+  for (var i=0, g; g=wapp.userManager.param.communities[i]; i++) {
+    q[g.id] = libelle (g);
+    listClass[g.id] = (g.active ? ' active' : ' inactive');
+  }
+  selectDialog(q, this.param.profil ? this.param.profil.id_groupe : -1, function(n) {
+    if (onSelect) onSelect(Number(n));
+    else self.setProfil(Number(n));
+  }, { title: title, search: (wapp.userManager.param.communities.length>8), listClass: listClass, className: 'ripart_choix' });
+}
+
 /** Gestion de la page de signalement
  * @param {georem|false|undefined} grem une remontee non deja envoyee ou false vider la selection
  * @param {boolean} select autoriser la selection, default true
  */
 Report.prototype.showFormulaire = function(grem, select) {
-
   if (grem==='gps') {
     grem = false;
     $(this.formElement).parent().addClass('gps');
@@ -1329,8 +1358,7 @@ Report.prototype.showFormulaire = function(grem, select) {
   this.formElement.data("grem", georem);
 //	console.log(this.formElement)
   if (georem) {
-    $("input.lon", this.formElement).val(georem.lon);
-    $("input.lat", this.formElement).val(georem.lat);
+    $("input.geometry", this.formElement).val(georem.geometry);
     $(".comment", this.formElement).val(georem.comment);
     // Photo
     var url = georem.photo;
@@ -1375,7 +1403,7 @@ Report.prototype.showFormulaire = function(grem, select) {
       nbth++;
     }
   }
-  if (georem && georem.themes) valdef = georem.themes.split("=>")[0].replace(/^"|"$/g,"");
+  if (georem && georem.themes) valdef = georem.themes;
   selectInput(theme, valdef, function(c) {
     self.selectTheme(c);
   });
@@ -1389,17 +1417,20 @@ Report.prototype.showFormulaire = function(grem, select) {
   // Valid
   if (grem) this.formElement.addClass('valid');
 
-  // Lon / lat
-  var lon = Number($("input.lon", this.formElement).val());
-  var lat = Number($("input.lat", this.formElement).val());
-  var pos = ol_proj_transform([lon, lat], 'EPSG:4326', this.map.getView().getProjection());
+  // Geometry
+  let wktGeom = $("input.geometry", this.formElement).val();
+  let format = new WKT();
+  let feature = format.readFeature(wktGeom,  {
+    dataProjection: 'EPSG:4326',
+    featureProjection: self.map.getView().getProjection()
+  })
   this.overlay.getSource().clear();
-  this.overlay.getSource().addFeature( new ol_Feature (new ol_geom_Point(pos)));
+  this.overlay.getSource().addFeature(feature);
   this.overlay.setVisible(true);
   this.selectOverlay.setVisible(true);
   this.selectInteraction.setActive(select!==false);
 
-  this.map.getView().setCenter(pos);
+  self.map.getView().setCenter(feature.getGeometry().getFirstCoordinate());
 
   // reset
   this.target.setVisible(false);
@@ -1445,8 +1476,13 @@ Report.prototype.selectTheme = function(th, atts, prompt) {
   var themes = this.param.profil.filtre;
   var theme = null;
   for (var i=0; i<themes.length; i++) {
-    if (themes[i].community_id == group && themes[i].theme == th) {
-    theme = themes[i];
+    if (themes[i].community_id == group) {
+      for (var j in themes[i].themes) {
+        if (themes[i].themes[j].theme == th) {
+          theme = themes[i].themes[j];
+          break;
+        }
+      }
       break;
     }
   }
@@ -1495,56 +1531,52 @@ Report.prototype.formulaireAttribut = function(valdef, prompt) {
     var i, a, k, li;
     var vals = {}, infos = {};
     if (valdef) {
-      var v = valdef.replace(/^,/, "").split(',"');
-      valdef = {};
-      for (i=0; i<v.length; i++) {
-        var l = v[i].split('"=>"');
-        k = l[0].split("::")[2];
-        valdef[k] = l[1].replace(/"$/,"");
-      }
+      valdef = JSON.parse(valdef);
     }
     for (i=0; a = att[i]; i++) {
-      vals[a.att] = (valdef ? valdef[a.att] : (att[i].defaultVal || a.val[0]));
-      infos[a.att] = a;
+      vals[a.name] = (valdef ? valdef[a.name] : att[i].default);
+      infos[a.name] = a;
       switch (a.type) {
         case 'list': {
+          let values = a.values.split("|");
           li = $("<li data-input='select'>")
-            .attr('data-valdef', a.defaultVal)
-            .attr('data-param', a.att)
+            .attr('data-valdef', a.default)
+            .attr('data-param', a.name)
             .appendTo(content);
-          for (k in a.val) {
-            $("<div data-input-role='option'>").attr('data-val', k).html(a.val[k]||"<i>sans</i>").appendTo(li);
+            
+          for (k in values) {
+            $("<div data-input-role='option'>").attr('data-val', values[k]).html(values[k]||"<i>sans</i>").appendTo(li);
           }
           break;
         }
         case 'checkbox': {
-          vals[a.att] = (vals[a.att]==='1' || vals[a.att]===true);
-          li = $("<li data-input='check'>").attr('data-param',a.att).appendTo(content);
+          vals[a.name] = (vals[a.name]==='1' || vals[a.name]===true);
+          li = $("<li data-input='check'>").attr('data-param',a.name).appendTo(content);
           break;
         }
         case 'date': {
           li = $("<li data-input='date'>")
-            .attr('data-param',a.att)
-            .attr('data-default', a.defaultVal)
+            .attr('data-param',a.name)
+            .attr('data-default', a.default)
             .appendTo(content);
           $("<input>").attr("type","date").appendTo(li);
           break;
         }
         default: {
-          li = $("<li data-input='text'>").attr('data-param',a.att).appendTo(content);
+          li = $("<li data-input='text'>").attr('data-param',a.name).appendTo(content);
           $("<input>").attr("type","text").appendTo(li);
           $('<i class="clear-input">').appendTo(li);
           break;
         }
       }
-      $("<label>").text(a.title || a.att).prependTo(li);
-      if (a.obligatoire) li.addClass('obligatoire');
+      $("<label>").text(a.title || a.name).prependTo(li);
+      if (a.mandatory) li.addClass('obligatoire');
     }
     if (!valdef && input.data("vals")) vals = $.extend({}, input.data("vals"));
     this.wapp.setParamInput(content, vals);
     const showInfo = function() {
       input.data("vals", $.extend({}, vals));
-      $('[data-input-role="info"]', input).text( self.formatAttributString(vals, infos) );
+      $('[data-input-role="info"]', input).text( JSON.stringify(vals) );
     }
     showInfo();
     // First time ask for attributes

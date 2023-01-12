@@ -11,13 +11,11 @@ class UserManagerTemplating extends UserManager {
     /*
      * @param options {Object}
      *      @param options {String} infoElement element pour l'info de connexion, ex: '#options .connect [data-input-role="info"] span.info'
-     *      @param options {String} profilElement element pour l'info de groupe default '.profil'
      *
      */
     constructor(apiClient, options) {
         super(apiClient);
         this.infoElement = options.infoElement;
-        this.profilElement = options.profilElement || ".profil";
         this.initialize();
         $(() => {
             $(document).on("changegroup", (e) => {
