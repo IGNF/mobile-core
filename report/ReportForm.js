@@ -680,70 +680,76 @@ Report.prototype.postLocalRem = function(i, options) {
   var grem = self.param.georems[i];
   if (grem && !grem.id) {
     if (!options.onPost) waitDlg(options.info || "Envoi en cours...");
-    self.postGeorem(grem).then((response) => {
-      self.param.georems[i] = response.data;
-      if (grem.photo) self.param.georems[i].photo = grem.photo;
-      self.updateLayer();
-      // Done
-      if (!options.onPost) notification ("signalement envoyé au serveur ("+response.data.id+").");
-      else options.onPost(i, resp);
-      // Post Next
-      if (typeof(options.cback)=='function') options.cback(response.data);
-      else if (!options.onPost) waitDlg(false);
-      self.saveParam();
-      self.onUpdate();
-    }).catch((e) => {
-      if (!options.onPost) waitDlg(false);
-      var msg = "Impossible d'envoyer le signalement.<br/>";
-      if (typeof(e) === "string") { 
-        msg += e;
-      } else if(e.status==='BADREM') {
-        msg += "Remontée mal formatée...";
-      } else if (e.response && e.response.data.code ===401) {
-        msg += "Vous devez être connecté...";
+    self.postGeorem(grem, (response) => {
+      if (!response.error) {
+        self.param.georems[i] = response.data;
+        if (grem.photo) self.param.georems[i].photo = grem.photo;
+        self.updateLayer();
+        // Done
+        if (!options.onPost) notification ("signalement envoyé au serveur ("+response.data.id+").");
+        else options.onPost(i, resp);
+        // Post Next
+        if (typeof(options.cback)=='function') options.cback(response.data);
+        else if (!options.onPost) waitDlg(false);
+        self.saveParam();
+        self.onUpdate();
       } else {
-        switch (e.response && e.response.data.code) {
-          case '400': {
-            msg = $('<div>').html(msg+"Erreur dans la remontée...");
-            break;
+        let e = response.data;
+        if (!options.onPost) waitDlg(false);
+        var msg = "Impossible d'envoyer le signalement.<br/>";
+        if (typeof(e) === "string") { 
+          msg += e;
+        } else if(e.status==='BADREM') {
+          msg += "Remontée mal formatée...";
+        } else if (e.response && e.response.data.code ===401) {
+          msg += "Vous devez être connecté...";
+        } else {
+          switch (e.response && e.response.data.code) {
+            case '400': {
+              msg = $('<div>').html(msg+"Erreur dans la remontée...");
+              break;
+            }
+            default: {
+              msg = $('<div>').html(msg+"Vérifiez votre connexion ou réessayez lorsque vous serez à nouveau connecté au réseau.");
+              break;
+            }
           }
-          default: {
-            msg = $('<div>').html(msg+"Vérifiez votre connexion ou réessayez lorsque vous serez à nouveau connecté au réseau.");
-            break;
-          }
+          $('<i>').addClass('fa fa-info-circle')
+            .css({	position: "absolute",
+                top: 0,
+                right: 0,
+                margin: "0.4em",
+                color:"#ccc",
+                'font-size': "1.5em"
+              })
+            .click(function(){ $(this).next().toggle(); })
+            .appendTo(msg);
+          let errorTxt = (e.response && e.response.data) ? e.response.data.code+" - "+e.response && e.response.data.message : "";
+          $("<i>").addClass('error')
+            .html("<br/>Erreur : "+errorTxt+"</i>")
+            .appendTo(msg);
         }
-        $('<i>').addClass('fa fa-info-circle')
-          .css({	position: "absolute",
-              top: 0,
-              right: 0,
-              margin: "0.4em",
-              color:"#ccc",
-              'font-size': "1.5em"
-            })
-          .click(function(){ $(this).next().toggle(); })
-          .appendTo(msg);
-        let errorTxt = (e.response && e.response.data) ? e.response.data.code+" - "+e.response && e.response.data.message : "";
-        $("<i>").addClass('error')
-          .html("<br/>Erreur : "+errorTxt+"</i>")
-          .appendTo(msg);
-      }
 
-      if (typeof(options.error)=='function') {
-        e.gremIndice = i;
-        options.error(e, msg);
-      } else {
-        messageDlg ( msg,
-          "Connexion", {
-            ok: "ok",
-            connect: (e.status===401) ? "Se connecter...":undefined
-          },
-          function(b) {
-            if (b=="connect") self.connectDialog();
+        if (typeof(options.error)=='function') {
+          if (typeof(e) === "string") {
+            e = {"message": e};
           }
-        );
+          e.gremIndice = i;
+          options.error(e, msg);
+        } else {
+          messageDlg ( msg,
+            "Connexion", {
+              ok: "ok",
+              connect: (e.status===401) ? "Se connecter...":undefined
+            },
+            function(b) {
+              if (b=="connect") self.connectDialog();
+            }
+          );
+        }
+        self.saveParam();
+        self.onUpdate();
       }
-      self.saveParam();
-      self.onUpdate();
     });
   }
 };

@@ -277,6 +277,7 @@ CollabVector.prototype.loadChanges = function() {
     // Success
     (data) => {
       data = JSON.parse(data);
+      console.log(data);
       const features = [];
       const geometryAttribute = this.table_.geometry_name;
       // Add save actions
@@ -398,7 +399,7 @@ CollabVector.prototype.writeChanges = function(force) {
 */
 CollabVector.prototype.getFeatureAction = function(f, full) {
   const updates = f.getUpdates();
-  const a = { data: {}, state: f.getState(), table: this.table_.name };
+  const a = { data: {}, state: f.getState(), table: this.table_.id };
   if (full) {
     // Get all properties
     a.data = f.getProperties();
@@ -517,11 +518,11 @@ CollabVector.prototype.removeFeatureUpdate = function(feature) {
 
   // Post changes
   var param = {
-    "actions": JSON.stringify(actions), 
+    "actions": actions,
     "comment": "source vecteur: " +this.table_.database+'":"'+this.table_.name
   };
 
-  this.client.addTransaction(this.table_.database_id, null, param).then((response) => {
+  this.client.addTransaction(this.table_.database_id, param).then((response) => {
     let info = response.data.message;
     let url = self.client.getBaseUrl()+"/databases/"+this.table_.database_id+"/transactions/"+response.data.id;
     // Clear history

@@ -35,10 +35,9 @@ class Report {
      * upload file
      * @param {Object} params liste des parametres a envoyer { comment, geometry, lon,lat, territory, attributes, sketch, features, proj, insee, protocol, version, photo }
      * @param {function} callback function (response, error)
-     * @TODO https://cordova.apache.org/blog/2017/10/18/from-filetransfer-to-xhr2.html
-     * @TODO voir le type d objet attendu par axios
      */
-    async postGeorem(params, photo) {
+    postGeorem(params, callback) {
+        var self = this;
         // Bad command
         if (!params || (
             !Object.prototype.hasOwnProperty.call(params,'geometry') 
@@ -71,11 +70,27 @@ class Report {
                 "attributes": JSON.parse(params.attributes)
             }
         }
-        if (params.photo) post.photo = params.photo;
 
-        if (photo) console.log('TODO');
+        if (params.photo) {
+            CordovApp.File.getBlob (
+                params.photo,
+                function(blob) {
+                    post.photo = blob;
+                    self.apiClient.addReport(post).then((response) => {
+                        callback({"error": false, "data": response.data});
+                    }).catch((error) => {
+                        callback({"error": true, "data": error});
+                    });
+                },
+                callback
+            );
+        }
         else {
-            return await this.apiClient.addReport(post);
+            this.apiClient.addReport(post).then((response) => {
+                callback({"error": false, "data": response.data});
+            }).catch((error) => {
+                callback({"error": true, "data": error});
+            });
         }
     }
 

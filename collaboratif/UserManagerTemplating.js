@@ -151,7 +151,7 @@ class UserManagerTemplating extends UserManager {
      */
     getLogo(g, cback, scope) {
         CordovApp.File.getFile (
-            "TMP/logo/"+(g ? g.community_id : '_nologo_'),
+            "TMP/logo/"+(g ? g.id : '_nologo_'),
             function(fileEntry) {
                 cback.call(scope, CordovApp.File.getFileURI(fileEntry.toURL()));
             },

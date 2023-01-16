@@ -401,19 +401,40 @@ CordovApp.File.saveData = function(data, name, success, fail, binary = false) {
     dir,
     function(fileEntry) {
       if (binary) {
-        let blob = new Blob([JSON.stringify(data)]);
-        if (blob) {
-            let url =  window.URL.createObjectURL(blob);
-            CordovApp.File.moveFile(url, fileEntry.toURL()+name, success, fail);
-        }
-      } else {
-          CordovApp.File.write(fileEntry.toURL()+name, data, success, fail);
-      }      
+        data = new Blob([data]);
+      }
+      CordovApp.File.write(fileEntry.toURL()+name, data, success, fail);
     },
     fail,
     true
   );
 };
+
+/**
+ * Get a blob from file URI
+ * @param {String} url URI referring to a local file
+ * @param {function} success callback avec en parametre le bolb
+ * @param {function} fail callback invoked on error
+ */
+CordovApp.File.getBlob = function (url, success, fail) {
+  CordovApp.File.getFile (
+    url,
+    function(fileEntry) {
+      fileEntry.file(function(file) {
+        var reader = new FileReader();
+        reader.fileType = file.type;
+        reader.onloadend = function(type) {
+            var blob = new Blob([new Uint8Array(this.result)], {"type": this.fileType});
+            success(blob);
+        }
+        reader.readAsArrayBuffer(file);
+      },
+      fail
+      );
+    },
+    fail
+  );
+}
 
 /** Load a file from a remote adresse + save it to 'name'
  * @memberof CordovApp.File
