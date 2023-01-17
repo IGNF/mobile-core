@@ -697,6 +697,7 @@ Report.prototype.postLocalRem = function(i, options) {
         let e = response.data;
         if (!options.onPost) waitDlg(false);
         var msg = "Impossible d'envoyer le signalement.<br/>";
+        if (!e.response && e.message) e = e.message;
         if (typeof(e) === "string") { 
           msg += e;
         } else if(e.status==='BADREM') {
@@ -1205,12 +1206,16 @@ Report.prototype.updateLayer = function() {
 
       source.addFeature(g);
       if (grem.sketch && this.croquis) {
-        const features = this.sketch2feature(grem.sketch);
-        features.forEach((f) => {
-          f.set('georem', g);
-          f.layer = this.croquis;
-        });
-        croquis.addFeatures(features);
+        try {
+          const features = this.sketch2feature(grem.sketch);
+          features.forEach((f) => {
+            f.set('georem', g);
+            f.layer = this.croquis;
+          });
+          croquis.addFeatures(features);
+        } catch(error) {
+          console.log(error);
+        }
       }
     });
   }
@@ -1380,8 +1385,12 @@ Report.prototype.showFormulaire = function(grem, select) {
     }
     // Croquis
     if (georem.sketch) {
-      var f = this.sketch2feature(georem.sketch);
-      this.addFeature(f);
+      try {
+        var f = this.sketch2feature(georem.sketch);
+        this.addFeature(f);
+      } catch (error) {
+        console.log(error);
+      }
     }
   }
   //

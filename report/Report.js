@@ -4,6 +4,9 @@ import ol_Feature from 'ol/Feature'
 import ol_geom_Point from 'ol/geom/Point'
 import ol_geom_LineString from 'ol/geom/LineString'
 import ol_geom_Polygon from 'ol/geom/Polygon'
+import ol_format_WKT from 'ol/format/WKT'
+import {transform as ol_proj_transform} from 'ol/proj'
+
 
 class Report {
     static status = {
@@ -17,6 +20,7 @@ class Report {
         "reject0": "Rejeté (hors propos)",
         "pending0": "En demande de qualification"
     };
+
     /**
      * @constructor
      * @param {ApiClient} apiClient
@@ -95,42 +99,18 @@ class Report {
     }
 
     /** Get feature(s) from sketch
-     * @param {String} sketch the sketch
+     * @param {String} sketch the sketch in json
      * @param {ol.proj.ProjectionLike} proj projection of the features, default `EPSG:3857`
      * @return {Array<ol.feature>} the feature(s)
      */
     sketch2feature(sketch , proj) {
+        if (typeof(sketch) === "string") sketch = JSON.parse(sketch);
         const features = [];
-        sketch = "<CROQUIS>"+sketch+"</CROQUIS>";
-        var xml = $.parseXML(sketch.replace(/gml:|xmlns:/g,""));
-        var objects = $(xml).find("objet");
+        const format = new ol_format_WKT();
+        let objects = sketch.objects;
         for (var i=0, f; f=objects[i]; i++) {
-            var atts = $(f).find("attribut");
-            var prop = {};
-            for (var j=0, a; a=atts[j]; j++) {
-                prop[$(a).attr("name")] = $(a).text();
-            }
-            var g = $(f).find("coordinates").text().split(" ");
-            for (var k=0; k<g.length; k++) {
-                g[k] = g[k].split(',');
-                g[k][0] = Number(g[k][0]);
-                g[k][1] = Number(g[k][1]);
-            }
-            switch ($(f).attr('type')) {
-                case "Point":
-                case "Texte":
-                prop.geometry = new ol_geom_Point(g[0]);
-                break;
-                case "LineString":
-                case "Ligne":
-                prop.geometry = new ol_geom_LineString(g);
-                break;
-                case "Polygon":
-                case "Polygone":
-                prop.geometry = new ol_geom_Polygon([g]);
-                break;
-                default: continue;
-            }
+            var prop = f.attributes;
+            prop.geometry = format.readGeometry(f.geometry);
             prop.geometry.transform("EPSG:4326", proj||"EPSG:3857")
             features.push (new ol_Feature(prop));
         }
@@ -141,73 +121,63 @@ class Report {
     /** Write feature(s) to sketch
      * @param {ol.feature|Array<ol.feature>} the feature(s) to write
      * @param {ol.proj.ProjectionLike} projection of the features
-     * @return {String} the sketch
+     * @return {Object} the sketch in json format
      */
     feature2sketch(f , proj) {
         if (!f) return "";
         if (!(f instanceof Array)) f = [f];
-        const format = new ol_format_GeoJSON();
-        var croquis = "";
-        var symb = "<symbole><graphicName>circle</graphicName><diam>2</diam><frontcolor>#FFAA00;1</frontcolor><backcolor>#FFAA00;0.5</backcolor></symbole>";
+        const format = new ol_format_WKT();
         var pt = f[0].getGeometry().getFirstCoordinate();
         if (proj) {
-        pt = ol_proj_transform(pt, proj, 'EPSG:4326')
+            pt = ol_proj_transform(pt, proj, 'EPSG:4326')
         }
-        croquis += "<contexte><lon>"+pt[0].toFixed(7)+"</lon><lat>"+pt[1].toFixed(7)+"</lat><zoom>15</zoom><layers><layer>GEOGRAPHICALGRIDSYSTEMS.MAPS</layer></layers></contexte>";
-        //var format = new ol.format.GML({ featureNS:'', featurePrefix: 'gml', extractAttributes: false });
+
+        let style = {
+            "graphicName": "circle",
+            "diam": 2,
+            "frontcolor": "#FFAA00;1",
+            "backcolor": "#FFAA00;0.5"
+        };
+
+        var croquis = {
+            "contexte": {
+                "lon": pt[0].toFixed(7),
+                "lat": pt[1].toFixed(7),
+                "zoom": 15,
+                "layers": ["GEOGRAPHICALGRIDSYSTEMS.MAPS"]
+            },
+            "objects": []
+        };
+
         for (var i=0; i<f.length; i++) {
-        var t=""; 
-        var geo="", g = f[i].getGeometry().clone();
-        var att = f[i].getProperties();
-        delete att.geometry;
-        if (proj) {
-            g.transform(proj, 'EPSG:4326');
-        }
-        if (g.getLayout()==='XYZM') att.geom = format.writeGeometry(g);
-        g = g.getCoordinates();
-        // Geometry
-        switch (f[i].getGeometry().getType()) {
-            case 'Point': 
-            t = 'Point'; 
-            g = [g];
-            geo = "<geometrie><gml:Point><gml:coordinates>COORDS</gml:coordinates></gml:Point></geometrie>";
-            break;
-            case 'LineString': 
-            t = 'Ligne'; 
-            geo = "<geometrie><gml:LineString><gml:coordinates>COORDS</gml:coordinates></gml:LineString></geometrie>";
-            break;
-            case 'MultiPolygon': 
-            g = g[0];
-            // falls through
-            case 'Polygon': 
-            t = 'Polygone'; 
-            g = g[0];
-            geo = "<geometrie><gml:Polygon><gml:outerBoundaryIs><gml:LinearRing><gml:coordinates>COORDS</gml:coordinates></gml:LinearRing></gml:outerBoundaryIs></gml:Polygon></geometrie>";
-            break;
-        }
-        // Attributes
-        var a, attr = "";
-        for (a  in att) {
-            if (!(att[a] instanceof ol_Feature)) {
-            attr += '<attribut name="'+a.replace('"',"_")+'">'
-                + String(att[a]).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") 
-                +'</attribut>';
+            var t=""; 
+            var object = {"style": style};
+            var g = f[i].getGeometry().clone();
+            var att = f[i].getProperties();
+            delete att.geometry;
+            if (proj) {
+                g.transform(proj, 'EPSG:4326');
             }
-        }
-        attr = "<attributs>"+attr+"</attributs>";
-        // Write!
-        if (t) {
-            var coords="";
-            for (var k=0; k<g.length; k++) {
-            coords += ( k>0 ? ' ' : '') 
-                + g[k][0].toFixed(7) +','
-                + g[k][1].toFixed(7);
+            object.name = "";
+            object.attributes = att;
+            object.geometry = format.writeGeometry(g);
+            // Geometry
+            switch (f[i].getGeometry().getType()) {
+                case 'Point': 
+                    t = 'Point';
+                    break;
+                case 'LineString': 
+                    t = 'Ligne'; 
+                    break;
+                case 'MultiPolygon': 
+                case 'Polygon': 
+                    t = 'Polygone';
+                    break;
             }
-            croquis += "<objet type='"+t+"'><nom></nom>" + symb + attr + geo.replace('COORDS', coords) + "</objet>";
+            object.type = t;
+            croquis.objects.push(object);
         }
-        }
-        croquis = "<CROQUIS xmlns:gml='http://www.opengis.net/gml' version='1.0'>"+croquis+"</CROQUIS>";
-        return croquis;
+        return JSON.stringify(croquis);
     };
 
     /**
