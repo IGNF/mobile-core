@@ -396,6 +396,31 @@ CordovApp.prototype.resetParam = function() {
   this.param = wappStorage('param') || {};
 };
 
+/** Attach an event handler function for one or more events to the selected elements
+ */
+CordovApp.prototype.on = function(events, handler) {
+  $(document).on ('wapp-'+events, handler);
+};
+
+/** Remove an event handler.
+ */
+CordovApp.prototype.un = function(events, handler) {
+  $(document).off ('wapp-'+events, handler);
+};
+
+/** Attach a handler to an event for the elements. The handler is executed at most once per element per event type.
+ */
+CordovApp.prototype.once = function(events, handler) {
+  $(document).one ('wapp-'+events, handler);
+};
+
+/** Dispatch an event.
+ */
+CordovApp.prototype.dispatchEvent = function(event) {
+  event.type = 'wapp-'+event.type;
+  $(document).trigger(event);
+};
+
 /** Save or retrieve application storage 
  * @param {string} key
  * @param {*} value if not set return the stored value
