@@ -482,7 +482,7 @@ Report.prototype.saveFormulaire = function(form, gps) {
     georem.themes = theme;
     georem.theme = selectInputText($('[data-input="select"][data-param="theme"]', this.formElement));
   }
-  georem.community_id = this.param.profil.community_id;
+  georem.community_id = this.param.profil ? this.param.profil.community_id : "-1";
 
   // Attributs
   var attr = $('.attributes', this.formElement).data("vals");
@@ -701,10 +701,12 @@ Report.prototype.postLocalRem = function(i, options) {
           msg += e;
         } else if(e.status==='BADREM') {
           msg += "Remontée mal formatée...";
-        } else if (e.response && e.response.data.code ===401) {
+        } else if (e.response && e.response.status ===401) {
           msg += "Vous devez être connecté...";
+        } else if (e.response && e.response.message) {
+          msg += e.response.message
         } else {
-          switch (e.response && e.response.data.code) {
+          switch (e.response.status) {
             case '400': {
               msg = $('<div>').html(msg+"Erreur dans la remontée...");
               break;
@@ -724,7 +726,8 @@ Report.prototype.postLocalRem = function(i, options) {
               })
             .click(function(){ $(this).next().toggle(); })
             .appendTo(msg);
-          let errorTxt = (e.response && e.response.data) ? e.response.data.code+" - "+e.response && e.response.data.message : "";
+          let errorTxt = (e.response && e.response.data) ? e.response.data.code + " - " : "";
+          errorTxt += (e.response && e.response.data.message) ? e.response.data.message : "";
           $("<i>").addClass('error')
             .html("<br/>Erreur : "+errorTxt+"</i>")
             .appendTo(msg);
@@ -1396,9 +1399,10 @@ Report.prototype.showFormulaire = function(grem, select) {
   $("<div>").attr("data-input-role","option").attr("data-val", "").html("<i>choisissez un thème...</i>").appendTo(theme);
   var valdef = false;
   var nbth = 0;
-  for (var i in this.param.profil.filtre) {
-    let communityId = this.param.profil.filtre[i].community_id;
-    let themes = this.param.profil.filtre[i].themes;
+  var filtre = this.param.profil ? this.param.profil.filtre : wapp.userManager.param.activeProfile;
+  for (var i in filtre) {
+    let communityId = filtre[i].community_id;
+    let themes = filtre[i].themes;
     for (var j in themes) {
       $("<div>").attr("data-input-role","option")
         .attr("data-val", communityId+"::"+themes[j].theme)
@@ -1418,7 +1422,8 @@ Report.prototype.showFormulaire = function(grem, select) {
   else theme.hide();
 
   // Comment
-  if (!georem) $(".comment", this.formElement).val(this.param.profil.comment);
+  let comment = this.param.profil ? this.param.profil.comment : '';
+  if (!georem) $(".comment", this.formElement).val(comment);
 
   // Valid
   if (grem) this.formElement.addClass('valid');
@@ -1479,7 +1484,7 @@ Report.prototype.selectTheme = function(th, atts, prompt) {
   th = th.split("::");
   var group = parseInt(th[0]);
   th = th[1];
-  var themes = this.param.profil.filtre;
+  var themes = this.param.profil ? this.param.profil.filtre : wapp.userManager.param.activeProfile;;
   var theme = null;
   for (var i=0; i<themes.length; i++) {
     if (themes[i].community_id == group) {
@@ -1544,7 +1549,7 @@ Report.prototype.formulaireAttribut = function(valdef, prompt) {
       infos[a.name] = a;
       switch (a.type) {
         case 'list': {
-          let values = a.values.split("|");
+          let values = typeof(a.values) === "string" ? a.values.split("|") : a.values;
           li = $("<li data-input='select'>")
             .attr('data-valdef', a.default)
             .attr('data-param', a.name)

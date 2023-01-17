@@ -17,6 +17,7 @@ class UserManager {
     constructor (apiClient) {
         this.apiClient = apiClient;
         this.defaultUrl = this.getServiceUrl();
+        this.activeProfile = {}; //le profil actif sur le web (n est utilise a priori que dans le cas ou l utilisateur n a aucun groupe)
         this.param = wappStorage('user') || {'offline': true};
     }
 
@@ -169,6 +170,7 @@ class UserManager {
         }
 
         this.getUserInfo().then((user) => {
+            self.activeProfile = user.active_themes;
             self.param.communities = user.communities;
             let active_web_community = null;
             for (var i in user.communities) {
@@ -292,6 +294,7 @@ class UserManager {
     saveParam() {
         this.param.username = this.getUser();
         this.param.password = this.getPassword();
+        this.param.activeProfile = this.activeProfile;
         //@TODO sauvegarde du guichet et des groupes
         wappStorage('user', this.param);
     }

@@ -60,7 +60,7 @@ class Report {
         } else if (params.features) {
             post.sketch = this.feature2sketch(params.features, params.proj);
         }
-        if (params.community_id>0) post.community = params.community_id;
+        post.community = params.community_id>0 ? params.community_id : "-1";
         if (params.themes) {
             let th = params.themes.split("::");
             var group = parseInt(th[0]);
