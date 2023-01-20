@@ -109,7 +109,7 @@ class Report {
         const format = new ol_format_WKT();
         let objects = sketch.objects;
         for (var i=0, f; f=objects[i]; i++) {
-            var prop = f.attributes;
+            var prop = f.attributes ? f.attributes : {};
             prop.geometry = format.readGeometry(f.geometry);
             prop.geometry.transform("EPSG:4326", proj||"EPSG:3857")
             features.push (new ol_Feature(prop));

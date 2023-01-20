@@ -383,13 +383,16 @@ const CacheMap = function(wapp, layerGroup, options) {
   /**
    * Setter carte courante
    * @param {CacheMap} smap carte courante
+   * @returns true if succeeded
    */
   function setCurrentMap(smap) {
     if (wapp.userManager.param.offline) {
       currentMap = smap;
+      return true;
     }
     else {
       wapp.alert (_T('noOffline'), _T('offline'));
+      return false;
     }
   }
   this.setCurrentMap = setCurrentMap;

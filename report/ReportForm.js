@@ -218,7 +218,7 @@ Report.prototype.initialize = function(options) {
     }
     this.layer.setStyle (function(f) {
       if (!style) defineStyle();
-      return style[f.get("georem").statut] || style.local ;
+      return style[f.get("georem").status] || style.local ;
     });
   }
 
@@ -702,14 +702,18 @@ Report.prototype.postLocalRem = function(i, options) {
           msg += e;
         } else if(e.status==='BADREM') {
           msg += "Remontée mal formatée...";
-        } else if (e.response && e.response.status ===401) {
-          msg += "Vous devez être connecté...";
+        } else if (e.code === "ERR_NETWORK") {
+          msg += "Vérifiez votre connexion ou réessayez lorsque vous serez à nouveau connecté au réseau.";
         } else if (e.response && e.response.message) {
           msg += e.response.message
         } else {
           switch (e.response.status) {
             case '400': {
               msg = $('<div>').html(msg+"Erreur dans la remontée...");
+              break;
+            }
+            case '401': {
+              msg += "Vous devez être connecté...";
               break;
             }
             default: {
@@ -821,45 +825,47 @@ Report.prototype.updateLocalRem = function(i, options) {
   var grem = this.param.georems[i];
   if (grem && grem.id) {
     waitDlg(options.info || "Opération en cours...");
-    self.getGeorem (grem.id, function(resp, e) {
-      if (e) {
-        waitDlg(false);
-        messageDlg ("Impossible d'accéder au signalement."
-              +"<i class='error'><br/>Erreur : "+e.status+" - "+e.statusText+"</i>",
-            "Connexion", {
-              ok:"ok",
-              connect: (e.status===401) ? "Se connecter...":undefined
-            },
-            function(b) {
-              if (b=="connect") self.connectDialog();
-            });
-        self.saveParam();
-        self.onUpdate();
-      } else {
-        if (resp.id === grem.id) {
-          // wapp.notification ("Signalement mise à jour ("+resp.id+").");
-          self.param.georems[i] = resp;
-          if (grem.photo) self.param.georems[i].photo = grem.photo;
-          if (grem.responses) {
-            self.param.georems[i].responses = grem.responses;
-            // Post linked responses
-            self.postLocalReps(self.param.georems[i], {
-              all: true,
-              cback: () => {}
-            });
-          }
-        } else {
-          grem.statut = 'dump';
+    this.apiClient.getReport(grem.id).then((reportResponse) => {
+      let resp = reportResponse.data;
+      if (resp.id === grem.id) {
+        // wapp.notification ("Signalement mise à jour ("+resp.id+").");
+        self.param.georems[i] = resp;
+        if (grem.photo) self.param.georems[i].photo = grem.photo;
+        if (grem.responses) {
+          self.param.georems[i].responses = grem.responses;
+          // Post linked responses
+          self.postLocalReps(self.param.georems[i], {
+            all: true,
+            cback: () => {}
+          });
         }
-        self.updateLayer();
-        // Post Next
-        if (typeof(options.cback)=='function') options.cback(resp);
-        else waitDlg(false);
-        self.saveParam();
-        self.onUpdate();
+      } else {
+        grem.status = 'dump';
       }
-    },{
-      croquis: options.croquis!==false
+      self.updateLayer();
+      // Post Next
+      if (typeof(options.cback)=='function') options.cback(resp);
+      else waitDlg(false);
+      self.saveParam();
+      self.onUpdate();
+    }).catch((e) => {
+      waitDlg(false);
+      let msg = '';
+      if (e === "string") msg = e;
+      else if (e.code === "ERR_NETWORK") msg = "Vérifiez votre connexion ou réessayez lorsque vous serez à nouveau connecté au réseau.";
+      else if (e.message) msg = e.message;
+      else if (e.response && e.response.data) msg = e.response.status +" - "+ e.response.data.message;
+      messageDlg ("Impossible d'accéder au signalement."
+            +"<i class='error'><br/>Erreur : "+msg+"</i>",
+          "Connexion", {
+            ok:"ok",
+            connect: (e.response && e.response.status === 401) ? "Se connecter...":undefined
+          },
+          function(b) {
+            if (b=="connect") self.connectDialog();
+          });
+      self.saveParam();
+      self.onUpdate();
     });
   }
 };
@@ -903,13 +909,13 @@ Report.prototype.delLocalRems = function() {
             t.rep = t.pending.concat(t.close);
             t.send = t.rep.concat(t.submit);
             for (var i=self.param.georems.length-1; i>=0; i--) {
-              var statut = self.param.georems[i].statut;
+              var status = self.param.georems[i].status;
               var count = 0;
               // Count responses
               self.getLocalReps(self.param.georems[i]).forEach((r) => {
                 if (!r.error) count++;
               });
-              if (all || (!count && statut && $.inArray(statut, t[v])>=0)) {
+              if (all || (!count && status && $.inArray(status, t[v])>=0)) {
                 self.delLocalRem(i, true);
               }
             }
@@ -971,7 +977,7 @@ Report.prototype.addLocalRep = function(georem, options) {
     classe: "responseReport",
     buttons: { cancel:"Annuler", submit:"Enregistrer"},
     callback: (bt) => {
-      const comment = $('textarea', tp).val();
+      const content = $('textarea', tp).val();
       if (bt==='submit') {
         if (!status) {
           alertDlg('Vous devez choisir un statut à votre réponse...');
@@ -986,8 +992,8 @@ Report.prototype.addLocalRep = function(georem, options) {
         if (!georem.responses) georem.responses = [];
         georem.responses.push({
           id: georem.id,
-          comment: comment,
-          statut: status
+          content: content,
+          status: status
         })
         // Save
         this.saveParam();
@@ -1059,8 +1065,8 @@ Report.prototype.postLocalReps = function(georem, options) {
 Report.prototype.postLocalRep = function(georem, georep, options) {
   let body = {
     "title": georep.title || '',
-    "status": georep.statut,
-    "content": georep.comment
+    "status": georep.status,
+    "content": georep.content
   };
   
   this.apiClient.addReply(georem.id, body).then((replyResponse) => {
@@ -1143,7 +1149,7 @@ Report.prototype.onUpdate = function() {
     $(".nogeorem", this.listElement).hide();
     for (var i=grems.length-1; i>=0; i--) {
       var li = $('<li>').html(this.listElementTemplate)
-        .addClass(grems[i].statut)
+        .addClass(grems[i].status)
         .appendTo(ul)
         .data("grem", grems[i])
         // Show georem page
