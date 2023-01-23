@@ -649,6 +649,7 @@ Report.prototype.postLocalRems = function(options) {
 
 /**
  * met a jour les informations du groupe dans l element profilElement
+ * @param {Object} community
  */
 Report.prototype.refreshProfileInfo = function(community = "") {
   var self = this;
@@ -751,7 +752,7 @@ Report.prototype.postLocalRem = function(i, options) {
               connect: (e.status===401) ? "Se connecter...":undefined
             },
             function(b) {
-              if (b=="connect") self.connectDialog();
+              if (b=="connect") wapp.userManager.connectDialog();
             }
           );
         }
@@ -862,7 +863,7 @@ Report.prototype.updateLocalRem = function(i, options) {
             connect: (e.response && e.response.status === 401) ? "Se connecter...":undefined
           },
           function(b) {
-            if (b=="connect") self.connectDialog();
+            if (b=="connect") wapp.userManager.connectDialog();
           });
       self.saveParam();
       self.onUpdate();

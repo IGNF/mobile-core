@@ -363,7 +363,7 @@ ol_style_Collaboratif.Text = function (fstyle) {
       +'&height='+height;
     // Save symbol if not yet
     if (window.cordova && !this.symbolCache[cacheName]) {
-      CordovApp.File.dowloadFile(
+      CordovApp.File.downloadImage(
         img,
         'FILE/cache/symbols/'+cacheName,
         function (e) {

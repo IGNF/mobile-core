@@ -342,16 +342,7 @@ const CacheMap = function(wapp, layerGroup, options) {
     for (i=0; i<wapp.param.cacheMap.length; i++) {
       if (wapp.param.cacheMap[i] === smap) wapp.param.cacheMap.splice(i,1);
     }
-/*
-    // Remove associated list
-    var l = $('li', self.listMap);
-    for (i=0; i<l.length; i++) {
-      if ($(l[i]).data("map")===smap) {
-        l[i].remove();
-        break;
-      }
-    }
-*/
+
     // Remove associated layers
     var layercache = layerGroup.getLayers().getArray().find((l) => {
       return l.get('name') === 'cache_'+smap.id;
@@ -460,7 +451,7 @@ const CacheMap = function(wapp, layerGroup, options) {
       );
       return;
     }
-//    console.log('downloadTiles', nb, cancelDownloadTiles)
+
     var path = getPath()+layer+"/";
     var tile = t.pop();
     if (tile) {
@@ -483,8 +474,7 @@ const CacheMap = function(wapp, layerGroup, options) {
         }
       }
       // Download
-//			console.log("saving: "+path+tile.id)
-      CordovApp.File.dowloadFile (
+      CordovApp.File.downloadImage (
         decodeURIComponent(tile.url), 
         path + tile.id, 
         function() {

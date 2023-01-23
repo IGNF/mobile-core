@@ -442,44 +442,52 @@ CordovApp.File.getBlob = function (url, success, fail) {
  * @param {String} name URI referring to a local file to move to
  * @param {function} success callback 
  * @param {function} fail callback invoked on error
- * @param {*} options
+ * @param {object} options un tableau cle valeur pouvant contenir: ex: {"headers": {"Authorization": "Basic blabla"}, "timeout": 500, "binary": false}
+ *  @options param {object} headers
+ *  @options param {integer} timeout
+ *  @options param {boolean} binary recuperer des donnees binaires et sauvegarder sous forme de blob
+ *  
  */
-CordovApp.File.dowloadFile = function (url, name, success, fail, options) {
-  options = options || {};
+CordovApp.File.downloadFile = function (url, name, success, fail, options = {}) {
   if (!success) success = this.success;
   if (!fail) fail = this.fail;
   var self = this;
-  // Recherche du repertoire
-  var dir = this.getDir(name);
-  name = this.getFileName(name);
-  this.getDirectory (
-    dir,
-    function(fileEntry) {
-      var uri = encodeURI(url);
-      var ft = new FileTransfer();
-      var timeout = (options.timeout) ? setTimeout(function() { ft.abort(); }, options.timeout) : null;
-      ft.download (
-        uri,
-        fileEntry.toURL()+"__"+name,
-        function(){
-          if (timeout) clearTimeout(timeout);
-          self.moveFile(fileEntry.toURL()+"__"+name, fileEntry.toURL()+name, success, fail);
-        },
-        fail,
-        false,
-        options
-        /* Optional parameters, currently only supports headers 
-        {	headers: 
-          {	"Authorization": "Basic dGVzdHVzZXJuYW1lOnRlc3RwYXNzd29yZA=="
-          }
-        }
-        */
-      );
-    },
-    fail,
-    true
-  );
+  let req = new XMLHttpRequest();
+  req.open('GET', url);
+  if (options.timeout) req.timeout(options.timeout);
+  if (options.header) {
+    for (var key in options['headers']) req.setRequestHeader(key, options[key]);
+  }
+  if (options.binary) req.responseType = "blob";
+  req.onload = function() {
+    var response = options.binary ? req.response : req.responseText
+    if (req.status === 200) {
+      self.saveData(response, name, success, fail, options.binary);
+      success()
+    } else {
+      fail (response);
+    }
+  }
+  req.onerror = fail;
+  
+  req.send();
 };
+
+/**
+ * Un raccourci vers downloadFile avec options.binary=true
+ * @param {String} url URI referring to a remote file 
+ * @param {String} name URI referring to a local file to move to
+ * @param {function} success callback 
+ * @param {function} fail callback invoked on error
+ * @param {object} options un tableau cle valeur pouvant contenir: ex: {"headers": {"Authorization": "Basic blabla"}, "timeout": 500}
+ *  @options param {object} headers
+ *  @options param {integer} timeout
+ */
+CordovApp.File.downloadImage = function (url, name, success, fail, options) {
+  options.binary = true;
+  this.downloadFile(url, name, success, fail, options);
+}
+
 
 /** Delete a file 
  * @memberof CordovApp.File
