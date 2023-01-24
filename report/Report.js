@@ -9,18 +9,6 @@ import {transform as ol_proj_transform} from 'ol/proj'
 
 
 class Report {
-    static status = {
-        "submit": "Reçu dans nos services", 
-        "pending": "En cours de traitement",
-        "pending1": "En attente de saisie", 
-        "pending2": "En attente de validation", 
-        "valid": "Pris en compte",
-        "valid0": "Déjà pris en compte",
-        "reject": "Rejeté (hors spéc.)",
-        "reject0": "Rejeté (hors propos)",
-        "pending0": "En demande de qualification"
-    };
-
     /**
      * @constructor
      * @param {ApiClient} apiClient
@@ -243,5 +231,17 @@ class Report {
         return true;
     }
 }
+
+Report.prototype.status = {
+    "submit": "Reçu dans nos services", 
+    "pending": "En cours de traitement",
+    "pending1": "En attente de saisie", 
+    "pending2": "En attente de validation", 
+    "valid": "Pris en compte",
+    "valid0": "Déjà pris en compte",
+    "reject": "Rejeté (hors spéc.)",
+    "reject0": "Rejeté (hors propos)",
+    "pending0": "En demande de qualification"
+};
 
 export default Report;

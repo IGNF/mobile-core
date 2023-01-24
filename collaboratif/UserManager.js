@@ -39,6 +39,7 @@ class UserManager {
     setServiceUrl(url) {
         if (!url) url = this.defaultUrl;
         if (url === this.apiClient.getBaseUrl()) return false;
+        this.disconnect();
         return this.apiClient.setBaseUrl(url);
     }
 
@@ -64,6 +65,7 @@ class UserManager {
         ) {
             return false;
         }
+        this.disconnect();
         return this.apiClient.setAuthParams(authUrl, clientId, clientSecret);
     }
 
