@@ -332,16 +332,15 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
           var table = cache.layers[i].table = l.getTable();
           cache.layers[i].date = (new Date()).toISODateString();
           var param = l.getSource().getWFSParam(cache.extent, this.map.getView().getProjection());
-          let url = table.uri + '/max-numrec?bbox=' + param.bbox;
-          this.wapp.userManager.apiClient.doRequest(url).then((response) => {
+          this.wapp.userManager.apiClient.getTableMaxNumrec(table.database_id, table.id, {"bbox": param.bbox}).then((response) => {
             let result = response.data;
             if (update) {
               // get current numrec 
               cache.layers[i].numrec = cache.layers[i].numrec0;
               delete cache.layers[i].numrec0;
-              cache.layers[i].numrec2 = result.numrec;
+              cache.layers[i].numrec2 = result;
             } else {
-              cache.layers[i].numrec = result.numrec;
+              cache.layers[i].numrec = result;
             }
             this.uploadLayers2(cache, update, toload, layers);
             console.log('NUMREC', cache.layers[i].numrec)

@@ -59,7 +59,7 @@ class Report {
             post.attributes = {
                 "community": group,
                 "theme": params.theme,
-                "attributes": JSON.parse(params.attributes)
+                "attributes": params.attributes ? JSON.parse(params.attributes) : {}
             }
         }
 

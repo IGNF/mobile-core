@@ -277,16 +277,15 @@ CollabVector.prototype.loadChanges = function() {
     // Success
     (data) => {
       data = JSON.parse(data);
-      console.log(data);
       const features = [];
       const geometryAttribute = this.table_.geometry_name;
       // Add save actions
       data.actions.forEach((action) => {
         // Create new feature
-        const geom = action.feature[geometryAttribute];
+        const geom = action.data[geometryAttribute];
         const f = new ol_Feature(ol_geom_createFromType (geom.type, geom.coordinates));
-        delete action.feature[geometryAttribute];
-        f.setProperties(action.feature)
+        delete action.data[geometryAttribute];
+        f.setProperties(action.data)
         f.setState(action.state);
         f.setUpdates(action.updates);
         // Add feature in the lists
@@ -524,11 +523,15 @@ CollabVector.prototype.removeFeatureUpdate = function(feature) {
 
   this.client.addTransaction(this.table_.database_id, param).then((response) => {
     let info = response.data.message;
-    let url = self.client.getBaseUrl()+"/databases/"+this.table_.database_id+"/transactions/"+response.data.id;
+    if (response.data.status === 'conflicting') {
+      self.dispatchEvent({ type:"saveend", status:"error", error: response.data });
+      if (onError) onError (info, response.data);
+      return;
+    }
     // Clear history
     self.reset();
-    self.dispatchEvent({ type:"saveend", error: info, transaction: url });
-    if (onSuccess) onSuccess(info, url);
+    self.dispatchEvent({ type:"saveend", error: info, transaction: response.data });
+    if (onSuccess) onSuccess(info, response.data);
   }).catch((error) => {
     console.log(error)
     self.dispatchEvent({ type:"saveend", status:"error", error:error });
