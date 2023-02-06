@@ -283,7 +283,17 @@ ol_style_Webpart.loadSymbolCache = function() {
 ol_style_Webpart.getFeatureStyleFn = function(featureType, cache, options) {
   // Fonction de style
   if (!featureType) featureType = {};
-  return function(feature) {
+
+  // Sens de circulation
+  var directionStyle = new ol_style_Style ({
+    text: ol_style_Webpart.Text ({
+        label: '\u203A',
+        fontWeight: "bold",
+        fontSize: '25'
+    })
+  });
+
+  return function(feature, res) {
     // Chargement du cache des images
     ol_style_Webpart.loadSymbolCache();
     // Conditionnal style
@@ -329,12 +339,51 @@ ol_style_Webpart.getFeatureStyleFn = function(featureType, cache, options) {
         )
       }
     }
-    const olStyle = new ol_style_Style ({});
+
+    let olStyle = new ol_style_Style ({});
     olStyle.setText(ol_style_Webpart.Text (fstyle));
     //olStyle.setImage(ol_style_Webpart.Image (fstyle));
     ol_style_Webpart.setImage(olStyle, fstyle, feature);
     olStyle.setFill(ol_style_Webpart.Fill (fstyle));
-    olStyle.setStroke(ol_style_Webpart.Stroke (fstyle));
+    olStyle.setStroke(ol_style_Webpart.Stroke (fstyle));// Ajouter le sens de circulation
+    let directionField;
+    if (featureType.style && featureType.style.directionField) {
+        try {
+            directionField = JSON.parse(featureType.style.directionField);
+        } catch (e) {
+            directionField = null;
+            console.log("bad json direction field for style " + featureType.style.name);
+        }
+    }
+    
+    if (res < 2 && directionField instanceof Object) {
+      if ('attribute' in directionField && 'sensDirect' in directionField && 'sensInverse' in directionField) {
+        let direct  = directionField.sensDirect;
+        let inverse = directionField.sensInverse;
+        
+        function lrot(sens, geom)	{	
+          if (sens != direct && sens != inverse) return 0;
+          if (geom.getType()==='MultiLineString') geom = geom.getLineString(0);
+          var geo = geom.getCoordinates();
+          var x, y, dl=0, l = geom.getLength();
+          for (var i=0; i<geo.length-1; i++){
+            x = geo[i+1][0]-geo[i][0];
+            y = geo[i+1][1]-geo[i][1];
+            dl += Math.sqrt(x*x+y*y);
+            if (dl>=l/2) break;
+          }
+          if (sens == direct) return -Math.atan2(y,x);
+          else return Math.PI-Math.atan2(y,x);
+        };
+      
+        let sens = feature.get(directionField.attribute);
+        if (sens===direct || sens===inverse) {
+          directionStyle.getText().setRotation(lrot(sens, feature.getGeometry()));
+          olStyle = [olStyle, directionStyle];
+        }
+      }
+    }
+
     return olStyle;
   }
 };
