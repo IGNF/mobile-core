@@ -44,7 +44,9 @@ const VectorWebpart = function(options, source_options) {
     this.createSource(options, source_options, options.featureType);
     // this.setZIndex(options.featureType.position);
   } else {
-    const url = this.url_ + this.database_ + '/feature-type/'+this.name_+'.json';
+    var url = this.url_ + this.database_ + '/feature-type/'+this.name_+'.json';
+    //pour pallier passage nouvelle api
+    url = url.replace("/gcms/api/", "/gcms/");
     $.ajax({
       url: (this.proxy_ || url ),
       dataType: 'json', 

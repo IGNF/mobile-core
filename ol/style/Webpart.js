@@ -523,7 +523,7 @@ ol_style_Webpart.combine = function(style) {
 */
 ol_style_Webpart.troncon_de_route = function(options) {
   options = options || {};
-  return geoportailStyle('BDTOPO_V3:troncon_de_route', { sens: options.sens || 2.5 });
+  return geoportailStyle('BDTOPO_V3:troncon_de_route', { sens: options.sens || true }); //si pas d option on affiche le sens de circulation
   /*
   if (!options) options={};
 
