@@ -25,7 +25,7 @@ import ol_Geolocation from 'ol/Geolocation'
 import ol_control_Target from 'ol-ext/control/Target'
 import ol_Feature from 'ol/Feature'
 import ol_geom_Point from 'ol/geom/Point'
-import WKT from 'ol/format/wkt'
+import WKT from 'ol/format/WKT'
 import {transform as ol_proj_transform} from 'ol/proj'
 import ol_interaction_Modify from 'ol/interaction/Modify'
 import {click as ol_events_condition_click} from 'ol/events/condition'
@@ -492,7 +492,7 @@ Report.prototype.saveFormulaire = function(form, gps) {
   for (var i in this.form.attributes) {
     let attribute = this.form.attributes[i]
     if (!attribute.validate()) {
-      alertDlg(attribute.error);
+      alertDlg('Erreur sur "' + attribute.title + '": ' +  attribute.error);
       return;
     }
     attr[attribute.name] = attribute.getNormalizedValue();
@@ -1516,7 +1516,8 @@ Report.prototype.selectTheme = function(th, atts, prompt) {
 
   if (theme) {
     if (theme.attributes.length) {
-      this.form = createForm($(".attributes", this.formElement), "form-atts", theme);
+      if (atts && typeof atts == 'string') atts = JSON.parse(atts);
+      this.form = createForm($(".attributes", this.formElement), "form-atts", theme, atts, true, "mobile");
       $(".attributes", this.formElement).show();
       this.form.init();
       this.formElement.addClass('valid'); //@TODO a changer
