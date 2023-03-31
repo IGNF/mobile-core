@@ -1306,6 +1306,7 @@ Report.prototype.setProfil = function(g) {
     this.refreshProfileInfo(g);
   } else {
     this.param.profil = null;
+    this.refreshProfileInfo();
   }
 
   // Sauvegarder
@@ -1411,7 +1412,7 @@ Report.prototype.showFormulaire = function(grem, select) {
   $("<div>").attr("data-input-role","option").attr("data-val", "").html("<i>choisissez un thème...</i>").appendTo(theme);
   var valdef = false;
   var nbth = 0;
-  var filtre = this.param.profil ? this.param.profil.filtre : wapp.userManager.param.activeProfile;
+  var filtre = this.param.profil ? this.param.profil.filtre : wapp.userManager.param.sharedThemes;
   for (var i in filtre) {
     let communityId = filtre[i].community_id;
     let themes = filtre[i].themes;
