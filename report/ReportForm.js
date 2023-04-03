@@ -10,7 +10,7 @@ import {notification} from 'cordovapp/cordovapp/dialog'
 import {getActionBt} from 'cordovapp/cordovapp/page'
 import {showActionBt} from 'cordovapp/cordovapp/page'
 
-import {createForm} from 'collab-form'
+import {createFormForTheme} from 'collab-form'
 
 import ol_layer_Vector from 'ol/layer/Vector'
 import ol_source_Vector from 'ol/source/Vector'
@@ -1518,7 +1518,7 @@ Report.prototype.selectTheme = function(th, atts, prompt) {
   if (theme) {
     if (theme.attributes.length) {
       if (atts && typeof atts == 'string') atts = JSON.parse(atts);
-      this.form = createForm($(".attributes", this.formElement), "form-atts", theme, atts, true, "mobile");
+      this.form = createFormForTheme($(".attributes", this.formElement), "form-atts", theme, atts, "mobile");
       $(".attributes", this.formElement).show();
       this.form.init();
       this.formElement.addClass('valid'); //@TODO a changer

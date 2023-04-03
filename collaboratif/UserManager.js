@@ -15,6 +15,7 @@ class UserManager {
      * @param {ApiClient} apiClient
      */
     constructor (apiClient) {
+        this.userId = null;
         this.apiClient = apiClient;
         this.defaultUrl = this.getServiceUrl();
         this.sharedThemes = {}; //les themes partages (n est utilise a priori que dans le cas ou l utilisateur n a aucun groupe et donc pas de profil)
@@ -126,6 +127,7 @@ class UserManager {
         
         let userResponse = await this.apiClient.getUser();
         var user = userResponse.data;
+        this.userId = user.id;
         let groupPromises = [];
         for (var i in user.communities_member) {
             groupPromises[i] = this.apiClient.getCommunity(user.communities_member[i].community_id);
@@ -294,6 +296,7 @@ class UserManager {
      * @returns {void}
      */
     saveParam() {
+        this.param.userId = this.userId // ajout pour le champs like...
         this.param.username = this.getUser();
         this.param.password = this.getPassword();
         this.param.sharedThemes = this.sharedThemes;
