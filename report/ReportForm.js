@@ -10,6 +10,8 @@ import {notification} from 'cordovapp/cordovapp/dialog'
 import {getActionBt} from 'cordovapp/cordovapp/page'
 import {showActionBt} from 'cordovapp/cordovapp/page'
 
+import {createFormForTheme} from 'collab-form'
+
 import ol_layer_Vector from 'ol/layer/Vector'
 import ol_source_Vector from 'ol/source/Vector'
 import ol_style_Style from 'ol/style/Style'
@@ -23,7 +25,7 @@ import ol_Geolocation from 'ol/Geolocation'
 import ol_control_Target from 'ol-ext/control/Target'
 import ol_Feature from 'ol/Feature'
 import ol_geom_Point from 'ol/geom/Point'
-import WKT from 'ol/format/wkt'
+import WKT from 'ol/format/WKT'
 import {transform as ol_proj_transform} from 'ol/proj'
 import ol_interaction_Modify from 'ol/interaction/Modify'
 import {click as ol_events_condition_click} from 'ol/events/condition'
@@ -104,6 +106,7 @@ Report.prototype.initialize = function(options) {
 
   // List
   this.formElement = $(options.formElement);
+  this.form = null;
   this.countElement = $(options.countElement);
   this.listElement = $(options.listElement);
   this.listElementTemplate = $('[data-role="template"]', options.listElement).html();
@@ -485,21 +488,14 @@ Report.prototype.saveFormulaire = function(form, gps) {
   georem.community_id = this.param.profil ? this.param.profil.community_id : "-1";
 
   // Attributs
-  var attr = $('.attributes', this.formElement).data("vals");
-  if (attr) {
-    // Gestion des attributs obligatoires
-    var obligatoire = '';
-    $('.attributes', this.formElement).data("attributes").forEach((a) => {
-      if (a.mandatory) {
-        if (attr[a.name]===undefined || attr[a.name]==='') {
-          obligatoire = a.name;
-        }
-      }
-    });
-    if (obligatoire) {
-      alertDlg('Vous devez renseigner l\'attribut <b><i>"'+obligatoire+'"</i></b> dans la liste des attributs.')
+  var attr = {};
+  for (var i in this.form.attributes) {
+    let attribute = this.form.attributes[i]
+    if (!attribute.validate()) {
+      alertDlg('Erreur sur "' + attribute.title + '": ' +  attribute.error);
       return;
     }
+    attr[attribute.name] = attribute.getNormalizedValue();
   }
 
   // Remplissage des attributs
@@ -1310,6 +1306,7 @@ Report.prototype.setProfil = function(g) {
     this.refreshProfileInfo(g);
   } else {
     this.param.profil = null;
+    this.refreshProfileInfo();
   }
 
   // Sauvegarder
@@ -1415,7 +1412,7 @@ Report.prototype.showFormulaire = function(grem, select) {
   $("<div>").attr("data-input-role","option").attr("data-val", "").html("<i>choisissez un thème...</i>").appendTo(theme);
   var valdef = false;
   var nbth = 0;
-  var filtre = this.param.profil ? this.param.profil.filtre : wapp.userManager.param.activeProfile;
+  var filtre = this.param.profil ? this.param.profil.filtre : wapp.userManager.param.sharedThemes;
   for (var i in filtre) {
     let communityId = filtre[i].community_id;
     let themes = filtre[i].themes;
@@ -1520,14 +1517,11 @@ Report.prototype.selectTheme = function(th, atts, prompt) {
 
   if (theme) {
     if (theme.attributes.length) {
-      $(".attributes", this.formElement).show()
-        .data('attributes', theme.attributes)
-        .unbind("click")
-        .click(function(){
-          self.formulaireAttribut();
-        });
-      this.formulaireAttribut(atts, prompt);
-      this.formElement.removeClass('valid');
+      if (atts && typeof atts == 'string') atts = JSON.parse(atts);
+      this.form = createFormForTheme($(".attributes", this.formElement), "form-atts", theme, atts, "mobile");
+      $(".attributes", this.formElement).show();
+      this.form.init();
+      this.formElement.addClass('valid'); //@TODO a changer
     } else {
       // Theme seul ou pas de themes
       $(".attributes", this.formElement).hide();
@@ -1538,128 +1532,14 @@ Report.prototype.selectTheme = function(th, atts, prompt) {
   }
 };
 
-/** Remise a zero du formulaire
+/** 
+ * Remise a zero du formulaire
 */
 Report.prototype.resetFormulaireAttribut = function() {
-  var input = $(".attributes", this.formElement).data("vals", false);
-  $('[data-input-role="info"]', input).text("");
+  this.form = null;
+  this.formElement.removeClass('valid');
+  $(".attributes", this.formElement).empty();
 };
-
-/** Affichage du formulaire attribut
-* @param {Object} valdef liste de valeurs par defaut
-* @param {bool} prompt afficher le dialogue d'attributs, defaut: true
-*/
-Report.prototype.formulaireAttribut = function(valdef, prompt) {
-  var self = this;
-  var input = $(".attributes", this.formElement);
-  var att = input.data('attributes');
-  if (input.is(":visible")) {
-    var content = $("<ul>");
-    var i, a, k, li;
-    var vals = {}, infos = {};
-    if (valdef) {
-      valdef = JSON.parse(valdef);
-    }
-    for (i=0; a = att[i]; i++) {
-      vals[a.name] = (valdef ? valdef[a.name] : att[i].default);
-      infos[a.name] = a;
-      switch (a.type) {
-        case 'list': {
-          let values = typeof(a.values) === "string" ? a.values.split("|") : a.values;
-          li = $("<li data-input='select'>")
-            .attr('data-valdef', a.default)
-            .attr('data-param', a.name)
-            .appendTo(content);
-            
-          for (k in values) {
-            $("<div data-input-role='option'>").attr('data-val', values[k]).html(values[k]||"<i>sans</i>").appendTo(li);
-          }
-          break;
-        }
-        case 'checkbox': {
-          vals[a.name] = (vals[a.name]==='1' || vals[a.name]===true);
-          li = $("<li data-input='check'>").attr('data-param',a.name).appendTo(content);
-          break;
-        }
-        case 'date': {
-          li = $("<li data-input='date'>")
-            .attr('data-param',a.name)
-            .attr('data-default', a.default)
-            .appendTo(content);
-          $("<input>").attr("type","date").appendTo(li);
-          break;
-        }
-        default: {
-          li = $("<li data-input='text'>").attr('data-param',a.name).appendTo(content);
-          $("<input>").attr("type","text").appendTo(li);
-          $('<i class="clear-input">').appendTo(li);
-          break;
-        }
-      }
-      $("<label>").text(a.title || a.name).prependTo(li);
-      if (a.mandatory) li.addClass('obligatoire');
-    }
-    if (!valdef && input.data("vals")) vals = $.extend({}, input.data("vals"));
-    this.wapp.setParamInput(content, vals);
-    const showInfo = function() {
-      input.data("vals", $.extend({}, vals));
-      $('[data-input-role="info"]', input).text( JSON.stringify(vals) );
-    }
-    showInfo();
-    // First time ask for attributes
-    if (!valdef && prompt!==false) {
-      dialog.show(content, {
-        buttons: { submit:"ok", cancel:"Annuler" },
-        title: "Attributs",
-        className: "attributes",
-        callback: function(b) {
-          if (b=='submit') {
-            var obligatoire = '';
-            // Check oligatoire
-            $('.obligatoire', content).each(function() {
-              switch($(this).data('input')) {
-                case 'select': {
-                  // not the default value ?
-                  // if (vals[$(this).data('param')] === $(this).data('valdef')) {
-                  if (!vals[$(this).data('param')]) {
-                    obligatoire = $('label', this).text();
-                  }
-                  break;
-                }
-                case 'check': {
-                  // boolean true / false
-                  break;
-                }
-                default: {
-                  if (!$('input', this).val()) {
-                    obligatoire = $('label', this).text();
-                  }
-                  break;
-                }
-              }
-            })
-            if (obligatoire) {
-              dialog.replay();
-              alertDlg('L\'attribut <b><i>"'+obligatoire+'"</i></b> est obligatoire.')
-            } else {
-              showInfo();
-              self.formElement.addClass('valid');
-            }
-          } else {
-            if (!$('.obligatoire', content).length) {
-              self.formElement.addClass('valid');
-            }
-          }
-        }
-      });
-    }
-  }
-  // Reset form values
-  else {
-    this.resetFormulaireAttribut();
-  }
-};
-
 
 /** Cancel formulaire: showFormulaire (false)
  * @param {string} type submit or cancel
@@ -1672,7 +1552,7 @@ Report.prototype.cancelFormulaire = function(type, georem) {
   this.drawInteraction.setActive(false);
   this.selectInteraction.setActive(false);
   this.formElement.data("grem", false);
-  $(".attributes", this.formElement).data('vals', false);
+  this.form = null;
   // Remove tracking
   this.target.setVisible(false);
   this.geolocation.setTracking (false);

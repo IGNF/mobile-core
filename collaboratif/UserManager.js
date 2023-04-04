@@ -15,9 +15,10 @@ class UserManager {
      * @param {ApiClient} apiClient
      */
     constructor (apiClient) {
+        this.userId = null;
         this.apiClient = apiClient;
         this.defaultUrl = this.getServiceUrl();
-        this.activeProfile = {}; //le profil actif sur le web (n est utilise a priori que dans le cas ou l utilisateur n a aucun groupe)
+        this.sharedThemes = {}; //les themes partages (n est utilise a priori que dans le cas ou l utilisateur n a aucun groupe et donc pas de profil)
         this.param = wappStorage('user') || {'offline': true};
     }
 
@@ -126,6 +127,7 @@ class UserManager {
         
         let userResponse = await this.apiClient.getUser();
         var user = userResponse.data;
+        this.userId = user.id;
         let groupPromises = [];
         for (var i in user.communities_member) {
             groupPromises[i] = this.apiClient.getCommunity(user.communities_member[i].community_id);
@@ -172,7 +174,7 @@ class UserManager {
         }
 
         this.getUserInfo().then((user) => {
-            self.activeProfile = user.active_themes;
+            self.sharedThemes = user.shared_themes;
             self.param.communities = user.communities;
             let active_web_community = null;
             for (var i in user.communities) {
@@ -294,9 +296,10 @@ class UserManager {
      * @returns {void}
      */
     saveParam() {
+        this.param.userId = this.userId // ajout pour le champs like...
         this.param.username = this.getUser();
         this.param.password = this.getPassword();
-        this.param.activeProfile = this.activeProfile;
+        this.param.sharedThemes = this.sharedThemes;
         //@TODO sauvegarde du guichet et des groupes
         wappStorage('user', this.param);
     }
