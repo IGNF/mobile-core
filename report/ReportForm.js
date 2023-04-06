@@ -489,15 +489,17 @@ Report.prototype.saveFormulaire = function(form, gps) {
 
   // Attributs
   var attr = {};
-  for (var i in this.form.attributes) {
-    let attribute = this.form.attributes[i]
-    if (!attribute.validate()) {
-      alertDlg('Erreur sur "' + attribute.title + '": ' +  attribute.error);
-      return;
+  if (this.form) {
+    for (var i in this.form.attributes) {
+      let attribute = this.form.attributes[i]
+      if (!attribute.validate()) {
+        alertDlg('Erreur sur "' + attribute.title + '": ' +  attribute.error);
+        return;
+      }
+      attr[attribute.name] = attribute.getNormalizedValue();
     }
-    attr[attribute.name] = attribute.getNormalizedValue();
   }
-
+  
   // Remplissage des attributs
   georem.attributes = JSON.stringify(attr);
   georem.attText =  $('.attributes [data-input-role="info"]', this.formElement).text();
