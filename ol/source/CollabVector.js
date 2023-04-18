@@ -19,6 +19,8 @@ import {ol_geom_createFromType} from 'ol-ext/geom/GeomUtils'
 import ol_ext_inherits from 'ol-ext/util/ext'
 import { param } from 'jquery';
 
+import { postDoc } from 'cordovapp/collaboratif/DocumentForm';
+
 /** Need proj4js to load projections
  */
 if (!proj4) throw ("PROJ4 is not defined!");
@@ -502,6 +504,52 @@ CollabVector.prototype.removeFeatureUpdate = function(feature) {
   return false
 };
 
+/**
+ * sauvegarde des documents rattaches aux features avant leur enregistrement
+ * renvoie le tableau d'actions avec les valeurs remplacees
+ * Attention! on ne supprime jamais un document car on ne peut pas savoir s il n est pas rattache a un autre feature
+ * http://sd-redmine.ign.fr/issues/17507
+ * 
+ * @param {Array} actions
+ * @param {function} success callback on success avec en parametre le tableau de correspondance url locale => id
+ * @param {function} error callback on error avec en parametre l'erreur axios
+ */
+CollabVector.prototype.saveDocs = async function(actions) {
+  if (!this.table_ || !this.table_.columns) return actions;
+  let docColumns = [];
+  let columns = this.table_.columns;
+  for (let i in columns) {
+      if ("document" == columns[i].type.toLowerCase()) docColumns.push(i);
+  }
+  if (!docColumns.length) return actions;
+
+  var urlToAdd = []
+  var promises = [];
+  for (let i in actions) {
+    if ([ol_Feature.State.INSERT, ol_Feature.State.UPDATE].indexOf(actions[i].state) != -1) {
+      for (let key in actions[i].data) {
+        if (docColumns.indexOf(key) != -1 && actions[i].data[key] && urlToAdd.indexOf(actions[i].data[key]) == -1) {
+          urlToAdd.push(actions[i].data[key]);
+          promises.push(postDoc(this.client, actions[i].data[key]));
+        }
+      }
+    }
+  }
+
+  if (!urlToAdd.length) return actions;
+  let docIds = await Promise.all(promises);
+  for (let i in urlToAdd) {
+    for (let j in actions) {
+      for (let k in actions[j].data) {
+        if (actions[j].data[k] == urlToAdd[i]) {
+          actions[j].data[k] = docIds[i];
+        }
+      }
+    }
+  }
+  return actions;
+}
+
 /** Save changes
  */
  CollabVector.prototype.save = function(onSuccess, onError) {
@@ -515,23 +563,29 @@ CollabVector.prototype.removeFeatureUpdate = function(feature) {
     return;
   }
 
-  // Post changes
-  var param = {
-    "actions": actions,
-    "comment": "source vecteur: " +this.table_.database+'":"'+this.table_.name
-  };
+  this.saveDocs(actions).then((actions) => {
+    // Post changes
+    var param = {
+      "actions": actions,
+      "comment": "source vecteur: " +this.table_.database+'":"'+this.table_.name
+    };
 
-  this.client.addTransaction(this.table_.database_id, param).then((response) => {
-    let info = response.data.message;
-    if (response.data.status === 'conflicting') {
-      self.dispatchEvent({ type:"saveend", status:"error", error: response.data });
-      if (onError) onError (info, response.data);
-      return;
-    }
-    // Clear history
-    self.reset();
-    self.dispatchEvent({ type:"saveend", error: info, transaction: response.data });
-    if (onSuccess) onSuccess(info, response.data);
+    this.client.addTransaction(this.table_.database_id, param).then((response) => {
+      let info = response.data.message;
+      if (response.data.status === 'conflicting') {
+        self.dispatchEvent({ type:"saveend", status:"error", error: response.data });
+        if (onError) onError (info, response.data);
+        return;
+      }
+      // Clear history
+      self.reset();
+      self.dispatchEvent({ type:"saveend", error: info, transaction: response.data });
+      if (onSuccess) onSuccess(info, response.data);
+    }).catch((error) => {
+      console.log(error)
+      self.dispatchEvent({ type:"saveend", status:"error", error:error });
+      if (onError) onError(error);
+    });
   }).catch((error) => {
     console.log(error)
     self.dispatchEvent({ type:"saveend", status:"error", error:error });
@@ -830,75 +884,6 @@ CollabVector.prototype.loaderFn_ = function (extent, resolution, projection) {
   }
 };
 
-/** Gestion des documents
- *	@param {number} document ID
-*	@return {url} 
-*/
-CollabVector.prototype.getDocumentUrl = function (id) {
-  return this.table_.docURI+"download/"+id;
-}
-
-/** Gestion des documents
- *	@param {number} document ID
-*	@param {function} callback
-*/
-CollabVector.prototype.getDocument = function (id, cback) {
-  if (!id) { cback(); }
-    
-  $.ajax({
-    url: this.table_.docURI+"get/"+id,
-    type: "GET",
-    async: false,
-    data: null,
-    success: function(results) {
-      if (!cback) return;
-      if (results.status == 'OK') cback (JSON.parse(results.document));
-      else cback(results);
-    },
-    error: function (xhr, status, error) {
-      if (cback) cback ({ status:status, error:error });
-    }
-  });
-}
-
-
-/** Gestion des documents
-* @param {File}
-* @param {function} callback
-*/
-CollabVector.prototype.addDocument = function (file, cback) {
-  var data = new FormData();
-  data.append('fileToUpload', file);
-  $.ajax({
-    url: this.table_.docURI+"add",
-    type: "POST",
-    data: data,
-    processData: false,  // jQuery don't process data
-    contentType: false,   // don't send contentType
-    success: function(results) {
-      if (cback) cback (results);
-    },
-    error: function (xhr, status, error) {
-      if (cback) cback ({ status:status, error:error });
-    }
-  });
-}
-
-/** Gestion des documents
-* @param {number} document id
-* @param {function} callback
-*/
-CollabVector.prototype.deleteDocument = function (id, cback) {
-  $.ajax({
-    url: this.table_.docURI+"delete/"+id,
-    success: function(results) {
-      if (cback) cback (results);
-    },
-    error: function (xhr, status, error) {
-      if (cback) cback ({ status:status, error:error });
-    }
-  });
-}
 
 export default CollabVector
  

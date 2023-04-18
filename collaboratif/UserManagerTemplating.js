@@ -1,5 +1,4 @@
 import UserManager from "cordovapp/collaboratif/UserManager";
-import wapp from "../../../src/wapp";
 import CordovApp from '../CordovApp';
 import { wappStorage } from '../cordovapp/CordovApp';
 import {dialog, waitDlg} from '../cordovapp/dialog';

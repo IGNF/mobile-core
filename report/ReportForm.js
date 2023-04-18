@@ -490,13 +490,26 @@ Report.prototype.saveFormulaire = function(form, gps) {
   // Attributs
   var attr = {};
   if (this.form) {
+    let errors = {};
+    let htmlErrors = "";
     for (var i in this.form.attributes) {
       let attribute = this.form.attributes[i]
       if (!attribute.validate()) {
-        alertDlg('Erreur sur "' + attribute.title + '": ' +  attribute.error);
-        return;
+        errors[attribute.id] = attribute.error;
+        htmlErrors += '<p>Erreur sur "' + attribute.title + '": ' +  attribute.error + '</p>';
       }
       attr[attribute.name] = attribute.getNormalizedValue();
+    }
+
+    if (Object.keys(errors).length) {
+      for (let id in errors) {
+        var $elt = $('.feature-form .table .feature-attribute#' + id);
+        $elt.addClass('has-error');
+        $('.feature-form table label[for="' + id + '"]').addClass('has-error');
+        
+      }
+      alertDlg(htmlErrors);
+      return;
     }
   }
   
@@ -1523,6 +1536,7 @@ Report.prototype.selectTheme = function(th, atts, prompt) {
       this.form = createFormForTheme($(".attributes", this.formElement), "form-atts", theme, atts, "mobile");
       $(".attributes", this.formElement).show();
       this.form.init();
+      $('.feature-form tr[data-type="document"]').hide();
       this.formElement.addClass('valid'); //@TODO a changer
     } else {
       // Theme seul ou pas de themes
