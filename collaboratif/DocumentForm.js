@@ -58,6 +58,18 @@ class DocumentForm {
     }
 
     /**
+     * Récupération du lien vers l image: url vers collaboratif ou url locale
+     * @param {String} id id ou url locale 
+     */
+    getDocumentLink(id) {
+        var link = id;
+        if (parseInt(id) == id){
+            link = this.getUrl.replace(/__ID__/g, id);
+        }
+        return link;
+    }
+
+    /**
      * Mise a jour de la balise src de l image par rapport au champs data-docid de <a> pour voir apparaitre les images
      * @param {JQuery} $e element td genere par DocumentAttribute de collab-form 
      */
@@ -70,10 +82,7 @@ class DocumentForm {
           return;
         }
         let mimeTypes = $a.attr('mime-types');
-        var link = id;
-        if (parseInt(id) == id){
-          link = this.getUrl.replace(/__ID__/g, id);
-        }
+        var link = this.getDocumentLink(id);
         
         if (mimeTypes.indexOf("image") != -1) {
           
