@@ -210,6 +210,17 @@ SketchTools.prototype.addTranslate = function(report) {
       this.setActive(true, translate.getPosition());
     }
   });
+  var addFeatureToReport = function(feature) {
+    translate.removeButton('ol-button-cancel');
+    feature = report.addFeature(feature);
+    translate.addButton({
+      className: 'ol-button-cancel', 
+      click: () => {
+        report.addFeature(feature.added);
+        translate.removeButton('ol-button-cancel');
+      }
+    });
+  }
   // Add a new feature 
   translate.addButton({
     className: 'ol-button-add', 
@@ -220,15 +231,17 @@ SketchTools.prototype.addTranslate = function(report) {
         },
         hitTolerance: 5
       });
-      if (features.length && !translate.getSelection()) {
-        translate.removeButton('ol-button-cancel');
-        var feature = report.addFeature(features[0]);
-        translate.addButton({
-          className: 'ol-button-cancel', 
-          click: () => {
-            report.addFeature(feature.added);
-            translate.removeButton('ol-button-cancel');
-          }
+      if (features.length == 1 && !translate.getSelection()) {
+        addFeatureToReport(features[0])
+      } else if (features.length) {
+        var choices = {};
+        for (var i in features) {
+          let idName = features[i].layer.values_.table.id_name;
+          choices[i] = features[i].layer.values_.title+': '+idName+' '+features[i].values_[idName];
+        }
+
+        wapp.selectDialog(choices, null, function(index) {
+            addFeatureToReport(features[index]);
         });
       }
     }
