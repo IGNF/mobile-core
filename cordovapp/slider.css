@@ -11,7 +11,7 @@
 }
   
 /* Next & previous buttons */
-.slideshow-container .prev, .next {
+.slideshow-container .prev, .slideshow-container .next {
     cursor: pointer;
     position: absolute;
     top: 50%;
