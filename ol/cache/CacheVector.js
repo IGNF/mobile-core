@@ -331,6 +331,11 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
         if (!toload || toload.indexOf(i) >= 0) {
           var table = cache.layers[i].table = l.getTable();
           cache.layers[i].date = (new Date()).toISODateString();
+          if (!table.database_versioning) {
+            cache.layers[i].numrec = false;
+            this.uploadLayers2(cache, update, toload, layers);
+            return;
+          }
           var param = l.getSource().getWFSParam(cache.extent, this.map.getView().getProjection());
           this.wapp.userManager.apiClient.getTableMaxNumrec(table.database_id, table.id, {"bbox": param.bbox}).then((response) => {
             let result = response.data;
@@ -357,7 +362,13 @@ CacheVector.prototype.uploadLayers2 = function(cache, update, toload, layers) {
               this.uploadLayers2(cache, update, toload, layers);
             } else {
               wapp.wait(false);
-              let msg = e.response ? e.response.status + " - " + e.response.error : "Erreur inattendue";
+              if (e.response) {
+                let msg = e.response.status + " - ";
+                msg += e.response.error ? e.response.error : e.response.data.message;
+              } else {
+                let msg = "Erreur inattendue";
+              }
+              
               this.wapp.alert ("Impossible de charger la couche <i>"
                 +(l.get('name')||l.get('title'))
                 +"</i>.<i class='error'><br/>"+msg+"</i>");
