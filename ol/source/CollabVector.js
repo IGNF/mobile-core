@@ -400,6 +400,7 @@ CollabVector.prototype.writeChanges = function(force) {
 */
 CollabVector.prototype.getFeatureAction = function(f, full) {
   const updates = f.getUpdates();
+  full = (f.getState() === ol_Feature.State.INSERT) ? true : full;
   const a = { data: {}, state: f.getState(), table: this.table_.id };
   if (full) {
     // Get all properties

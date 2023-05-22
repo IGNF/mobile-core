@@ -40,6 +40,7 @@ import { alertDlg } from 'cordovapp/cordovapp/dialog'
 import { selectInputVal } from 'cordovapp/cordovapp/param'
 import { selectInputText } from 'cordovapp/cordovapp/param'
 import { dataAttributes } from 'cordovapp/cordovapp/param'
+import { prettifyAxiosError } from 'cordovapp/collaboratif/errorHelper'
 
 import 'ol-ext/style/FontAwesomeDef'
 import wapp from '../../../src/wapp'
@@ -1112,16 +1113,15 @@ Report.prototype.postLocalRep = function(georem, georep, options) {
       options.cback(georem, error);
     } else {
       var msg = "Impossible d'envoyer la réponse.<br/>";
-      if (!error.response) {
-        msg = $('<div>').html(msg+"Vérifiez votre connexion ou réessayez lorsque vous serez à nouveau connecté au réseau.");
-      } else {
-        msg = $('<div>').html(msg+"Réponse incorrecte...");
+      let prettyError = prettifyAxiosError(error);
+      if (prettyError.code == 400) {
+        msg += 'Réponse incorrecte...<br/>';
       }
-      let errorTxt = (error.response && error.response.data) ? error.response.data.code + " : " + error.response.data.message : error.message;
-      errorTxt = errorTxt ? errorTxt : error;
+
       $("<i>").addClass('error')
-        .html("<br/>Erreur : "+errorTxt+"</i>")
+        .html("<br/>Erreur : "+ prettyError['code'] + ":" + prettyError['message'] +"</i>")
         .appendTo(msg);
+      
       this.wapp.alert(msg);
     }
   });

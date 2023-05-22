@@ -803,64 +803,69 @@ const CacheMap = function(wapp, layerGroup, options) {
   /** Add a new map from cache
    * @param { CacheMap|boolean } smap the map to add create a new one if none. Use true to get advanced param
    */
-  function addCacheMap (smap) {
-    // Creer une carte ?
-    if (!smap || smap===true) {
-      var content = CordovApp.template("dialog-addmap");
-      if (smap) {
-        $('[data-param="minZoom"]', content).show();
-      } else {
-        $('[data-param="minZoom"]', content).hide();
-      }
-
-      var c = wapp.param.cacheMap.length;
-      while (true) {
-        c++;
-        if (!getCacheMapByName("Carte #"+c)) break;
-      }
-      var newmap = new CacheMap ( "Carte #"+c );
-      wapp.setParamInput( content, newmap);
-  
-      wapp.dialog.show (content, {
-        title: "Ajouter une carte", 
-        buttons: { ajouter:"Ajouter...", cancel:"Annuler" },
-        className: "attributes",
-        callback: function(b) {
-          if (b=='ajouter') {
-            newmap.maxZoom = parseInt(newmap.maxZoom);
-            if (smap) {
-              newmap.minZoom = parseInt(newmap.minZoom);
-            } else {
-              newmap.minZoom = newmap.maxZoom;
-            }
-            if (newmap.minZoom > newmap.maxZoom) {
-              var z = newmap.maxZoom;
-              newmap.maxZoom = newmap.minZoom;
-              newmap.minZoom = z;
-            }
-            wapp.param.cacheMap.push(newmap);
-            addCacheMap(newmap)
-          }
+  async function addCacheMap (smap) {
+    return new Promise((resolve, reject) => {
+      // Creer une carte ?
+      if (!smap || smap===true) {
+        var content = CordovApp.template("dialog-addmap");
+        if (smap) {
+          $('[data-param="minZoom"]', content).show();
+        } else {
+          $('[data-param="minZoom"]', content).hide();
         }
+
+        var c = wapp.param.cacheMap.length;
+        while (true) {
+          c++;
+          if (!getCacheMapByName("Carte #"+c)) break;
+        }
+        var newmap = new CacheMap ( "Carte #"+c );
+        wapp.setParamInput( content, newmap);
+    
+        wapp.dialog.show (content, {
+          title: "Ajouter une carte", 
+          buttons: { ajouter:"Ajouter...", cancel:"Annuler" },
+          className: "attributes",
+          callback: function(b) {
+            if (b=='ajouter') {
+              newmap.maxZoom = parseInt(newmap.maxZoom);
+              if (smap) {
+                newmap.minZoom = parseInt(newmap.minZoom);
+              } else {
+                newmap.minZoom = newmap.maxZoom;
+              }
+              if (newmap.minZoom > newmap.maxZoom) {
+                var z = newmap.maxZoom;
+                newmap.maxZoom = newmap.minZoom;
+                newmap.minZoom = z;
+              }
+              wapp.param.cacheMap.push(newmap);
+              return resolve(addCacheMap(newmap));
+            } else {
+              return reject();
+            }
+          }
+        });
+        return;
+      }
+
+      // Visible ?
+      var isVisible = (typeof(smap.id)!="undefined") ? (wapp.param.visibleLayers["cache_"+smap.id]) : true;
+      smap.id = currentId++;
+
+      // Ajouter un layer a la carte (juste avant les layers vecteur)
+      var layercache = new ol_layer_Geoportail(smap.layer||"GEOGRAPHICALGRIDSYSTEMS.MAPS", {
+        gppKey: apiKey,
+        hidpi: false, 
+        visible: isVisible 
       });
-      return;
-    }
-
-    // Visible ?
-    var isVisible = (typeof(smap.id)!="undefined") ? (wapp.param.visibleLayers["cache_"+smap.id]) : true;
-    smap.id = currentId++;
-
-    // Ajouter un layer a la carte (juste avant les layers vecteur)
-    var layercache = new ol_layer_Geoportail(smap.layer||"GEOGRAPHICALGRIDSYSTEMS.MAPS", {
-      gppKey: apiKey,
-      hidpi: false, 
-      visible: isVisible 
+      layercache.set('title', smap.nom);
+      layercache.set('name', 'cache_'+smap.id);
+      layercache.set('cacheMap', smap);
+      layerGroup.getLayers().push(layercache);
+      setLayerCache (smap);
+      return resolve(smap);
     });
-    layercache.set('title', smap.nom);
-    layercache.set('name', 'cache_'+smap.id);
-    layercache.set('cacheMap', smap);
-    layerGroup.getLayers().push(layercache);
-    setLayerCache (smap);
   }
   this.addCacheMap = addCacheMap;
 

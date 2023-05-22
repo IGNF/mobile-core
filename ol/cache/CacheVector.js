@@ -7,6 +7,7 @@ import ol_layer_Group from 'ol/layer/Group'
 import ol_layer_Vector from 'ol/layer/Vector'
 import ol_source_Vector from 'ol/source/Vector'
 import CacheExtents from './CacheExtents'
+import { prettifyAxiosError } from 'cordovapp/collaboratif/errorHelper'
 
 /**
  * Classe pour la gestion du cache vecteur
@@ -181,7 +182,8 @@ CacheVector.prototype.saveLayer = function(layers, cache, toload) {
         if (transaction) {
           this.wapp.handleConflict(transaction, l);
         } else {
-          this.wapp.alert('Impossible de sauvegarder '+l.get('title')+'<br/><i class="error">'+error+'</i>');
+          let prettyError = prettifyAxiosError(error);
+          this.wapp.alert('Impossible de sauvegarder '+l.get('title')+'<br/><i class="error">'+prettyError.message+'</i>');
         }
       });
     } else {
