@@ -422,16 +422,9 @@ CollabVector.prototype.getFeatureAction = function(f, full) {
   if (full || updates.geometry) {
     const geometryAttribute = this.table_.geometry_name;
     const geom = f.getGeometry();
-    if (full) {
-      a.data[geometryAttribute] = {
-        type: geom.getType(),
-        coordinates: geom.getCoordinates()
-      };
-    } else {
-      const g = geom.getGeometry().clone();
-      g.transform (this.projection_, this.srsName_);
-      a.data[geometryAttribute] = this._formatWKT.writeGeometry(g);
-    }
+    const g = geom.getGeometry().clone();
+    g.transform (this.projection_, this.srsName_);
+    a.data[geometryAttribute] = this._formatWKT.writeGeometry(g);
   }
   return a;
 };
