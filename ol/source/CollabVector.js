@@ -564,7 +564,7 @@ CollabVector.prototype.saveDocs = async function(actions) {
       "comment": "source vecteur: " +this.table_.database+'":"'+this.table_.name
     };
 
-    this.client.addTransaction(this.table_.database_id, param).then((response) => {
+    this.client.addTransaction(this.table_.database_id, param, "application/x-www-form-urlencoded").then((response) => {
       let info = response.data.message;
       if (response.data.status === 'conflicting') {
         self.dispatchEvent({ type:"saveend", status:"error", error: response.data });
