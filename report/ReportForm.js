@@ -1082,7 +1082,7 @@ Report.prototype.postLocalRep = function(georem, georep, options) {
     "content": georep.content
   };
   
-  this.apiClient.addReply(georem.id, body).then((replyResponse) => {
+  this.apiClient.addReply(georem.id, body, "application/x-www-form-urlencoded").then((replyResponse) => {
     this.apiClient.getReport(georem.id).then((reportResponse) => {
       var grem =  reportResponse.data;
       this.delLocalRep(georem, georep, {

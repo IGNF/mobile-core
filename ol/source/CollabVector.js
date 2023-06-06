@@ -406,7 +406,6 @@ CollabVector.prototype.getFeatureAction = function(f, full) {
     // Get all properties
     a.data = f.getProperties();
     delete a.data.geometry;
-    a.updates = updates;
   } else {
     // Id
     const idName = this.table_.id_name;
@@ -422,7 +421,7 @@ CollabVector.prototype.getFeatureAction = function(f, full) {
   if (full || updates.geometry) {
     const geometryAttribute = this.table_.geometry_name;
     const geom = f.getGeometry();
-    const g = geom.getGeometry().clone();
+    const g = geom.clone();
     g.transform (this.projection_, this.srsName_);
     a.data[geometryAttribute] = this._formatWKT.writeGeometry(g);
   }
@@ -564,7 +563,7 @@ CollabVector.prototype.saveDocs = async function(actions) {
       "comment": "source vecteur: " +this.table_.database+'":"'+this.table_.name
     };
 
-    this.client.addTransaction(this.table_.database_id, param, "application/x-www-form-urlencoded").then((response) => {
+    this.client.addTransaction(this.table_.database_id, param).then((response) => {
       let info = response.data.message;
       if (response.data.status === 'conflicting') {
         self.dispatchEvent({ type:"saveend", status:"error", error: response.data });
