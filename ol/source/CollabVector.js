@@ -1,6 +1,7 @@
 ﻿/** @module ol/source/CollabVector
  */
 import CordovApp from 'cordovapp/CordovApp'
+import { getPlatformId } from 'cordovapp/cordovapp/CordovApp';
 import proj4 from 'proj4'
 import {register as ol_proj_proj4_register} from 'ol/proj/proj4.js';
 import * as Papa from 'papaparse';
@@ -17,7 +18,6 @@ import {createXYZ as ol_tilegrid_createXYZ} from 'ol/tilegrid'
 
 import {ol_geom_createFromType} from 'ol-ext/geom/GeomUtils'
 import ol_ext_inherits from 'ol-ext/util/ext'
-import { param } from 'jquery';
 
 import { postDoc } from 'cordovapp/collaboratif/DocumentForm';
 
@@ -150,15 +150,16 @@ const CollabVector = function(opt_options) {
   this.onDeleteFeature_bind = this.onDeleteFeature_.bind(this);
   this.on ('removefeature', this.onDeleteFeature_bind);
   // Modified features
+  // L evenement pour le changement sur un feature est porte par le feature avec l evenement propertychange 
+  // afin d eviter de declencher onUpdateFeature lors du changement de style d un feature
   this.update_ = [];
-  this.on ('changefeature', this.onUpdateFeature_.bind(this));
 
   // Read editions and load
   this.loadChanges()
 
   if (!this._cacheUrl) {
-  this.setLoader(this.loaderFn_);
-}
+    this.setLoader(this.loaderFn_);
+  }
 };
 ol_ext_inherits(CollabVector, ol_source_Vector);
 
@@ -279,27 +280,23 @@ CollabVector.prototype.loadChanges = function() {
     // Success
     (data) => {
       data = JSON.parse(data);
-      const features = [];
       const geometryAttribute = this.table_.geometry_name;
       // Add save actions
       data.actions.forEach((action) => {
         // Create new feature
-        const geom = action.data[geometryAttribute];
-        const f = new ol_Feature(ol_geom_createFromType (geom.type, geom.coordinates));
+        let f = this.createFeatureFromGeom(action.data[geometryAttribute]);
         delete action.data[geometryAttribute];
-        f.setProperties(action.data)
+        f.setProperties(action.data);
         f.setState(action.state);
         f.setUpdates(action.updates);
         // Add feature in the lists
         switch (action.state) {
           case ol_Feature.State.INSERT: {
             this.insert_.push(f);
-            features.push(f);
             break;
           }
           case ol_Feature.State.UPDATE: {
             this.update_.push(f);
-            features.push(f);
             break;
           }
           case ol_Feature.State.DELETE: {
@@ -390,7 +387,6 @@ CollabVector.prototype.writeChanges = function(force) {
   this.on ('removefeature', this.onDeleteFeature_bind);
   this.isloading_ = false;
   this.dispatchEvent({ type:"reload", maxreload: this.maxReload_ });
-  // console.log('reload',this.getProperties());
 }
 
 /** Get an action
@@ -421,6 +417,7 @@ CollabVector.prototype.getFeatureAction = function(f, full) {
   if (full || updates.geometry) {
     const geometryAttribute = this.table_.geometry_name;
     const geom = f.getGeometry();
+    delete a.data.geometry;
     const g = geom.clone();
     g.transform (this.projection_, this.srsName_);
     a.data[geometryAttribute] = this._formatWKT.writeGeometry(g);
@@ -562,8 +559,12 @@ CollabVector.prototype.saveDocs = async function(actions) {
       "actions": actions,
       "comment": "source vecteur: " +this.table_.database+'":"'+this.table_.name
     };
+    let contentType = null;
+    if (getPlatformId() === 'ios') {
+      contentType = "application/x-www-form-urlencoded";
+    }
 
-    this.client.addTransaction(this.table_.database_id, param).then((response) => {
+    this.client.addTransaction(this.table_.database_id, param, contentType).then((response) => {
       let info = response.data.message;
       if (response.data.status === 'conflicting') {
         self.dispatchEvent({ type:"saveend", status:"error", error: response.data });
@@ -579,7 +580,7 @@ CollabVector.prototype.saveDocs = async function(actions) {
       self.dispatchEvent({ type:"saveend", status:"error", error:error });
       if (onError) onError(error);
     });
-  }).catch((error) => {
+  }).catch((error) => {onUpdateFeature_
     console.log(error)
     self.dispatchEvent({ type:"saveend", status:"error", error:error });
     if (onError) onError(error);
@@ -592,9 +593,12 @@ CollabVector.prototype.saveDocs = async function(actions) {
 */
 CollabVector.prototype.onAddFeature_ = function(e) {
   var f = e.feature;
-  f.getGeometry().on('change', () => {
+  var self = this;
+  f.getGeometry().on('change', (e) => {
     f.getUpdates().geometry = true;
+    f.dispatchEvent({type: "propertychange", target: f});
   });
+  f.on("propertychange", this.onUpdateFeature_.bind(this));
   if (this.isloading_) return;
   f.setState(ol_Feature.State.INSERT);
   // Add attributes according to table
@@ -644,16 +648,16 @@ CollabVector.prototype.onDeleteFeature_ = function(e) {
 
 /**
 * Triggered when a feature is updated / update update actions
-* @param {type} e
+* @param {type} e event on feature with target key
 */
 CollabVector.prototype.onUpdateFeature_ = function(e) {
   if (this.isloading_) return;
     
   // if feature has already a state attribute (INSERT),
   // we don't need to add it in this.update_
-  if (e.feature.getState() === ol_Feature.State.UNKNOWN) {
-    e.feature.setState(ol_Feature.State.UPDATE);
-    this.update_.push(e.feature);
+  if (e.target.getState() === ol_Feature.State.UNKNOWN) {
+    e.target.setState(ol_Feature.State.UPDATE);
+    this.update_.push(e.target);
   }
 
   // Save change 
@@ -745,6 +749,39 @@ CollabVector.prototype.getWFSParam = function (extent, projection) {
   return parameters;
 };
 
+/**
+ * 
+ * @param {ol_Geometry} geom en geojson ou en wkt 
+ * @param {*} projection 
+ * @returns {ol_Feature}
+ */
+CollabVector.prototype.createFeatureFromGeom = function(geom, projection) {
+  projection = projection || 'EPSG:3857';
+  var format = new ol_format_WKT();
+  var r3d = /([-+]?(\d*[.])?\d+) ([-+]?(\d*[.])?\d+) ([-+]?(\d*[.])?\d+)/g;
+  let feature;
+  if (geom.type) {
+    var g = ol_geom_createFromType (geom.type, geom.coordinates);
+    g.transform (this.srsName_, projection);
+    feature = new ol_Feature (g);
+  }
+  // WKT
+  else {
+    geom = geom.replace (r3d, "$1 $3");
+    try{
+      feature = format.readFeature(geom, {
+        dataProjection: this.srsName_,
+        featureProjection : projection
+      });
+    } catch(e) {
+      console.error('[BAD FORMAT] error line: ', f, data[f]);
+      return null;
+    }
+  }
+
+  return feature;
+}
+
 /** Read features from file
 * @param {*} data
 */
@@ -752,7 +789,7 @@ CollabVector.prototype._readFeatures = function (data, projection) {
   if (typeof data === 'string') {
     data = JSON.parse(data);
   }
-  projection = projection || 'EPSG:3857';
+  
   let feature;
   const features = [];
   const geometryAttribute = this.table_.geometry_name;
@@ -761,31 +798,14 @@ CollabVector.prototype._readFeatures = function (data, projection) {
     typing[i] = /^Double$|^Integer$/.test(this.table_.columns[i].type);
   }
   
-  var format = new ol_format_WKT();
-  var r3d = /([-+]?(\d*[.])?\d+) ([-+]?(\d*[.])?\d+) ([-+]?(\d*[.])?\d+)/g;
+  
   //
   for (var f=0; f<data.length; f++) {
     // Get data
     var geom = data[f][geometryAttribute];
     // 
-    if (geom.type) {
-      var g = ol_geom_createFromType (geom.type, geom.coordinates);
-      g.transform (this.srsName_, projection);
-      feature = new ol_Feature (g);
-    }
-    // WKT
-    else {
-      geom = geom.replace (r3d, "$1 $3");
-      try{
-        feature = format.readFeature(geom, {
-          dataProjection: this.srsName_,
-          featureProjection : projection
-        });
-      } catch(e) {
-        console.error('[BAD FORMAT] error line: ', f, data[f]);
-        continue;
-      }
-    }
+    feature = this.createFeatureFromGeom(geom, projection);
+    if (!feature) continue;
   
     var properties = data[f];
     delete properties[geometryAttribute];
@@ -830,10 +850,12 @@ CollabVector.prototype.loaderFn_ = function (extent, resolution, projection) {
       }
     })
     
-    // Add new inserted features
     var l = self.insert_.length;
     for (var i=0; i<l; i++) {
-      if (self.insert_[i].getState()===ol_Feature.State.INSERT) features.push( self.insert_[i] );
+      //dans le cas où le chargement est tuile on ne veut ajouter le feature qu une seule fois!
+      if (self.insert_[i].getState()===ol_Feature.State.INSERT && !self.getFeatures().length){
+        features.push( self.insert_[i] );
+      }
     }
 
     // Start replacing features
