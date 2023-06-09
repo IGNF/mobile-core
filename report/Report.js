@@ -56,11 +56,11 @@ class Report {
         if (params.themes) {
             let th = params.themes.split("::");
             var group = parseInt(th[0]);
-            post.attributes = {
+            post.attributes = JSON.stringify({
                 "community": group,
                 "theme": params.theme,
                 "attributes": params.attributes ? JSON.parse(params.attributes) : {}
-            }
+            });
         }
 
         if (params.photo) {
