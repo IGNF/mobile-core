@@ -1173,7 +1173,9 @@ Report.prototype.onUpdate = function() {
           self.georemShow($(this).data("grem"));
         });
       
-      dataAttributes(li, grems[i]);
+        let gremWithDate = grems[i];
+        gremWithDate["date"] = grems[i].date ? grems[i].date : (grems[i].pretty_opening_date ? grems[i].pretty_opening_date : null );
+      dataAttributes(li, gremWithDate);
       this.getLocalReps(grems[i]).forEach((r) => {
         if (r.error) li.addClass('badresponse');
       });
