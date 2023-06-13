@@ -394,7 +394,7 @@ const CacheMap = function(wapp, layerGroup, options) {
   function refreshCacheMap (smap)	{	
     if (wapp.userManager.param.offline) {
       wapp.wait("Mise à jour...");
-      window.plugins.insomnia.keepAwake();
+      cordova.plugins.backgroundMode.enable();
       setTimeout (function() {
         // Fichiers de la carte
         getCacheFiles (smap, function(list) {
@@ -405,7 +405,7 @@ const CacheMap = function(wapp, layerGroup, options) {
             // Mise a jour
             smap.date = (new Date()).toISODateString();
             setLayerCache(smap);
-            window.plugins.insomnia.allowSleepAgain();
+            cordova.plugins.backgroundMode.disable();
             wapp.wait(false);
           })
         });
@@ -430,7 +430,7 @@ const CacheMap = function(wapp, layerGroup, options) {
       nberr = 0;
       terror = [];
       cancelDownloadTiles = false;
-      window.plugins.insomnia.keepAwake();
+      cordova.plugins.backgroundMode.enable();
     }
     if (cancelDownloadTiles) {
       wapp.wait(false);
@@ -445,7 +445,7 @@ const CacheMap = function(wapp, layerGroup, options) {
             downloadTiles(t, layer, cback, nb, nberr, terror)
           } else {
             delete currentMap.pending;
-            window.plugins.insomnia.allowSleepAgain();
+            cordova.plugins.backgroundMode.disable();
           }
         }
       );
@@ -493,7 +493,7 @@ const CacheMap = function(wapp, layerGroup, options) {
         options);
     } else {
       wapp.wait(false);
-      window.plugins.insomnia.allowSleepAgain();
+      cordova.plugins.backgroundMode.disable();
       if (nberr) {
         let message = nb+" fichiers chargés.\n"
         +nberr+" fichier(s) en erreur ou hors zone...";

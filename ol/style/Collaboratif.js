@@ -399,6 +399,10 @@ ol_style_Collaboratif.getUrls = function(featureType) {
   for (let i in featureType.styles) {
     if (featureType.style.externalGraphic) {
       uris[featureType.styles[i].externalGraphic] = featureType.styles[i].uri
+      for (let j in featureType.styles[i].children) {
+        let child = featureType.styles[i].children[j];
+        uris[child.externalGraphic] = child.uri;
+      }
     }
   }
 
