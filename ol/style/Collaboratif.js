@@ -132,7 +132,7 @@ ol_style_Collaboratif.setImage = function (olStyle, fstyle, feature) {
   if (fstyle.img) {
     img = fstyle.img
   } else if (fstyle.externalGraphic && fstyle.externalGraphic!=='undefined') {
-    img = 'https://espacecollaboratif.ign.fr/gcms/style/image/'+fstyle.externalGraphic+'?width='+fstyle.graphicWidth+'&height='+fstyle.graphicWidth;
+    img = fstyle.uri+'?width='+fstyle.graphicWidth+'&height='+fstyle.graphicWidth;
   }
   if (img) {
     if (imageCache[img]) {
@@ -263,6 +263,7 @@ ol_style_Collaboratif.Text = function (fstyle) {
  ol_style_Collaboratif.loadSymbolCache = function() {
   if (!this.symbolCache && window.cordova) {
     this.symbolCache = {}
+    this.cacheLoading = [];
     CordovApp.File.listDirectory(
       'FILE/cache/symbols', 
       function(entries){
@@ -387,49 +388,67 @@ ol_style_Collaboratif.Text = function (fstyle) {
   }
 };
 
+/**
+ * Renvoie un tableau contenant toutes les urls des pictos des styles utilises pour un feature type
+ * la cle etant le nom du picto et la valeur l url
+ * @param {Object} featureType 
+ */
+ol_style_Collaboratif.getUrls = function(featureType) {
+  let uris = {};
+
+  for (let i in featureType.styles) {
+    if (featureType.style.externalGraphic) {
+      uris[featureType.styles[i].externalGraphic] = featureType.styles[i].uri
+    }
+  }
+
+  return uris;
+}
+
 /** Get image uri and save to cache if not allready done
  * @param {Object} featureType
  * @param {string} name image name
  * @param {number} width
  * @param {number} height
  * @param {ol.Feature} feature
- * @param {object} options user name and password 
  */
- ol_style_Collaboratif.getSymbolURI = function (featureType, name, width, height, feature, options) {
+ ol_style_Collaboratif.getSymbolURI = function (featureType, name, width, height, feature) {
   var img;
   var cacheName = name.replace(/\//g,'_')+'_'+width+'x'+height;
 
   // Allready in cache
   if (this.symbolCache && this.symbolCache[cacheName]) {
     img = this.symbolCache[cacheName];
+    return img
   } else {
     // Load Image from server
-    img = featureType.uri.replace(/gcms\/.*/,"")
-      + 'gcms/style/image/'
-      + name
+    let stylePictos = this.getUrls(featureType);
+    
+    if (!stylePictos[name]) {
+      console.log("Une erreur s'est produite au chargement du pictogramme");
+      return;
+    }
+
+    if (this.cacheLoading.indexOf(cacheName) != -1) return null;
+
+    img = stylePictos[name]
       +'?width='+width
       +'&height='+height;
     // Save symbol if not yet
-    if (window.cordova && !this.symbolCache[cacheName]) {
-      CordovApp.File.downloadImage(
-        img,
-        'FILE/cache/symbols/'+cacheName,
-        function (e) {
+    if (wapp && !this.symbolCache[cacheName]) {
+      this.cacheLoading.push(cacheName);
+      wapp.userManager.apiClient.getDocument(img).then((response) => {
+        CordovApp.File.saveData(response.data, 'FILE/cache/symbols/'+cacheName, (e) => {
           // Update symbol cache
           ol_style_Collaboratif.symbolCache[e.name] = e.nativeURL;
           // Force layer redraw
           feature.layer.changed();
-        },
-        function(){
-        }, {
-          headers: {
-            "Authorization": "Basic " + btoa(options.username + ":" + options.password)
-          }
-        }
-      );
+        });
+        
+      });
     }
   }
-  return img;
+  return null;
 };
 
 
