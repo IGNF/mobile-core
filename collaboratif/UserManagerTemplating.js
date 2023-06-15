@@ -45,6 +45,7 @@ class UserManagerTemplating extends UserManager {
      */
      initialize() {
         if (this.param.username && this.param.password) {
+            if (this.param.userId) this.userId = this.param.userId;
             this.setUser(this.param.username, this.param.password, true);
         }
         var community = this.getGroupById(this.param.active_community);

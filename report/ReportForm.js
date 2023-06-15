@@ -1,7 +1,7 @@
 ﻿/* global Camera */
 import _T from 'cordovapp/i18n'
 import CordovApp from 'cordovapp/CordovApp'
-import Report from 'cordovapp/report/Report'
+import {Report,reportStatus} from 'cordovapp/report/Report'
 import {help} from 'cordovapp/cordovapp/help'
 import {dialog} from 'cordovapp/cordovapp/dialog'
 import {selectDialog} from 'cordovapp/cordovapp/dialog'
@@ -967,22 +967,22 @@ Report.prototype.addLocalRep = function(georem, options) {
   }
   // Available status
   const available = {
-    pending: Report.status.pending,
-    // pending0: Report.status.pending0,
-    pending1: Report.status.pending1
+    pending: reportStatus.pending,
+    // pending0: reportStatus.pending0,
+    pending1: reportStatus.pending1
   }
   if (this.canReply(georem)) {
-    available.valid = Report.status.valid;
-    available.valid0 = Report.status.valid0;
-    available.reject = Report.status.reject;
-    available.reject0 = Report.status.reject0;
+    available.valid = reportStatus.valid;
+    available.valid0 = reportStatus.valid0;
+    available.reject = reportStatus.reject;
+    available.reject0 = reportStatus.reject0;
   }
   // Select status
   let status = '';
   const select = $('span', tp).click(() => {
     selectDialog(available, null, (val) => {
       status = val;
-      select.text(Report.status[val]);
+      select.text(reportStatus[val]);
     });
   });
   dialog.show ( tp, {

@@ -232,7 +232,7 @@ class Report {
     }
 }
 
-Report.prototype.status = {
+var reportStatus = {
     "submit": "Reçu dans nos services", 
     "pending": "En cours de traitement",
     "pending1": "En attente de saisie", 
@@ -244,4 +244,6 @@ Report.prototype.status = {
     "pending0": "En demande de qualification"
 };
 
-export default Report;
+var closedStatus = ["valid", "valid0", "reject", "reject0"];
+
+export { Report, reportStatus, closedStatus };

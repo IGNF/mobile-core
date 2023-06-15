@@ -17,7 +17,9 @@ import ol_style_Circle from 'ol/style/Circle'
 import ol_style_Stroke from 'ol/style/Stroke'
 import ol_style_Fill from 'ol/style/Fill'
 import ol_style_Text from 'ol/style/Text'
-import WKT from 'ol/format/wkt';
+import WKT from 'ol/format/WKT';
+
+import {reportStatus, closedStatus} from '../../report/Report'
 
 var radius = 8;
 const symbol = {
@@ -117,7 +119,7 @@ const georemStyle = function(feature) {
  * @returns {ReportSource}
  */
 const ReportSource = function(options, cache) {
-
+  this.loadClosed = options.loadClosed ?? false;
   this._report = options.report;
   this._cache = cache;
   this._tileGrid = ol_tilegrid_createXYZ({   
@@ -141,6 +143,7 @@ const ReportSource = function(options, cache) {
 
 };
 ol_ext_inherits(ReportSource, ol_source_Vector);
+
 
 /** Load georems from server
  * @private
@@ -183,7 +186,6 @@ ReportSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
   this.dispatchEvent({ type: 'loadstart' });
   let params = {
     box: extent.join(','),
-    status: ['submit', 'pending', 'pending0', 'pending1', 'pending2'],
     limit: 100,
     communities: [activeCommunity]
   };
@@ -191,6 +193,9 @@ ReportSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
   async function getReports () {
     async function nextRequest(page = 1) {
       params["page"] = page;
+      let reportStatusArr = Object.keys(reportStatus);
+      params["status"] = reportStatusArr;
+      if (!self.loadClosed) params["status"] = reportStatusArr.filter(s => closedStatus.indexOf(s) == -1);
       let result = await self._report.apiClient.getReports(params);
       // Charger le resultat
       let contentRangeParts = result.headers["content-range"].split('/');
