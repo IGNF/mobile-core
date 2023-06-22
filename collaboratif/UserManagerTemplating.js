@@ -1,10 +1,14 @@
 import UserManager from "cordovapp/collaboratif/UserManager";
 import CordovApp from '../CordovApp';
 import { wappStorage } from '../cordovapp/CordovApp';
-import {dialog, waitDlg} from '../cordovapp/dialog';
+import {dialog, waitDlg, messageDlg} from '../cordovapp/dialog';
+import {Report} from '../report/ReportForm';
+import { editionCacheDir } from "cordovapp/ol/source/CollabVector";
 
 /**
  * surcouche de userManager avec des elements de template
+ * pour avertissement a la deconnexion on admet qu un compteur d actions actions-count existe dans la div id=map,
+ * et un compteur de signalements local-count dans la div id=signalements
  */
 class UserManagerTemplating extends UserManager {
     /*
@@ -89,8 +93,25 @@ class UserManagerTemplating extends UserManager {
                     );
                 } 
                 else if (bt=="deconnect") {
-                    self.disconnect();
-                    if (typeof (options.onConnect) == "function") options.onConnect({connected:false});
+                    let countRems = document.getElementById('signalements').getAttribute('local-count') || 0;
+                    let countActions = document.getElementById('map').getAttribute('actions-count') || 0;
+                    if (countRems || countActions) {
+                        let mess = 'Vous avez ('+countRems+') signalements et ('+countActions+') actions en cours. Ils seront perdus si vous vous déconnectez. Continuer?'
+                        messageDlg (mess,
+                            "Attention", {
+                              ok: "Continuer",
+                              cancel: "Annuler"
+                            },
+                            function (b) {
+                                if (b == 'ok') {
+                                    self.disconnect();
+                                    if (typeof (options.onConnect) == "function") options.onConnect({connected:false});
+                                }
+                            });
+                    } else {
+                        self.disconnect();
+                        if (typeof (options.onConnect) == "function") options.onConnect({connected:false});
+                    }
                 }
                 if (typeof (options.onQuit) == "function") options.onQuit({ dialog:tp, target: this });
             }
