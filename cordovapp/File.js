@@ -355,31 +355,30 @@ CordovApp.File.read = function(name, success, fail) {
  * @memberof CordovApp.File
  *	@param {String} file URI referring to a local file  
  *	@param {String} name URI referring to a local file to move to
- *	@param {function} success callback 
- *	@param {function} fail callback invoked on error
+ *  @return {Promise}
  */
-CordovApp.File.moveFile = function(file, name, success, fail) {
-  if (!success) success = this.success;
-  if (!fail) fail = this.fail;
+CordovApp.File.moveFile = async function(file, name) {
   var self = this;
-  // Recuperer le fichier
-  //resolveLocalFileSystemURI (file, 
-  self.getFile(file, 
-    function(fileEntry) {
-      // Recherche du repertoire
-      var dir = name.substring(0, name.lastIndexOf("/"));
-      name = name.substring(name.lastIndexOf("/")+1);
-      self.getDirectory (
-        dir,
-        function(dirEntry){
-          fileEntry.moveTo(dirEntry, name,  success, fail);
-        },
-        fail
-      );
-    }, 
-    fail,
-    true
-  ); 
+  return new Promise((resolve, reject) => {
+    // Recuperer le fichier
+    //resolveLocalFileSystemURI (file, 
+    self.getFile(file, 
+      function(fileEntry) {
+        // Recherche du repertoire
+        var dir = name.substring(0, name.lastIndexOf("/"));
+        name = name.substring(name.lastIndexOf("/")+1);
+        self.getDirectory (
+          dir,
+          function(dirEntry){
+            fileEntry.moveTo(dirEntry, name, (file) => {return resolve(file);}, (e) => {return reject(e)});
+          },
+          (e) => {return reject(e)}
+        );
+      }, 
+      (e) => {return reject(e)},
+      true
+    ); 
+  });
 };
 
 /**
@@ -416,24 +415,26 @@ CordovApp.File.saveData = function(data, name, success, fail, binary = false) {
  * @param {function} success callback avec en parametre le bolb
  * @param {function} fail callback invoked on error
  */
-CordovApp.File.getBlob = function (url, success, fail) {
-  CordovApp.File.getFile (
-    url,
-    function(fileEntry) {
-      fileEntry.file(function(file) {
-        var reader = new FileReader();
-        reader.fileType = file.type;
-        reader.onloadend = function(type) {
-            var blob = new Blob([new Uint8Array(this.result)], {"type": this.fileType});
-            success(blob);
-        }
-        reader.readAsArrayBuffer(file);
+CordovApp.File.getBlob = async function (url) {
+  return new Promise((resolve, reject) => {
+    CordovApp.File.getFile (
+      url,
+      function(fileEntry) {
+        fileEntry.file(function(file) {
+          var reader = new FileReader();
+          reader.fileType = file.type;
+          reader.onloadend = function(type) {
+              var blob = new Blob([new Uint8Array(this.result)], {"type": this.fileType});
+              return resolve(blob);
+          }
+          reader.readAsArrayBuffer(file);
+        },
+        (e) => {return reject(e)}
+        );
       },
-      fail
-      );
-    },
-    fail
-  );
+      (e) => {return reject(e)}
+    );
+  });
 }
 
 /** Load a file from a remote adresse + save it to 'name'

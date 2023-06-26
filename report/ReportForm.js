@@ -440,8 +440,10 @@ Report.prototype.delLocalRem = function(i, silent) {
     // Supprimer
     this.param.georems.splice(i,1);
     // Supprimer la photo correspondante
-    if (grem.photo){
-      CordovApp.File.delFile (grem.photo);
+    if (grem.photos){
+      for (var i in grem.photos) {
+        CordovApp.File.delFile (grem.photos[i]);
+      }
     }
     // remove feature from layer
     var f = this.getFeature(grem);
@@ -471,9 +473,13 @@ Report.prototype.saveFormulaire = function(form, gps) {
   var georem =  {
     geometry: $("input.geometry", form).val(),
     sketch: undefined,
-    comment: $(".comment", form).val(),
-    photo: $('.photo img', form).data('photo') || false
+    comment: $(".comment", form).val()
   }
+  let photos = [];
+  $('.photo img', form).each(function(i) {
+    if ($(this).data('photo')) photos.push($(this).data('photo'));
+  });
+  if (photos.length) georem.photos = photos;
   if (this.hasLocation) {
     var pos = this.geolocation.getPosition();
     georem.plon = pos[0];
@@ -560,9 +566,9 @@ Report.prototype.saveFormulaire = function(form, gps) {
         add: true
       });
       // Reset photo
-      $(".photo img", self.formElement).attr("src","")
-            .data("photo",false)
-            .hide();
+      $(".photo img", self.formElement).each(function(i) {
+        $(this).attr("src","").data("photo",false).hide();
+      });
       $(".photo .fa-stack", self.formElement).show();
       $(".comment", form).val("");
     });
@@ -580,11 +586,11 @@ Report.prototype.saveLocalRem = function(georem, current, cback) {
   if (!georem.date) georem.date = (new Date()).toISODateString();
 
   var self = this;
-  var indice, oldphoto;
+  var indice, oldphotos;
   // Get current georem saved in the form (modification)
   if (current) {
     indice = this.getIndice(current);
-    oldphoto = this.param.georems[indice].photo
+    oldphotos = this.param.georems[indice].photos;
     this.param.georems[indice] = georem;
   }
   // No current > creat new one
@@ -592,22 +598,38 @@ Report.prototype.saveLocalRem = function(georem, current, cback) {
     indice = (this.param.nbrem++);
     this.param.georems.push(georem);
   }
+  oldphotos = oldphotos ? oldphotos : [];
+  let photos = georem.photos ? georem.photos : [];
+
   // save photo
-  if (georem.photo && georem.photo!=oldphoto) {
-    CordovApp.File.moveFile (georem.photo, "TMP/georem-"+indice+".jpg",
-      function(file) {
-        georem.photo = file.toURL();
-        self.saveParam();
-        if (cback) cback ({ error:false, info:"Le signalement a été enregistré." });
-      },
-      function() {
-        georem.photo = false;
-        self.saveParam();
-        self.onUpdate();
-        if (cback) cback ({ error:'NOPHOTO', info:"Photo introuvable..." });
-      })
-  } else {
-    if (oldphoto && georem.photo!=oldphoto) CordovApp.File.delFile(oldphoto);
+  let photoPromises = [];
+  for (let i in photos) {
+    if (oldphotos.indexOf(photos[i]) == -1) {
+      photoPromises.push(CordovApp.File.moveFile (photos[i], "TMP/georem-"+indice+"photo"+i+".jpg"));
+    } else {
+      photoPromises.push(photos[i]);
+    }
+  }
+  Promise.all(photoPromises).then((files) => {
+    georem.photos = [];
+    for (let i in files) {
+      if (typeof files[i] === "string") georem.photos[i] = files[i];
+      else georem.photos[i] = files[i].toURL();
+    }
+    self.saveParam();
+    if (cback) cback ({ error:false, info:"Le signalement a été enregistré." });
+  }).catch((e) => {
+    georem.photos = null;
+    self.saveParam();
+    self.onUpdate();
+    if (cback) cback ({ error:'NOPHOTO', info:"Photo introuvable..." });
+  })
+
+  for (let i in oldphotos) {
+    if (photos.indexOf(oldphotos[i]) != -1) continue;
+    CordovApp.File.delFile(oldphotos[i]);
+  }
+  if (!photos.length) {
     this.saveParam();
     if (cback) cback ({ error:false, info:"Le signalement a été enregistré." });
   }
@@ -1400,14 +1422,19 @@ Report.prototype.showFormulaire = function(grem, select) {
     $("input.geometry", this.formElement).val(georem.geometry);
     $(".comment", this.formElement).val(georem.comment);
     // Photo
-    var url = georem.photo;
-    if (url) {
-      var photoElt = $(".photo", this.formElement);
-      $("img", photoElt).attr("src", CordovApp.File.getFileURI(url)+"?"+new Date().getTime())
-          .data("photo",url)
-          .show();
-      $(".fa-stack", photoElt).hide();
+    for (let i in georem.photos){
+      let count = i;
+      count++
+      var url = georem.photos[i];
+      if (url) {
+        var photoElt = $(".photo", this.formElement);
+        $("#img"+count, photoElt).attr("src", CordovApp.File.getFileURI(url)+"?"+new Date().getTime())
+            .data("photo",url)
+            .show();
+      }
     }
+    if (georem.photos.length > 3) $(".fa-stack", photoElt).hide();
+    
     // Croquis
     if (georem.sketch) {
       try {
@@ -1593,21 +1620,35 @@ Report.prototype.cancelFormulaire = function(type, georem) {
 /** Take a photo using the camera
  * @param {boolean} noFile prevent loading file from SD card
  */
-Report.prototype.photo = function(noFile) {
+Report.prototype.photo = function(noFile, selector) {
   var self = this;
   var photoElt = $('.photo', this.formElement);
-  var hasPhoto = $('img', photoElt).attr('src');
-  console.log('getPicture', noFile)
+  let numSelector = 0; //pour enregistrer photo temporaire sous nom diff
+  if (!selector) {
+    $("img", photoElt).each(function(i) {
+      numSelector++;
+      if (!$(this).attr("src")) {
+        selector = "#"+$(this).attr('id');
+        return false;
+      }
+    });
+  }
+  
+  var hasPhoto = $(selector).attr('src');
   this.wapp.getPicture(
     function(url, button) {
       if (url) {
-        $('img', photoElt).attr('src', CordovApp.File.getFileURI(url)+'?'+new Date().getTime())
+        $(selector).attr('src', CordovApp.File.getFileURI(url)+'?'+new Date().getTime())
           .data('photo',url)
           .show();
-        $('.fa-stack', photoElt).hide();
+        let countPhotos = 0;
+        $("img", photoElt).each(function(i) {
+          if ($(this).attr("src")) countPhotos++;
+        });
+        if (countPhotos > 3) $('.fa-stack', photoElt).hide();
       } else {
         if (button=='del') {
-          $('img', photoElt).attr('src','')
+          $(selector).attr('src','')
             .data('photo',false)
             .hide();
           $('.fa-stack', photoElt).show();
@@ -1618,9 +1659,9 @@ Report.prototype.photo = function(noFile) {
     {
       prompt: 'Ajouter une photo',
       message: this.messagePhoto,
-      name: 'TMP/photo.jpg',
+      name: 'TMP/photo'+numSelector+'.jpg',
       buttons: hasPhoto ? { photo:'Caméra', album:'Album', del:'supprimer', cancel:'annuler' } : { photo:'Caméra', album:'Album', cancel:'annuler' },
-      className: hasPhoto ? 'report photo photodel' : 'report photo',
+      className: hasPhoto ? 'report photo photodel' : 'report photo '+selector,
       targetWidth: self.param.imgWidth || 1200,
       targetHeight: self.param.imgHeight || 1200,
       correctOrientation: (self.param.imgOrient!==false)

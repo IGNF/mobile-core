@@ -25,7 +25,7 @@ class Report {
     /**
      * Envoyer une remontee
      * upload file
-     * @param {Object} params liste des parametres a envoyer { comment, geometry, lon,lat, territory, attributes, sketch, features, proj, insee, protocol, version, photo }
+     * @param {Object} params liste des parametres a envoyer { comment, geometry, lon,lat, territory, attributes, sketch, features, proj, insee, protocol, version, photos }
      * @param {function} callback function (response, error)
      */
     postGeorem(params, callback) {
@@ -63,20 +63,29 @@ class Report {
             });
         }
 
-        if (params.photo) {
-            CordovApp.File.getBlob (
-                params.photo,
-                function(blob) {
-                    post.photo = blob;
-                    self.apiClient.addReport(post).then((response) => {
-                        callback({"error": false, "data": response.data});
-                    }).catch((error) => {
-                        callback({"error": true, "data": error});
-                    });
-                },
-                callback
-            );
+        
+        if (params.photos && params.photos.length) {
+            let photoPromises = [];
+            for (var i in params.photos) {
+                photoPromises.push(CordovApp.File.getBlob (
+                    params.photos[i],
+                ));
+            }
+            Promise.all(photoPromises).then((blobs) => {
+                for (var i in blobs) {
+                    post["photo"+i] = blobs[i];
+                }
+
+                self.apiClient.addReport(post).then((response) => {
+                    callback({"error": false, "data": response.data});
+                }).catch((error) => {
+                    callback({"error": true, "data": error});
+                });
+            }).catch((error) => {
+                callback({"error": true, "data": error});
+            });
         }
+        
         else {
             this.apiClient.addReport(post).then((response) => {
                 callback({"error": false, "data": response.data});

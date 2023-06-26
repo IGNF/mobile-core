@@ -100,26 +100,16 @@ class DocumentForm {
  * @param {Array} tableau des urls locales des documents
  */
 var postDoc = async function(apiClient, localUrl) {
-    return new Promise((resolve, reject) => {
-        CordovApp.File.getBlob (
-            localUrl,
-            function(document) {
-                let formData = new FormData();
-                let mimeType = document.type;
-                let extension = mimeType.split("/")[1];
-                let name = 'document.' + extension;
-                formData.append('file', document, name);
-                apiClient.doRequest(
-                    "/../../document/add", "post", formData, null, 'multipart/form-data'
-                ).then((response) => {
-                    return resolve(response.data.id);
-                }).catch((e) => {
-                    return reject(e);
-                });
-            },
-            (e) => {return reject(e)}
-        )
-    });
+    let document = await CordovApp.File.getBlob(localUrl);
+    let formData = new FormData();
+    let mimeType = document.type;
+    let extension = mimeType.split("/")[1];
+    let name = 'document.' + extension;
+    formData.append('file', document, name);
+    let response = await apiClient.doRequest(
+        "/../../document/add", "post", formData, null, 'multipart/form-data'
+    );
+    return response.data ? response.data.id : null;
 }
 
 export { DocumentForm, postDoc }

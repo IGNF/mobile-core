@@ -47,11 +47,9 @@ CordovApp.prototype.getPicture = function (win, fail, param, source) {
         return;
       }
       // Copier la photo dans le repertoire demande
-      CordovApp.File.moveFile (imageURI, param.name, 
-        function(file)
-        {	win (file.nativeURL);
-        }
-      ); 
+      CordovApp.File.moveFile (imageURI, param.name).then((file) => {
+        win (file.nativeURL);
+      }); 
     }, 
     // On fail
     function(message) {
