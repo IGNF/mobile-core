@@ -580,7 +580,7 @@ CollabVector.prototype.saveDocs = async function(actions) {
       self.dispatchEvent({ type:"saveend", status:"error", error:error });
       if (onError) onError(error);
     });
-  }).catch((error) => {onUpdateFeature_
+  }).catch((error) => {
     console.log(error)
     self.dispatchEvent({ type:"saveend", status:"error", error:error });
     if (onError) onError(error);
