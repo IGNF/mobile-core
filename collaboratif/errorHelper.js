@@ -10,7 +10,7 @@ export function prettifyAxiosError(error) {
     if (error.code == "ERR_NETWORK") {
         msg = "Le réseau est indisponible";
     } else if (error.response && error.response.data) {
-        msg = error.response.data.message;
+        msg = error.response.data.message ? error.response.data.message : error.response.data;
         code = error.response.data.code;
     } else if (error.response) {
         msg = error.response.statusText;
