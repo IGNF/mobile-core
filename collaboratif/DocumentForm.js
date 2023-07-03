@@ -101,13 +101,8 @@ class DocumentForm {
  */
 var postDoc = async function(apiClient, localUrl) {
     let document = await CordovApp.File.getBlob(localUrl);
-    let formData = new FormData();
-    let mimeType = document.type;
-    let extension = mimeType.split("/")[1];
-    let name = 'document.' + extension;
-    formData.append('file', document, name);
     let response = await apiClient.doRequest(
-        "/../../document/add", "post", formData, null, 'multipart/form-data'
+        "/../../document/add", "post", {"document": document}, null, 'multipart/form-data'
     );
     return response.data ? response.data.id : null;
 }
