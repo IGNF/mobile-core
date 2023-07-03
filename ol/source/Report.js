@@ -119,7 +119,7 @@ const georemStyle = function(feature) {
  * @returns {ReportSource}
  */
 const ReportSource = function(options, cache) {
-  this.loadClosed = options.loadClosed ?? false;
+  this.loadClosed = options.loadClosed ? options.loadClosed : false;
   this._report = options.report;
   this._cache = cache;
   this._tileGrid = ol_tilegrid_createXYZ({   
