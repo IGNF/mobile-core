@@ -42,6 +42,8 @@ import { selectInputText } from 'cordovapp/cordovapp/param'
 import { dataAttributes } from 'cordovapp/cordovapp/param'
 import { prettifyAxiosError } from 'cordovapp/collaboratif/errorHelper'
 
+import moment from 'moment';
+
 import 'ol-ext/style/FontAwesomeDef'
 import wapp from '../../../src/wapp'
 
@@ -1195,9 +1197,11 @@ Report.prototype.onUpdate = function() {
           self.georemShow($(this).data("grem"));
         });
       
-        let gremWithDate = grems[i];
-        gremWithDate["date"] = grems[i].date ? grems[i].date : (grems[i].pretty_opening_date ? grems[i].pretty_opening_date : null );
-      dataAttributes(li, gremWithDate);
+        let gremForTemplate = grems[i];
+        grems[i].pretty_opening_date = grems[i].opening_date ? moment(grems[i].opening_date).format('YYYY-MM-DD HH:mm:ss') : grems[i].pretty_opening_date;
+        gremForTemplate["date"] = grems[i].date ? grems[i].date : (grems[i].pretty_opening_date ? grems[i].pretty_opening_date : null );
+        gremForTemplate["replies"] = grems[i].replies ? grems[i].replies : [];
+      dataAttributes(li, gremForTemplate);
       this.getLocalReps(grems[i]).forEach((r) => {
         if (r.error) li.addClass('badresponse');
       });
