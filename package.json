@@ -20,7 +20,7 @@
   "homepage": "http://gitlab.dockerforge.ign.fr/express/cordovapp",
   "dependencies": {
     "collaboratif-client-api": "git+http://gitlab.dockerforge.ign.fr/collaboratif/collaboratif-client-api.git",
-    "collab-form": "git+https://gitlab.gpf-tech.ign.fr/ign-mut/espace-collaboratif/collab-form.git"
+    "collab-form": "@ign-mut/collab-form"
   },
   "devDependencies": {
     "eslint": "^6.2.1",
