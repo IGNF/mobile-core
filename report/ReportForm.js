@@ -1382,7 +1382,7 @@ Report.prototype.choixProfil = function(title, onSelect) {
     q[g.id] = libelle (g);
     listClass[g.id] = (g.active ? ' active' : ' inactive');
   }
-  selectDialog(q, this.param.profil ? this.param.profil.id_groupe : -1, function(n) {
+  selectDialog(q, this.param.profil ? this.param.profil.community_id : -1, function(n) {
     if (onSelect) onSelect(Number(n));
     else self.setProfil(Number(n));
   }, { title: title, search: (wapp.userManager.param.communities.length>8), listClass: listClass, className: 'ripart_choix' });
