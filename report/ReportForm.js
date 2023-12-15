@@ -666,7 +666,7 @@ Report.prototype.postLocalRems = function(options) {
     // Send next
     for (var i=0; i<self.param.georems.length; i++) {
       var grem = self.param.georems[i];
-      if (!grem.id) {
+      if (!grem.id || grem.photosToSend) {
         n++;
         self.postLocalRem (i, {
           info: "Envoi des signalements ("+n+"/"+nb+")",
@@ -720,7 +720,8 @@ Report.prototype.postLocalRem = function(i, options) {
     self.postGeorem(grem, (response) => {
       if (!response.error) {
         self.param.georems[i] = response.data;
-        if (grem.photo) self.param.georems[i].photo = grem.photo;
+        if (grem.photos) self.param.georems[i].photos = grem.photos;
+        if (grem.photosToSend) self.param.georems[i].photosToSend = grem.photosToSend;
         self.updateLayer();
         // Done
         if (!options.onPost) notification ("signalement envoyé au serveur ("+response.data.id+").");
@@ -796,16 +797,21 @@ Report.prototype.postLocalRem = function(i, options) {
         self.onUpdate();
       }
     });
+  } else if (grem && grem.id && grem.photosToSend && grem.photos && grem.photos.length) {
+    this.postPhotosPending(grem.id, grem, options.cback);
   }
 };
 
-/** Nombre de georems en attente
+/** Nombre de georems en attente ou avec des images en attente d envoi
  * @param boolean countErrors compter les signalements en erreur
 */
 Report.prototype.countLocalRems = function(countErrors = true) {
   var c = 0;
   for (var i=0; i<this.param.georems.length; i++) {
-    if (!this.param.georems[i].id && (countErrors || !this.param.georems[i].error)) c++;
+    if (
+      (!this.param.georems[i].id && (countErrors || !this.param.georems[i].error))
+      || (this.param.georems[i].id && ((countErrors && this.param.georems[i].error) || this.param.georems[i].photosToSend)) // cas des images en attente
+    ) c++;
   }
   return c;
 };
@@ -867,7 +873,8 @@ Report.prototype.updateLocalRem = function(i, options) {
       if (resp.id === grem.id) {
         // wapp.notification ("Signalement mise à jour ("+resp.id+").");
         self.param.georems[i] = resp;
-        if (grem.photo) self.param.georems[i].photo = grem.photo;
+        if (grem.photos) self.param.georems[i].photos = grem.photos;
+        if (grem.error) self.param.georems[i].error = grem.error; //cas ou l erreur est due a l envoi des images
         if (grem.responses) {
           self.param.georems[i].responses = grem.responses;
           // Post linked responses

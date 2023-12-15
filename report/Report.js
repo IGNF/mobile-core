@@ -63,36 +63,62 @@ class Report {
             });
         }
 
-        
-        if (params.photos && params.photos.length) {
-            let photoPromises = [];
-            for (var i in params.photos) {
-                photoPromises.push(CordovApp.File.getBlob (
-                    params.photos[i],
-                ));
-            }
-            Promise.all(photoPromises).then((blobs) => {
-                for (var i in blobs) {
-                    post["photo"+i] = blobs[i];
-                }
+        self.apiClient.addReport(post).then((response) => {
+            let gremId = response.data.id;
+            params.photosToSend = true;
+            this.postPhotosPending(gremId, params);
+            callback({"error": false, "data": response.data});
+        }).catch((error) => {
+            callback({"error": true, "data": error});
+        });
+    }
 
-                self.apiClient.addReport(post).then((response) => {
-                    callback({"error": false, "data": response.data});
-                }).catch((error) => {
-                    callback({"error": true, "data": error});
-                });
-            }).catch((error) => {
-                callback({"error": true, "data": error});
-            });
+    /**
+     * Envoie des photos lorsque la georem a deja ete creee pour eviter les creations multiples d alertes lorsque le reseau est mauvais
+     * @param {Integer} reportId l identifiant de la georem
+     * @param {Object} grem local georem (quand on envoie l id n a pas ete mis a jour immediatement, on doit pouvoir retrouver la georem)
+     * @param {function} cback fonction a appeler en cas d erreur ou de succes
+     *
+     */
+    postPhotosPending(reportId, grem, cback) {
+        var self = this;
+        if (!grem.photos || !grem.photos.length || !grem.photosToSend) return;
+        const gremIndice = this.getIndice(grem);
+        self.param.georems[gremIndice].photosToSend = false;
+        delete this.param.georems[gremIndice].error;
+        let photos = grem.photos;
+        let photoPromises = [];
+        for (var i in photos) {
+            photoPromises.push(CordovApp.File.getBlob (
+                photos[i],
+            ));
         }
-        
-        else {
-            this.apiClient.addReport(post).then((response) => {
-                callback({"error": false, "data": response.data});
-            }).catch((error) => {
-                callback({"error": true, "data": error});
-            });
-        }
+        Promise.all(photoPromises).then((blobs) => {
+            let post = {};
+            for (var i in blobs) {
+                post["photo"+i] = blobs[i];
+            }
+            self.apiClient.addAttachments(reportId, post).then(() => {
+                setTimeout(() => {
+                    self.saveParam();
+                    self.onUpdate();
+                }, 300)
+                if (typeof(cback)=='function') cback(grem);
+            }).catch(() => {
+                self.param.georems[gremIndice].photosToSend = true;
+                self.param.georems[gremIndice].error = "Echec d'envoi des images";
+                self.saveParam();
+                self.onUpdate();
+                if (typeof(cback)=='function') cback(grem);
+
+            })
+        }).catch((error) => {
+            self.param.georems[gremIndice].photosToSend = true;
+            self.param.georems[gremIndice].error = error;
+            self.saveParam();
+            self.onUpdate();
+            if (typeof(cback)=='function') cback(grem);
+        });
     }
 
     /** Get feature(s) from sketch
