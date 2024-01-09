@@ -1,5 +1,6 @@
 import {ApiClient} from 'collaboratif-client-api';
 import { wappStorage } from '../cordovapp/CordovApp';
+import CordovApp from '../CordovApp';
 
 const connectEvent = 'api_connect';
 const disconnectEvent = 'api_disconnect';
@@ -338,6 +339,23 @@ class UserManager {
     getGuichet() {
         return getGroupById(wapp.user.param.active_community);
     }
+
+    /** 
+     * Recupere le logo d'un goupe
+     * @param {any} g le groupe
+     * @param {function} cback callback fonction qui renvoie le nom du fichier
+     */
+    getLogo(g, cback, scope) {
+        CordovApp.File.getFile (
+            "TMP/logo/"+(g ? g.id : '_nologo_'),
+            function(fileEntry) {
+                cback.call(scope, CordovApp.File.getFileURI(fileEntry.toURL()));
+            },
+            function() {
+                cback.call(scope, g ? g.logo : null);
+            }
+        );
+    };
 }
 
 export default UserManager;

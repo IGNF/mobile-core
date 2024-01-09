@@ -1,9 +1,6 @@
 import UserManager from "cordovapp/collaboratif/UserManager";
 import CordovApp from '../CordovApp';
-import { wappStorage } from '../cordovapp/CordovApp';
 import {dialog, waitDlg, messageDlg} from '../cordovapp/dialog';
-import {Report} from '../report/ReportForm';
-import { editionCacheDir } from "cordovapp/ol/source/CollabVector";
 
 /**
  * surcouche de userManager avec des elements de template
@@ -164,23 +161,6 @@ class UserManagerTemplating extends UserManager {
         }
         if (win) setTimeout(function(){ win.close(); }, 100);
     }
-    
-    /** 
-     * Recupere le logo d'un goupe
-     * @param {any} g le groupe
-     * @param {function} cback callback fonction qui renvoie le nom du fichier
-     */
-    getLogo(g, cback, scope) {
-        CordovApp.File.getFile (
-            "TMP/logo/"+(g ? g.id : '_nologo_'),
-            function(fileEntry) {
-                cback.call(scope, CordovApp.File.getFileURI(fileEntry.toURL()));
-            },
-            function() {
-                cback.call(scope, g ? g.logo : null);
-            }
-        );
-    };
 }
 
 
