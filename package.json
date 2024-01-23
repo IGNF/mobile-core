@@ -1,6 +1,6 @@
 {
   "name": "cordovapp",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Lib for Cordova+ol+Report",
   "main": "index.html",
   "directories": {},
@@ -19,7 +19,7 @@
   },
   "homepage": "http://gitlab.dockerforge.ign.fr/express/cordovapp",
   "dependencies": {
-    "collaboratif-client-api": "git+http://gitlab.dockerforge.ign.fr/collaboratif/collaboratif-client-api.git#^1.0.0",
+    "collaboratif-client-api": "git+http://gitlab.dockerforge.ign.fr/collaboratif/collaboratif-client-api.git#semver:^1.0.0",
     "collab-form": "https://github.com/IGNF/collab-form#semver:^1.1.0",
     "combobox": "https://github.com/IGNF/combobox.git#semver:^1.0.0"
   },
