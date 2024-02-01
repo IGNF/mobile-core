@@ -24,7 +24,7 @@ CordovApp.prototype.getPicture = function (win, fail, param, source) {
   var bouttons = param.buttons || { photo:'Caméra', album:'Album', cancel: 'annuler' };
   // Ask for the source (if none)
   if (!source) {
-    this.message(param.message || 'Chercher une image dans un de vos album ou prendre une nouvelle photo.',
+    this.message(param.message || 'Chercher une image dans un de vos albums ou prendre une nouvelle photo.',
       (param.prompt || 'Caméra'), 
       bouttons,
       function(button) {
