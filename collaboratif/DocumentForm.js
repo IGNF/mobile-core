@@ -35,17 +35,18 @@ class DocumentForm {
         folderButton.on("click", () => {
         wapp.getPicture(
             function(url) {
-            if (url) {
-                $a.attr('data-docid', CordovApp.File.getFileURI(url)+'?'+new Date().getTime());
-                self.updateLink($e);
-            }
+                if (url) {
+                    $a.attr('data-docid', CordovApp.File.getFileURI(url)+'?'+new Date().getTime());
+                    self.updateLink($e);
+                }
             },
             null,
             {
-            prompt: 'Ajouter une photo',
-            name: 'TMP/photo.jpg',
-            buttons: { photo:'Caméra', album:'Album', cancel:'annuler' },
-            className: 'form photo'
+                prompt: 'Ajouter une photo',
+                name: 'TMP/photo.jpg',
+                buttons: { photo:'Caméra', album:'Album', cancel:'annuler' },
+                className: 'form photo',
+                correctOrientation: true
             }
         );
         });
