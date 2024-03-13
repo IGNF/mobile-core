@@ -1481,7 +1481,6 @@ Report.prototype.showFormulaire = function(grem, select) {
         .html(themes[j].theme)
         .appendTo(theme);
       if (valdef===false) valdef = communityId+"::"+themes[j].theme;
-      else valdef = "";
       nbth++;
     }
   }
