@@ -9,7 +9,9 @@ export function prettifyAxiosError(error) {
     let code = 500;
     if (error.code == "ERR_NETWORK") {
         msg = "Le réseau est indisponible";
-    } else if (error.response && error.response.data) {
+    } else if (error.config.url.indexOf('token') != -1 && error.response.status == 401) { //echec de connexion
+        return {"code": 401, "message": "Utilisateur ou mot de passe incorrect"};
+    } else if (error.response && error.response.data && error.response.data) {
         msg = error.response.data.message ? error.response.data.message : error.response.data;
         code = error.response.data.code;
     } else if (error.response) {
