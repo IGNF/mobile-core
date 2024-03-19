@@ -123,6 +123,13 @@ Report.prototype.initialize = function(options) {
   // Champs preremplis
   this.formatGeorem = options.formatGeorem || function(){ return true; };
 
+  this.stopMovingGeorem = function(self) {
+    $('body').removeClass("trackingGeorem fullscreenMap");
+    this.modifyInteraction.setActive(false);
+    this.target.setVisible(false);
+  }
+  
+
   // New photo
   $('img', this.formElement).on('load', (e) => {
     this.dispatchEvent({
@@ -1518,7 +1525,9 @@ Report.prototype.showFormulaire = function(grem, select) {
   this.target.setVisible(false);
   this.geolocation.setTracking (true);
   this.hasLocation = false;
+
   $('body').removeClass("trackingGeorem fullscreenMap");
+  $('.formulaire textarea, .formulaire [data-input="select"]').on("mousedown", () => {this.stopMovingGeorem(self)});
 
   // Start with tracking on (if not fullscreen and movePosition enabled)
   const parent = this.formElement.parent().parent();
@@ -1581,6 +1590,8 @@ Report.prototype.selectTheme = function(th, atts, prompt) {
       this.form.init();
       $('.feature-form tr[data-type="document"]').hide();
       this.formElement.addClass('valid'); //@TODO a changer
+      
+      $('.formulaire input').on("focus", () => {this.stopMovingGeorem(self)});
     } else {
       // Theme seul ou pas de themes
       $(".attributes", this.formElement).hide();
