@@ -65,7 +65,7 @@ class Report {
 
         self.apiClient.addReport(post).then((response) => {
             let gremId = response.data.id;
-            params.photosToSend = true;
+            if (('photos' in params) && params.photos.length) params.photosToSend = true;
             this.postPhotosPending(gremId, params);
             callback({"error": false, "data": response.data});
         }).catch((error) => {
