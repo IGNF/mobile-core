@@ -1215,6 +1215,12 @@ Report.prototype.onUpdate = function() {
         grems[i].pretty_opening_date = grems[i].opening_date ? moment(grems[i].opening_date).format('YYYY-MM-DD HH:mm:ss') : grems[i].pretty_opening_date;
         gremForTemplate["date"] = grems[i].date ? grems[i].date : (grems[i].pretty_opening_date ? grems[i].pretty_opening_date : null );
         gremForTemplate["replies"] = grems[i].replies ? grems[i].replies : [];
+        if ( (('photos' in gremForTemplate) && gremForTemplate['photos'].length) 
+          || (('attachments' in gremForTemplate) && gremForTemplate['attachments'].length)) {
+            gremForTemplate["hasPhotos"] = "true";
+        } else {
+          gremForTemplate["hasPhotos"] = "false";
+        }
       dataAttributes(li, gremForTemplate);
       this.getLocalReps(grems[i]).forEach((r) => {
         if (r.error) li.addClass('badresponse');
