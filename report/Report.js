@@ -5,6 +5,7 @@ import ol_geom_Point from 'ol/geom/Point'
 import ol_geom_LineString from 'ol/geom/LineString'
 import ol_geom_Polygon from 'ol/geom/Polygon'
 import ol_format_WKT from 'ol/format/WKT'
+import ol_format_GeoJSON from 'ol/format/GeoJSON'
 import {transform as ol_proj_transform} from 'ol/proj'
 
 
@@ -150,6 +151,7 @@ class Report {
         if (!f) return "";
         if (!(f instanceof Array)) f = [f];
         const format = new ol_format_WKT();
+        const geojsonFormat = new ol_format_GeoJSON();
         var pt = f[0].getGeometry().getFirstCoordinate();
         if (proj) {
             pt = ol_proj_transform(pt, proj, 'EPSG:4326')
@@ -180,6 +182,9 @@ class Report {
             delete att.geometry;
             if (proj) {
                 g.transform(proj, 'EPSG:4326');
+            }
+            if (g.getLayout()==='XYZM') {
+                att.geom = geojsonFormat.writeGeometry(g);
             }
             object.name = "";
             object.attributes = att;

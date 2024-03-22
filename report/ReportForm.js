@@ -1457,7 +1457,7 @@ Report.prototype.showFormulaire = function(grem, select) {
             .show();
       }
     }
-    if (georem.photos.length > 3) $(".fa-stack", photoElt).hide();
+    if (('photos' in georem) && georem.photos.length > 3) $(".fa-stack", photoElt).hide();
     
     // Croquis
     if (georem.sketch) {
