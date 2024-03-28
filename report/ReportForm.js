@@ -1120,11 +1120,11 @@ Report.prototype.postLocalRep = function(georem, georep, options) {
     "content": georep.content
   };
   
-  let contentType = null;
-    if (CordovApp.getPlatformId() === 'ios') {
-      contentType = "application/x-www-form-urlencoded";
-    }
-  this.apiClient.addReply(georem.id, body, contentType).then((replyResponse) => {
+  // let contentType = null;
+  //   if (getPlatformId() === 'ios') {
+  //     contentType = "application/x-www-form-urlencoded";
+  //   } A retester: c est censé fonctionné sous ios avec un contenu json mais au besoin importer getPlatformId
+  this.apiClient.addReply(georem.id, body).then((replyResponse) => {
     this.apiClient.getReport(georem.id).then((reportResponse) => {
       var grem =  reportResponse.data;
       this.delLocalRep(georem, georep, {
