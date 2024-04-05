@@ -7,14 +7,14 @@
 export function prettifyAxiosError(error) {
     let msg = "Une erreur inattendue s'est produite";
     let code = 500;
-    if (error.code == "ERR_NETWORK") {
+    if ('code' in error && error.code == "ERR_NETWORK") {
         msg = "Le réseau est indisponible";
-    } else if (error.config.url.indexOf('token') != -1 && error.response.status == 401) { //echec de connexion
+    } else if ('config' in error && 'url' in error.config && 'response' in error && error.config.url.indexOf('token') != -1 && error.response.status == 401) { //echec de connexion
         return {"code": 401, "message": "Utilisateur ou mot de passe incorrect"};
-    } else if (error.response && error.response.data && error.response.data) {
+    } else if ('response' in error && error.response && 'data' in error.response && error.response.data) {
         msg = error.response.data.message ? error.response.data.message : error.response.data;
         code = error.response.data.code;
-    } else if (error.response) {
+    } else if ('response' in error && error.response) {
         msg = error.response.statusText;
         code = error.response.status;
         if (code == 401) {
