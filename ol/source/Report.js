@@ -217,7 +217,7 @@ ReportSource.prototype.loaderFn_ = function(extent0, resolution, projection) {
   
   getReports().then((features) => {
     self.dispatchEvent({ type: 'loadend' });
-    if (self._cache.saveCache) {
+    if (self._cache && self._cache.saveCache) {
       self._cache.saveCache(JSON.stringify(features), self._tileGrid.getTileCoordForCoordAndResolution(extent0, resolution));
     }
     loadFeatures(features);

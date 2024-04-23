@@ -1,4 +1,5 @@
 import {ApiClient} from 'collaboratif-client-api';
+import CordovApp from 'cordovapp/CordovApp'
 import { wappStorage } from 'cordovapp/cordovapp/CordovApp'
 import ol_Feature from 'ol/Feature'
 import ol_geom_Point from 'ol/geom/Point'

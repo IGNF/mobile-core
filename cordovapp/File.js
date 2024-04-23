@@ -518,7 +518,7 @@ CordovApp.File.getFile = function(name, success, fail) {
   if (!success) success = this.success;
   if (!fail) fail = this.fail;
   if (this.isLoacalFile(name)) {
-    resolveLocalFileSystemURL (name,success,fail);
+    window.resolveLocalFileSystemURL (name,success,fail);
   } else {
     // Recherche du repertoire
     var dir = name.substring(0, name.lastIndexOf("/"));

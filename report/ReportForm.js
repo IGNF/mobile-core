@@ -732,7 +732,7 @@ Report.prototype.postLocalRem = function(i, options) {
         self.updateLayer();
         // Done
         if (!options.onPost) notification ("signalement envoyé au serveur ("+response.data.id+").");
-        else options.onPost(i, resp);
+        else options.onPost(i, response);
         // Post Next
         if (typeof(options.cback)=='function') options.cback(response.data);
         else if (!options.onPost) waitDlg(false);
