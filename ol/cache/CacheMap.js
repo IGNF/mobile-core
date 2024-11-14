@@ -65,6 +65,8 @@ const CacheMap = function(wapp, layerGroup, options) {
     
   // Carte en cours d'edition
   var currentMap;
+  var terror; // ne contient que les tuiles en erreur hors 404 (hors zone)
+  var nberror = 0;
   var currentId = 0;
 
 // DEPRECATED
@@ -400,14 +402,13 @@ const CacheMap = function(wapp, layerGroup, options) {
         getCacheFiles (smap, function(list) {
           var t = [];
           for (var i in list) t.push(list[i]);
-          smap.length = t.length; 
-          downloadTiles(t, smap.layer, function(){
+          smap.length = t.length;
+          currentMap = smap;
+          downloadTiles(t, smap.layer).then(() => {
             // Mise a jour
             smap.date = (new Date()).toISODateString();
             setLayerCache(smap);
-            cordova.plugins.backgroundMode.disable();
-            wapp.wait(false);
-          })
+          });
         });
       }, 200);
     } else {
@@ -424,40 +425,17 @@ const CacheMap = function(wapp, layerGroup, options) {
    * @param {number} nberr number of file not loaded
    */
   let cancelDownloadTiles = false;
-  function downloadTiles(t, layer, cback, nb, nberr, terror) {
-    if (nb===undefined) {
-      nb = t.length;
-      nberr = 0;
-      terror = [];
-      cancelDownloadTiles = false;
-      cordova.plugins.backgroundMode.enable();
-    }
-    if (cancelDownloadTiles) {
-      wapp.wait(false);
-      wapp.message(
-        'Toutes les données n\'ont pas été chargées.</br>'
-        + 'Si vous arrêtez maintenant, certains fonds ne s\'afficheront pas correctement.', 
-        'Interrompre le chargement', 
-        { ok: 'Interrompre', cancel: 'Reprendre'},
-        (b) => {
-          if (b==='cancel') {
-            cancelDownloadTiles = false;
-            downloadTiles(t, layer, cback, nb, nberr, terror)
-          } else {
-            delete currentMap.pending;
-            cordova.plugins.backgroundMode.disable();
-          }
-        }
-      );
-      return;
-    }
+  async function downloadTiles(t, layer) {
+    if (!currentMap) throw Error('no current map setted')
+    currentMap.nb = 0;
+    terror = [];
+    nberror = 0;
+    cordova.plugins.backgroundMode.enable();
 
-    var path = getPath()+layer+"/";
-    var tile = t.pop();
-    if (tile) {
-      var pos = (nb+nberr-t.length);
-      wapp.wait("Chargement... "+pos+"/"+(nb+nberr), {
-        pourcent: pos/(nb+nberr) * 100, 
+    for (let i in t) {
+      let nb = currentMap.nb;
+      wapp.wait("Chargement... "+(nb+nberror)+"/"+t.length, {
+        pourcent: (nb+nberror)/(t.length) * 100, 
         buttons: {
           'Annuler': () => {
             cancelDownloadTiles = true;
@@ -465,68 +443,58 @@ const CacheMap = function(wapp, layerGroup, options) {
           }
         }
       });
-      var options = {};
-      if (authentication) {
-        options = {	
-          headers: {
-            'Authorization': "Basic "+authentication
-          }
-        }
-      }
-      // Download
-      CordovApp.File.downloadImage (
-        decodeURIComponent(tile.url), 
-        path + tile.id, 
-        function() {
-          // Suivant
-          downloadTiles(t, layer, cback, nb, nberr, terror);
-        }, 
-        function() {
-          // console.log(tile);
-          // Fichier non charge
-          nb--;
-          nberr++;
-          terror.push(tile);
-          // Suivant
-          downloadTiles(t, layer, cback, nb, nberr, terror);
-        }, 
-        options);
-    } else {
-      wapp.wait(false);
-      cordova.plugins.backgroundMode.disable();
-      if (nberr) {
-        let message = nb+" fichiers chargés.\n"
-        +nberr+" fichier(s) en erreur ou hors zone...";
-        if (!self.silentErrors){
-          wapp.message(message,
-            "Chargement", 
-            { reload: 'Recommencer', ok:'Terminer' },
-            (b) => {
-              if (b==='reload') {
-                downloadTiles(terror, layer, cback);
-              } else if (typeof(cback) === "function") {
-                cback();
-              }
-            });
+
+      if (cancelDownloadTiles) {
+        wapp.wait(false);
+        wapp.message("Toutes les données n'ont pas été chargées. Certains fonds ne s'afficheront pas correctement.")
+        cordova.plugins.backgroundMode.disable();
+        delete currentMap.pending;
+        return;
+      } 
+      try {
+        let tile = await downloadTile(t[i], layer);
+        if (!tile) {
+          nberror = nberror + 1;
+          terror.push(t[i]);
         } else {
-          self.errors[currentMap.id] = {
-            "msg": message,
-            "tiles": terror
-          }
-          if (typeof(cback) === "function"){
-            cback();
-          }
+          currentMap.nb = currentMap.nb + 1;
         }
-        
-        layerGroup.changed();
-      } else {
-        wapp.notification(nb+" fichiers chargés.");
-        layerGroup.changed();
-        if (typeof(cback) === "function"){
-          cback();
+      } catch (e) {
+        nberror = nberror + 1;
+        if (!('code' in e) || e.code != 404) {
+          terror.push(t[i]);
+        }
+      } 
+    }
+
+    //on refait une passe sur les tuiles en erreur
+    //on ne refait pas les 404 (hors territoire)
+    //on veut seulement recuperer les tuiles non telechargees a cause d'une coupure reseau par exemple
+    for (let i in terror) {
+      await downloadTile(terror[i], layer);
+    }
+
+    wapp.wait(false);
+    cordova.plugins.backgroundMode.disable();
+  }
+
+  function downloadTile(t, layer) {
+    const path = getPath()+layer+"/";
+
+    let options = {};
+    if (authentication) {
+      options = {	
+        headers: {
+          'Authorization': "Basic "+authentication
         }
       }
     }
+    // Download
+    return CordovApp.File.downloadImage (
+      decodeURIComponent(t.url), 
+      path + t.id,
+      options
+    );
   }
 
   /* Chargement 
@@ -569,9 +537,35 @@ const CacheMap = function(wapp, layerGroup, options) {
       
       wapp.saveParam();
       
-      downloadTiles (t, layercache.get("layer"), function(){
+      downloadTiles (t, layercache.get("layer")).then(() => {
         setLayerCache (currentMap);
         currentMap.date = (new Date()).toISODateString();
+
+        let nb = currentMap.nb;
+        if (nberror) {
+          let message = nb+" fichiers chargés.\n"
+          +nberror+" fichier(s) en erreur ou hors zone...";
+          if (!self.silentErrors){
+            wapp.message(message,
+              "Chargement",
+              { reload: 'Recommencer', ok:'Terminer' },
+              (b) => {
+                if (b==='reload') {
+                  downloadTiles(terror, currentMap.layer);
+                }
+              });
+          } else {
+            self.errors[currentMap.id] = {
+              "msg": message,
+              "tiles": terror
+            }
+          }
+          layerGroup.changed();
+        } else {
+          wapp.notification(nb+" fichiers chargés.");
+          layerGroup.changed();
+        }
+
         getCacheFiles (currentMap, function(l,n) {
           currentMap.length = n;
           if (typeof(cbk) === 'function') cbk();
