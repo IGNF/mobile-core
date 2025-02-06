@@ -445,6 +445,7 @@ const CacheMap = function(wapp, layerGroup, options) {
       });
 
       if (cancelDownloadTiles) {
+        cancelDownloadTiles = false;
         wapp.wait(false);
         wapp.message("Toutes les données n'ont pas été chargées. Certains fonds ne s'afficheront pas correctement.")
         cordova.plugins.backgroundMode.disable();
@@ -490,11 +491,11 @@ const CacheMap = function(wapp, layerGroup, options) {
       }
     }
     // Download
-    return CordovApp.File.downloadImage (
+    return Promise.race([new Promise((reject) => {setTimeout(() => {return reject(new Error("timeout"));}, 500)}), CordovApp.File.downloadImage (
       decodeURIComponent(t.url), 
       path + t.id,
       options
-    );
+    )]);
   }
 
   /* Chargement 
