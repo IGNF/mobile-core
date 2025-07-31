@@ -1,7 +1,7 @@
 {
-  "name": "cordovapp",
+  "name": "mobile-core",
   "version": "2.0.0",
-  "description": "Lib for Cordova+ol+Report",
+  "description": "Lib for ol+Report",
   "main": "index.html",
   "directories": {},
   "scripts": {
@@ -17,9 +17,9 @@
   "bugs": {
     "url": "http://sd-redmine.ign.fr/projects/guichet_mobile"
   },
-  "homepage": "http://gitlab.dockerforge.ign.fr/express/cordovapp",
+  "homepage": "https://github.com/IGNF/mobile-core",
   "dependencies": {
-    "collaboratif-client-api": "git+http://gitlab.dockerforge.ign.fr/collaboratif/collaboratif-client-api.git#semver:^1.0.0",
+    "collaboratif-client-api": "https://github.com/IGNF/collaboratif-client-api.git#semver:^1.0.0",
     "collab-form": "https://github.com/IGNF/collab-form#semver:^1.1.4",
     "combobox": "https://github.com/IGNF/combobox.git#semver:^1.0.0"
   },
