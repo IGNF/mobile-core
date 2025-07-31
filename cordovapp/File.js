@@ -464,9 +464,8 @@ CordovApp.File.downloadFile = function (url, name, success, fail, options = {}) 
     var response = options.binary ? req.response : req.responseText
     if (req.status === 200) {
       self.saveData(response, name, success, fail, options.binary);
-      success()
     } else {
-      fail (response);
+      fail ({'code': req.status, 'response': response});
     }
   }
   req.onerror = fail;
@@ -478,15 +477,16 @@ CordovApp.File.downloadFile = function (url, name, success, fail, options = {}) 
  * Un raccourci vers downloadFile avec options.binary=true
  * @param {String} url URI referring to a remote file 
  * @param {String} name URI referring to a local file to move to
- * @param {function} success callback 
- * @param {function} fail callback invoked on error
  * @param {object} options un tableau cle valeur pouvant contenir: ex: {"headers": {"Authorization": "Basic blabla"}, "timeout": 500}
  *  @options param {object} headers
  *  @options param {integer} timeout
  */
-CordovApp.File.downloadImage = function (url, name, success, fail, options) {
+CordovApp.File.downloadImage = function (url, name, options) {
   options.binary = true;
-  this.downloadFile(url, name, success, fail, options);
+  var self = this;
+  return new Promise((resolve, reject) => {
+    self.downloadFile(url, name, (file) => {return resolve(file);}, (e) => {return reject(e);}, options);
+  });
 }
 
 

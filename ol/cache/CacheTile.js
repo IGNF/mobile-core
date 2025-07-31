@@ -21,7 +21,6 @@ import {getCenter as ol_extent_getCenter} from 'ol/extent'
  * @param {} options extends olx.View.options
  * 	@param {function} options.read function(tile,callback) to read the saved tile
  * 	@param {string} options.authentication basic authentication as btoa("login:pwd") 
- * 	@param {number} options.maxTileLoad Maximum number of tile to load
  */
 var CacheTile = function (layer, options) {
   options = options || {};
@@ -39,7 +38,6 @@ var CacheTile = function (layer, options) {
   this.view = new ol_View(options);
   this.baseurl = "";
   this.extent = [];
-  this.maxTileLoad = options.maxTileLoad || 20000;
 };
 ol_ext_inherits(CacheTile, ol_Object);
 
@@ -78,9 +76,7 @@ CacheTile.prototype.saveResolution = function(e, res) {
       var url = fn.call(this.source, [z,r,c], this.source.getProjection());
       if (!this.estimate) this.write (z+"-"+c+"-"+r, url);	
       this.length++;
-      if (this.estimate && this.length > this.maxTileLoad) break;
     }
-    if (this.estimate && this.length > this.maxTileLoad) break;
   }
 };
 
@@ -121,10 +117,6 @@ CacheTile.prototype.save = function (minZoom, maxZoom, extent) {
     this.view.setZoom(z);
     var r = this.view.getResolution();
     this.saveResolution(extent, r);
-    if (this.estimate && this.length > this.maxTileLoad) break;
-  }
-  if (this.estimate && this.length > this.maxTileLoad) {
-    this.length = -1;
   }
   
   if (!this.estimate) this.dispatchEvent({ type:'saveend', length: this.length });
