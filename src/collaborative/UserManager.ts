@@ -1,0 +1,128 @@
+/**
+ * Ajouter ici:
+ * 
+ * canReplyToReport(report) {
+ * 
+ * // add equivalent to:
+ * let communities = wapp.userManager.param.communities;
+        let communityIds = communities.map(c => c.id);
+        for (var i in georem.attributes) {
+            if (communityIds.indexOf(georem.attributes[i].community) == -1) return false;
+        }
+        return true;
+ * }
+ */
+
+import { ApiClient } from 'collaboratif-client-api';
+
+// import types
+import { User, Community, CommunityMember } from './type';
+
+import EventManager from '../utils/EventManager';
+
+export class UserManager {
+
+  private _apiClient: ApiClient;
+  private _eventManager: EventManager;
+
+  constructor(apiClient: ApiClient) {
+    this._apiClient = apiClient;
+    this._eventManager = new EventManager();
+  }
+
+  async login(username: string, password: string): Promise<User> {
+    this._apiClient.login(username, password); // see what exists instead
+  }
+
+  async initialize(): Promise<void> {
+    // see if we shouldn't handle this differently from the mobile side
+  }
+
+  async logout(): Promise<void> {
+    this._apiClient.disconnect(); // see what exists instead
+    this._eventManager.emit('disconnect');
+  }
+
+  /**
+   * Get a user
+   * Call getCommunity for each community in the user's communities_member array
+   * and return the user with the communities
+   * @returns User
+   */
+  async getUser(): Promise<User> {
+    const userResponse = this._apiClient.getUser();
+    let user: User = userResponse.data;
+    user.communities_member = user.communities_member || [];
+
+    /**
+     * Question here:
+     * Can't we return directly the profile key in the user object?
+     */
+
+    const responseCommunities = await Promise.all(
+      user.communities_member.map((member: CommunityMember) =>
+        this._apiClient.getCommunity(member.community_id)!
+      )!
+    );
+
+    user.communities = responseCommunities.map((response: Community, index: number) => ({
+      ...response,
+      profile: user.communities_member?.[index]?.profile // profile is a key
+    }));
+
+    return user;
+  }
+
+  async checkUserInfo(): Promise<void> {
+    // Is it really needed? Can't we do it in the mobile side?
+    /**
+     * Original code:
+    this.getUserInfo().then((user) => {
+            self.sharedThemes = user.shared_themes;
+            self.param.communities = user.communities;
+            let active_web_community = null;
+            for (var i in user.communities) {
+                if (user.communities[i].active == true) {
+                    active_web_community = user.communities[i];
+                    break;
+                }
+            }
+
+            let active = null;
+            if (self.param.active_community) {
+                active = self.param.active_community;
+            } else if (active_web_community) {
+                active = active_web_community.id;
+            } else if (self.param.communities && self.param.communities.length) {
+                active = self.param.communities[0].id;
+            }
+            self.setCommunity(active);
+            success(user);
+            self.saveParam();
+            if (typeof(allways)==='function') allways({});
+        }).catch((error) => {
+            if (self.param.active_community) self.setCommunity(self.param.active_community);
+            fail(error);
+            if (typeof(allways)==='function') allways({}, error);
+        });
+     */
+  }
+  
+  async getCommunities(): Promise<Community[]> {
+    const user = await this.getUser();
+    return user.communities;
+  }
+
+  async getActiveCommunity(): Promise<Community | null> {
+    const user = await this.getUser();
+    return user.communities.find((community: Community) => community.isActive === true) || null;
+  }
+
+  async getLayersInfo(): Promise<void> {
+    throw new Error('Not implemented');
+  }
+
+  async setCommunity(communityId: number): Promise<void> {
+    throw new Error('Not implemented');
+  }
+}

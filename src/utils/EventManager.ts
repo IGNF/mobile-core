@@ -38,7 +38,7 @@ export default class EventManager {
     }
   }
 
-  emit<T = any>(event: string, payload: T): void {
+  emit<T = any>(event: string, payload?: T): void {
     const eventListeners = this.listeners[event];
 
     if (!eventListeners) {

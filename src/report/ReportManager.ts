@@ -1,3 +1,10 @@
+/**
+ * Report manager
+ * Manages the creation, submission, and management of reports
+ * 
+ * TODO:
+ * - See if the functions sketch2feature and feature2sketch are required here, and what they do (see report/Report.js line 131)
+ */
 import { ApiClient } from 'collaboratif-client-api';
 
 // Local types
@@ -28,6 +35,16 @@ export class ReportManager {
    */
   async submitReport(reportId: number): Promise<void> {
     throw new Error('Not implemented');
+  }
+
+  /**
+   * See if the type is correct
+   * @param file: File to upload
+   */
+  async uploadAttachement(reportId: number, file: File): Promise<void> {
+    throw new Error('Not implemented');
+    // create postData and use:
+    // apiClient.addAttachments(reportId, postData)
   }
 
   /**
