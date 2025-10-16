@@ -2,7 +2,7 @@
  * 
  */
 
-export default class CacheManager {
+export class WFSLayer {
   constructor() {
   }
 }

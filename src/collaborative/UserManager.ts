@@ -16,7 +16,7 @@
 import { ApiClient } from 'collaboratif-client-api';
 
 // import types
-import { User, Community, CommunityMember } from './type';
+import { User, Community, CommunityMember } from './types';
 
 import EventManager from '../utils/EventManager';
 
@@ -31,7 +31,11 @@ export class UserManager {
   }
 
   async login(username: string, password: string): Promise<User> {
-    this._apiClient.login(username, password); // see what exists instead
+    const userResponse = await this._apiClient.login(username, password); // see what exists instead
+    if(!userResponse.data) {
+      throw new Error('Login failed');
+    }
+    return userResponse.data;
   }
 
   async initialize(): Promise<void> {
@@ -39,7 +43,7 @@ export class UserManager {
   }
 
   async logout(): Promise<void> {
-    this._apiClient.disconnect(); // see what exists instead
+    await this._apiClient.disconnect(); // see what exists instead
     this._eventManager.emit('disconnect');
   }
 
@@ -50,7 +54,7 @@ export class UserManager {
    * @returns User
    */
   async getUser(): Promise<User> {
-    const userResponse = this._apiClient.getUser();
+    const userResponse = await this._apiClient.getUser();
     let user: User = userResponse.data;
     user.communities_member = user.communities_member || [];
 
