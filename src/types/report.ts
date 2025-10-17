@@ -1,3 +1,6 @@
+import { Fill, Stroke, Style } from 'ol/style';
+import CircleStyle from 'ol/style/Circle';
+import Text from 'ol/style/Text';
 import { Feature } from 'ol';
 
 /**
@@ -34,12 +37,72 @@ export interface ReportPhoto {
  * Report status
  */
 export enum ReportStatus {
-  Draft = 'draft',
+  Cluster = 'cluster',
+  Submit = 'submit',
   Pending = 'pending',
-  Submitted = 'submitted',
-  Validated = 'validated',
-  Rejected = 'rejected'
+  Pending_Qualification = 'pending0',
+  Pending_Entry = 'pending1',
+  Pending_Validation = 'pending2',
+  Valid = 'valid',
+  Valid_Already_Treated = 'valid0',
+  Reject = 'reject',
+  Reject_Irrelevant = 'reject0',
 }
+
+export enum ClosedReportStatus {
+  Valid = 'valid',
+  Valid_Already_Treated = 'valid0',
+  Reject = 'reject',
+  Reject_Irrelevant = 'reject0',
+}
+
+export const BASE_RADIUS = 8;
+export const baseCircleFill = new Fill({ color: [255, 255, 255, 0.8] });
+
+export const STATUS_STYLES: Partial<Record<ReportStatus, Style>> = {
+  [ReportStatus.Cluster]: new Style({
+    image: new CircleStyle({
+      radius: BASE_RADIUS,
+      stroke: new Stroke({ color: [255, 255, 255], width: 3 }),
+      fill: baseCircleFill
+    }),
+    text: new Text({
+      font: 'bold 12px Sans-serif',
+      textAlign: 'center',
+      textBaseline: 'middle',
+      offsetY: 1,
+      fill: new Fill({ color: [255,255,255] })
+    })
+  }),
+  [ReportStatus.Pending]: new Style({
+    image: new CircleStyle({
+      radius: BASE_RADIUS,
+      stroke: new Stroke({ color: [255, 128, 0], width: 3 }),
+      fill: baseCircleFill
+    })
+  }),
+  [ReportStatus.Submit]: new Style({
+    image: new CircleStyle({
+      radius: BASE_RADIUS,
+      stroke: new Stroke({ color: [51, 102, 153], width: 3 }),
+      fill: baseCircleFill
+    })
+  }),
+  [ReportStatus.Valid]: new Style({
+    image: new CircleStyle({
+      radius: BASE_RADIUS,
+      stroke: new Stroke({ color: [0, 192, 0], width: 3 }),
+      fill: baseCircleFill
+    })
+  }),
+  [ReportStatus.Reject]: new Style({
+    image: new CircleStyle({
+      radius: BASE_RADIUS,
+      stroke: new Stroke({ color: [255, 0, 0], width: 3 }),
+      fill: baseCircleFill
+    })
+  }),
+};
 
 /**
  * Report filter

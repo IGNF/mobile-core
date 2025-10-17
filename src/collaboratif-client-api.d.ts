@@ -17,6 +17,11 @@ declare module 'collaboratif-client-api' {
     // setActiveCommunity(communityId: number): Promise<void>;
     // getActiveCommunity(): Promise<{ data: Community }>;
 
+    /**
+     * Report related methods
+     */
+    getReports(params: any): Promise<any>; // to type
+
 
   }
 }

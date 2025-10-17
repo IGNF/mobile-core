@@ -1,5 +1,5 @@
 /**
- * 
+ * This class is responsible for managing the vector cache
  * 
  */
 
