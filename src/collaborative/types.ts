@@ -43,3 +43,22 @@ export interface CommunityLayer {
   visible?: boolean;
   opacity?: number;
 }
+
+export interface Table {
+  id: number;
+  databaseId: number;
+  name: string;
+  title: string;
+  description?: string;
+  wfs: string; // WFS endpoint
+  geometryName: string;
+  projection?: string;
+  // columns: Record<string, TableColumn>;
+  // style?: LayerStyle;
+  // styles?: LayerStyle[]; // Multiple styles
+  minZoomLevel?: number;
+  maxZoomLevel?: number;
+  searchable?: boolean;
+  editable?: boolean;
+  docURI?: string; // Document upload endpoint
+}
