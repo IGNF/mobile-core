@@ -42,8 +42,10 @@ export default class CollabVectorSource extends VectorSource {
   private _projectionUtils: ProjectionUtils;
   private _options: CollabVectorSourceOptions;
   private _eventManager: EventManager;
+  private _isLoading: boolean = false;
+  private _writeUpdateCounter: number = 0;
 
-  public table: Table;
+  public table!: Table;
   public localProperties: Record<string, any> = {};
 
   /** Features that should persist across source reloads (e.g., currently edited features) */
@@ -218,118 +220,204 @@ export default class CollabVectorSource extends VectorSource {
   /**
    * Handles feature addition events
    * 
-   * Called when a new feature is added to the source.
+   * Called when a new feature is added to the source. This method:
+   * - Sets up geometry change listeners
+   * - Sets up property change listeners for tracking updates
+   * - Marks the feature for insertion if not currently loading
+   * - Ensures all table columns have default null values
+   * - Saves changes to cache
    * 
    * @param feature - The feature being added
-   * @todo Implement differential tracking logic
-   * @todo Consider making this method private if not used externally
    */
   public onAddFeature(feature: Feature): void {
-    console.log('onAddFeature_', feature);
-    /**
-     * Old code:
-     * 
-     * var f = e.feature;
-  var self = this;
-  f.getGeometry().on('change', (e) => {
-    f.getUpdates().geometry = true;
-    f.dispatchEvent({type: "propertychange", target: f});
-  });
-  f.on("propertychange", this.onUpdateFeature_.bind(this));
-  if (this.isloading_) return;
-  f.setState(ol_Feature.State.INSERT);
-  // Add attributes according to table
-  var atts = this.getTable().columns;
-  var gname= this.getTable().geometry_name;
-  for (var i in atts) if (i!=gname) {
-    if (!f.get(i)) f.set(i,null);
-  }
-  this.insert_.push(e.feature);
+    // Set up geometry change listener to track geometric modifications
+    const geometry = feature.getGeometry();
+    if (geometry) {
+      geometry.on('change', () => {
+        // Mark that geometry was updated
+        const updates = (feature as any).updates || {};
+        updates.geometry = true;
+        (feature as any).updates = updates;
 
-  // Save change 
-  this.writeChanges();
-     */
+        // Dispatch property change event
+        feature.dispatchEvent({
+          type: 'propertychange',
+          target: feature
+        } as any);
+      });
+    }
+
+    // Set up property change listener for attribute updates
+    feature.on('propertychange', this.onUpdateFeature.bind(this, feature));
+
+    // Don't track changes while loading from server/cache
+    if (this._isLoading) return;
+
+    // Mark feature as newly inserted
+    (feature as any).state = 'INSERT';
+
+    // Initialize all table columns with null if not present
+    const columns = this.table?.columns || {};
+    const geometryName = this.table?.geometryName || 'geometry';
+
+    for (const columnName in columns) {
+      if (columnName !== geometryName) {
+        if (feature.get(columnName) === undefined) {
+          feature.set(columnName, null, true); // true = silent (no event)
+        }
+      }
+    }
+
+    // Add to inserted features collection
+    this.insertedFeatures.push(feature);
+
+    // Persist changes to cache
+    this.writeChanges();
   }
 
   /**
    * Handles feature deletion events
    * 
-   * Called when a feature is removed from the source.
+   * Called when a feature is removed from the source. This method:
+   * - Manages feature state transitions (INSERT -> removed, UPDATE -> DELETE)
+   * - Removes from insert/update collections if applicable
+   * - Adds to delete collection if feature existed on server
+   * - Saves changes to cache
    * 
    * @param feature - The feature being deleted
-   * @todo Implement differential tracking logic
-   * @todo Consider making this method private if not used externally
    */
   public onDeleteFeature(feature: Feature): void {
-    console.log('onDeleteFeature_', feature);
+    // Don't track changes while loading from server/cache
+    if (this._isLoading) return;
 
-    /**
-     * Old code:
-     * 
-     * if (this.isloading_) return;
-  
-  function removeFeature(features, f) {
-    for (var i=0, l=features.length; i<l; i++) {
-      if (features[i] === f) {
-        features = features.splice(i, 1);
-        return;
+    const featureState = (feature as any).state;
+
+    if (featureState === 'INSERT') {
+      // Feature was only inserted locally, just remove it from inserts
+      this.removeFeatureFromCollection(this.insertedFeatures, feature);
+    } else {
+      // Feature exists on server or was updated
+      if (featureState === 'UPDATE') {
+        // Remove from updates first
+        this.removeFeatureFromCollection(this.updatedFeatures, feature);
       }
+      // Track deletion for server synchronization
+      this.deletedFeatures.push(feature);
+    }
+
+    // Mark feature as deleted
+    (feature as any).state = 'DELETE';
+
+    // Persist changes to cache
+    this.writeChanges();
+  }
+
+  /**
+   * Helper method to remove a feature from a collection
+   * 
+   * @param collection - The collection to remove from
+   * @param feature - The feature to remove
+   * @private
+   */
+  private removeFeatureFromCollection(collection: Collection<Feature>, feature: Feature): void {
+    const features = collection.getArray();
+    const index = features.indexOf(feature);
+    if (index > -1) {
+      collection.removeAt(index);
     }
   }
 
-  switch (e.feature.getState()) {
-    case ol_Feature.State.INSERT:
-      removeFeature (this.insert_, e.feature);
-      break;
-    case ol_Feature.State.UPDATE:
-      removeFeature (this.update_, e.feature);
-      // falls through
-    default:
-      this.delete_.push(e.feature);
-      break;
+  /**
+   * Writes local changes to cache file
+   * 
+   * This method debounces multiple rapid changes to prevent excessive file writes.
+   * It collects all pending changes (inserts, updates, deletes) and persists them
+   * to the edition cache file.
+   * 
+   * @param force - If true, writes immediately; if false, debounces the write
+   */
+  public writeChanges(force: boolean = false): void {
+    // Prevent many updates at once by debouncing
+    if (!force) {
+      this._writeUpdateCounter++;
+      setTimeout(() => {
+        this.writeChanges(true);
+      }, 100); // 100ms debounce
+      return;
+    }
+
+    // Decrement counter and check if other writes are pending
+    this._writeUpdateCounter--;
+    if (this._writeUpdateCounter > 0) return;
+
+    this._writeUpdateCounter = 0;
+
+    // Get all pending changes to save
+    const actions = this.getSaveActions(true);
+
+    // Check if we have a cache file configured
+    const editionCacheFile = this.localProperties.editionCacheFile;
+    if (!editionCacheFile) return;
+
+    // TODO: Implement file writing using mobile-device FileSystem module
+    // For now, store in memory/localStorage as a fallback
+    try {
+      // Temporary implementation: store in localStorage
+      localStorage.setItem(editionCacheFile, JSON.stringify(actions));
+    } catch (error) {
+      console.error('ERROR: writeChanges on layer', error);
+    }
   }
-  e.feature.setState(ol_Feature.State.DELETE);
 
-  // Save change 
-  this.writeChanges();
-     */
+  /**
+   * Collects all pending save actions (inserts, updates, deletes)
+   * 
+   * @param includeGeometry - Whether to include geometry data in the actions
+   * @returns Object containing arrays of features to insert, update, and delete
+   */
+  public getSaveActions(includeGeometry: boolean = true): any {
+    const formatWKT = this.localProperties.formatWKT;
+
+    return {
+      insert: this.insertedFeatures.getArray().map(f => this.serializeFeature(f, formatWKT, includeGeometry)),
+      update: this.updatedFeatures.getArray().map(f => this.serializeFeature(f, formatWKT, includeGeometry)),
+      delete: this.deletedFeatures.getArray().map(f => this.serializeFeature(f, formatWKT, false))
+    };
   }
 
-  public writeChanges(): void {
-    console.log('writeChanges');
-    /**
-     * Old code:
-     * 
-     *  // Write in cache
-  if (!this._writeUpdate) this._writeUpdate = 0;
-  // Prevent many update at once
-  if (!force) {
-    this._writeUpdate++;
-    setTimeout(() => { this.writeChanges(true); });
-    return;
-  } else {
-    this._writeUpdate--;
-    if (this._writeUpdate > 0) return;
-  }
-  this._writeUpdate = 0;
+  /**
+   * Serializes a feature to a plain object for storage
+   * 
+   * @param feature - The feature to serialize
+   * @param formatWKT - WKT formatter for geometry
+   * @param includeGeometry - Whether to include geometry
+   * @returns Serialized feature object
+   * @private
+   */
+  private serializeFeature(feature: Feature, formatWKT: any, includeGeometry: boolean): any {
+    const properties = feature.getProperties();
+    const serialized: any = {
+      id: feature.getId(),
+      properties: {}
+    };
 
-  var actions = this.getSaveActions(true);
+    // Copy all non-geometry properties
+    const geometryName = this.table?.geometryName || 'geometry';
+    for (const key in properties) {
+      if (key !== geometryName && key !== 'geometry') {
+        serialized.properties[key] = properties[key];
+      }
+    }
 
-  if (!this.editionCacheFile) return;
-  var self = this;
-  CordovFile.getDirectory(
-    editionCacheDir, 
-    function() {
-        CordovApp.File.write(
-          self.editionCacheFile, 
-          JSON.stringify(actions),
-          () => {},
-          () => { console.log('ERROR: writeChanges on layer...'); }
-    )},
-    () => { console.log('ERROR: writeChanges on layer...'); },
-    true
-  );
-     */
+    // Include geometry if requested
+    if (includeGeometry) {
+      const geometry = feature.getGeometry();
+      if (geometry && formatWKT) {
+        serialized.geometry = formatWKT.writeGeometry(geometry);
+      }
+    }
+
+    return serialized;
   }
 
   /**
@@ -338,22 +426,142 @@ export default class CollabVectorSource extends VectorSource {
    * Reads the edition cache file (stored in editionCacheFile property) and
    * restores any pending local edits that haven't been synchronized yet.
    * This allows offline work to persist across app restarts.
-   * 
-   * @todo Implement file reading and change restoration logic
-   * @todo Consider making this method private if not used externally
    */
   public loadChanges(): void {
-    console.log('loadChanges');
+    const editionCacheFile = this.localProperties.editionCacheFile;
+    if (!editionCacheFile) return;
+
+    // TODO: Implement file reading using mobile-device FileSystem module
+    // For now, read from localStorage as a fallback
+    try {
+      const cached = localStorage.getItem(editionCacheFile);
+      if (!cached) return;
+
+      const actions = JSON.parse(cached);
+      const formatWKT = this.localProperties.formatWKT;
+
+      // Restore inserted features
+      if (actions.insert && Array.isArray(actions.insert)) {
+        actions.insert.forEach((serialized: any) => {
+          const feature = this.deserializeFeature(serialized, formatWKT);
+          if (feature) {
+            (feature as any).state = 'INSERT';
+            this.insertedFeatures.push(feature);
+          }
+        });
+      }
+
+      // Restore updated features
+      if (actions.update && Array.isArray(actions.update)) {
+        actions.update.forEach((serialized: any) => {
+          const feature = this.deserializeFeature(serialized, formatWKT);
+          if (feature) {
+            (feature as any).state = 'UPDATE';
+            this.updatedFeatures.push(feature);
+          }
+        });
+      }
+
+      // Restore deleted features
+      if (actions.delete && Array.isArray(actions.delete)) {
+        actions.delete.forEach((serialized: any) => {
+          const feature = this.deserializeFeature(serialized, formatWKT);
+          if (feature) {
+            (feature as any).state = 'DELETE';
+            this.deletedFeatures.push(feature);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('ERROR: loadChanges on layer', error);
+    }
+  }
+
+  /**
+   * Deserializes a feature from a plain object
+   * 
+   * @param serialized - The serialized feature object
+   * @param formatWKT - WKT formatter for geometry
+   * @returns Deserialized Feature or null if invalid
+   * @private
+   */
+  private deserializeFeature(serialized: any, formatWKT: any): Feature | null {
+    try {
+      const feature = new Feature();
+
+      if (serialized.id) {
+        feature.setId(serialized.id);
+      }
+
+      // Restore properties
+      if (serialized.properties) {
+        feature.setProperties(serialized.properties);
+      }
+
+      // Restore geometry
+      if (serialized.geometry && formatWKT) {
+        const geometry = formatWKT.readGeometry(serialized.geometry);
+        feature.setGeometry(geometry);
+      }
+
+      return feature;
+    } catch (error) {
+      console.error('ERROR: deserializeFeature', error);
+      return null;
+    }
+  }
+
+  /**
+   * Handles feature update events
+   * 
+   * Called when a feature's properties are changed. Tracks the feature
+   * for differential synchronization.
+   * 
+   * @param feature - The feature being updated
+   * @private
+   */
+  private onUpdateFeature(feature: Feature): void {
+    // Don't track changes while loading from server/cache
+    if (this._isLoading) return;
+
+    const featureState = (feature as any).state;
+
+    // If feature is newly inserted, don't add to updates (already in inserts)
+    if (featureState === 'INSERT') return;
+
+    // If not already tracked as updated, add it
+    if (featureState !== 'UPDATE') {
+      (feature as any).state = 'UPDATE';
+      this.updatedFeatures.push(feature);
+    }
+
+    // Persist changes to cache
+    this.writeChanges();
+  }
+
+  /**
+   * Sets the loading state
+   * 
+   * @param isLoading - Whether the source is currently loading features
+   */
+  public setLoading(isLoading: boolean): void {
+    this._isLoading = isLoading;
   }
 
   /**
    * Custom loader function for fetching features
    * 
+   * Invoked by OpenLayers when features need to be loaded.
+   * 
    * @todo Implement feature loading from collaborative API or cache
-   * @todo Consider making this method private if not used externally
    */
   public loaderFn(): void {
     console.log('loaderFn');
+    // TODO: Implement loader that:
+    // 1. Fetches features from collaborative API or cache
+    // 2. Sets _isLoading to true during load
+    // 3. Adds features to source
+    // 4. Sets _isLoading to false when complete
   }
 
 

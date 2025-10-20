@@ -24,6 +24,14 @@ export default class PathUtils {
       .replace(reservedRe, '_')
       .replace(windowsReservedRe, '_')
       .replace(windowsTrailingRe, '_');
+  }
 
+  /**
+   * Get the domain from a full URL
+   * @param URL like https://example.com/path/file.html
+   * @returns the escaped domain, like example_com
+   */
+  getEscapedDomainFromURL(URL: string): string {
+    return URL.replace(/^((http[s]?|ftp):\/)?\/?([^:/\s]+)((\/\w+)*\/)([\w\-.]+[^#?\s]+)(.*)?(#[\w-]+)?$/, "$3").replace(/\./g, '_');
   }
 }

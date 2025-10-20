@@ -1,29 +1,47 @@
 import { ApiClient } from "collaboratif-client-api";
 import { Collection, Feature } from "ol";
-import { Table } from "../collaborative/types";
+import { Geoservice, Table } from "../collaborative/types";
 import { ReportStatus } from "../types/report";
 
 import { LoadingStrategy } from "ol/source/Vector";
 
+export interface SourceOptions {
+  maxReload?: number;
+  tileSize?: number;
+  wrapX?: boolean;
+  attribution?: string;
+  filter?: Record<string, any>; // redefine type maybe
+  strategy: LoadingStrategy; // redefine type maybe
+  tileZoom?: number;
+  maxFeatures?: number;
+}
+
 /**
  * CollabVector source options
  */
-export interface CollabVectorSourceOptions {
+export interface CollabVectorSourceOptions extends SourceOptions {
   table: Table;
   client: ApiClient;
   cacheUrl?: string;
   online?: boolean;
-  maxFeatures?: number;
-  maxReload?: number;
   outputFormat?: 'CSV' | 'JSON';
-  tileZoom?: number;
-  tileSize?: number;
-  filter?: Record<string, any>; // redefine type maybe
   preserved?: Collection<Feature>;
-  strategy: LoadingStrategy; // redefine type maybe
   logo?: string;
-  attribution?: string;
-  wrapX?: boolean;
+}
+
+/**
+ * WFS source options
+ */
+export interface WFSSourceOptions extends SourceOptions {
+  geoservice: Geoservice;
+  username?: string;
+  password?: string;
+  minZoom?: number;
+  proxy: string;
+  cache?: string; // Cache directory path
+  srs?: string;
+  // authentication?: (callback: (username: string, password: string) => void) => void;
+  // getCapabilities?: boolean; // Fetch capabilities
 }
 
 /**

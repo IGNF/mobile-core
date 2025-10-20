@@ -82,3 +82,25 @@ export interface TableColumn {
   crs?: string;
   defaultValue?: any;
 }
+
+/**
+ * Geoservice definition (WFS/WMS)
+ */
+export interface Geoservice {
+  id: number;
+  title: string;
+  description?: string;
+  url: string;
+  type: 'WFS' | 'WMS';
+  layers: string;
+  version?: string;
+  format?: string;
+  authentication?: boolean;
+  inputMask?: {
+    id?: number;
+    attributes?: Record<string, any>;
+    searchAttribute?: string;
+  };
+  minZoom?: number;
+  maxZoom?: number;
+}
