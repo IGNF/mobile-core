@@ -3,7 +3,7 @@
  * 
  */
 
-export class PathUtils {
+export default class PathUtils {
 
   /**
    * Inspired from the CordovApp.File.fileName function in CordovApp, File.js line 60

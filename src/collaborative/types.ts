@@ -44,8 +44,13 @@ export interface CommunityLayer {
   opacity?: number;
 }
 
+/**
+ * Table definition
+ * TO verify
+ */
 export interface Table {
   id: number;
+  database: string;
   databaseId: number;
   name: string;
   title: string;
@@ -53,7 +58,7 @@ export interface Table {
   wfs: string; // WFS endpoint
   geometryName: string;
   projection?: string;
-  // columns: Record<string, TableColumn>;
+  columns: Record<string, TableColumn>;
   // style?: LayerStyle;
   // styles?: LayerStyle[]; // Multiple styles
   minZoomLevel?: number;
@@ -61,4 +66,19 @@ export interface Table {
   searchable?: boolean;
   editable?: boolean;
   docURI?: string; // Document upload endpoint
+}
+
+/**
+ * Table column definition
+ * To verify
+ */
+export interface TableColumn {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'date' | 'geometry';
+  title?: string;
+  required?: boolean;
+  editable?: boolean;
+  searchable?: boolean;
+  crs?: string;
+  defaultValue?: any;
 }
