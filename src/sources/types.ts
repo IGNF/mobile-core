@@ -36,6 +36,7 @@ export interface WFSSourceOptions extends SourceOptions {
   geoservice: Geoservice;
   username?: string;
   password?: string;
+  once?: boolean;
   minZoom?: number;
   proxy: string;
   cache?: string; // Cache directory path
