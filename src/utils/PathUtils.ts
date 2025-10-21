@@ -34,4 +34,5 @@ export default class PathUtils {
   getEscapedDomainFromURL(URL: string): string {
     return URL.replace(/^((http[s]?|ftp):\/)?\/?([^:/\s]+)((\/\w+)*\/)([\w\-.]+[^#?\s]+)(.*)?(#[\w-]+)?$/, "$3").replace(/\./g, '_');
   }
+
 }

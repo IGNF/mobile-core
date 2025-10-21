@@ -2,6 +2,14 @@
  * Define here the types for the collaborative features
  */
 
+import { StyleRule } from "../styles/MobileCoreStyle";
+
+export interface LayerStyle {
+  id?: number;
+  name?: string;
+  children?: StyleRule[];
+}
+
 /**
  * User information
  */
@@ -59,8 +67,8 @@ export interface Table {
   geometryName: string;
   projection?: string;
   columns: Record<string, TableColumn>;
-  // style?: LayerStyle;
-  // styles?: LayerStyle[]; // Multiple styles
+  style?: LayerStyle;
+  styles?: LayerStyle[]; // Multiple styles
   minZoomLevel?: number;
   maxZoomLevel?: number;
   searchable?: boolean;

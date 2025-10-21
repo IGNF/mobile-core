@@ -110,7 +110,7 @@ export default class WFSSource extends VectorSource {
 
     // Request properties
     this.set("url", options.geoservice.url);
-    this.set("cacheDir", pathUtils.getEscapedDomainFromURL(options.geoservice.url) + '/' + options.geoservice.layers);
+    this.set("cache", pathUtils.getEscapedDomainFromURL(options.geoservice.url) + '/' + options.geoservice.layers);
     this.set("once", options.once);
     this.set("typename", options.geoservice.layers);
     this.set("version", options.geoservice.version);
@@ -296,15 +296,25 @@ export default class WFSSource extends VectorSource {
 
   }
 
+  /**
+   * Handle WFS load error
+   * 
+   * @param status: status of the load
+   * @param error: error object
+   */
   private _handleWFSLoadError(status: string, error: any) {
     if (status !== 'abort') {
       this.dispatchEvent({ type: "loadend", error: error, status: status, remains: --this._tileLoading } as any);
     } else {
       this.dispatchEvent({ type: "loadend", remains: --this._tileLoading } as any);
     }
-
   }
 
+  /**
+   * Get the file cache name
+   * 
+   * @returns the file cache name
+   */
   public getFileCacheName() {
     if (this.get('once')) {
       return this.get('cache') + '.cache';

@@ -1,18 +1,170 @@
 /**
  * Collaborative vector layer
+ * @migrated from: ol/layer/CollabVector.js
  */
+import VectorLayer from "ol/layer/Vector";
 
-// from old code:
-// import ol_layer_Vector from 'ol/layer/Vector'
-// import ol_View from 'ol/View'
-// import ol_source_Vector_CollabVector from 'cordovapp/ol/source/CollabVector'
-// import ol_ext_inherits from 'ol-ext/util/ext'
+import { DEFAULT_LAYERS_VALUES } from "./DefaultLayersValues";
+import { CollabVectorLayerOptions } from "./types";
+import { LayerStyle, Table } from "../collaborative/types";
+import CollabVectorSource from "../sources/CollabVectorSource";
+import { CollabVectorSourceOptions } from "../sources/types";
+import { View } from "ol";
+import { StyleRule } from "../styles/MobileCoreStyle";
+import { CollabStyler } from "../styles/CollabStyler";
 
-export class CollabVectorLayer {
+export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
 
-  // what is a table in this context?
-  async getTable(): Promise<any> {
-    throw new Error('Not implemented');
+  constructor(options: CollabVectorLayerOptions, sourceOptions: any) {
+    sourceOptions = sourceOptions || {};
+
+    const superOptions = CollabVectorLayer._computeCollabVectorLayerOptions(options);
+    super(superOptions);
+
+    this.set("name", options.database + ':' + options.name);
+    sourceOptions.client = options.client;
+    if (options.cacheUrl) {
+      // TODO, pass directly the file uri from the file system in the options???
+      // previous code: source_options.cacheUrl = CordovApp.File.getFileURI(options.cacheUrl) //options.cacheUrl;
+      sourceOptions.cacheUrl = options.cacheUrl;
+
+      sourceOptions.online = (sourceOptions.online != undefined) ? sourceOptions.online : false;
+      this.set("cache", true);
+    }
+
+    this.createSource(options, sourceOptions, options.table);
+  }
+
+  /**
+   * Computes the options for the CollabVector layer
+   * @param options 
+   * @returns The options for the CollabVector layer
+   */
+  private static _computeCollabVectorLayerOptions(options: CollabVectorLayerOptions): any {
+    return {
+      database: options.database,
+      name: options.name,
+      url: options.url,
+      renderMode: options.renderMode || DEFAULT_LAYERS_VALUES.COLLAB_VECTOR_RENDER_MODE,
+    };
+  }
+
+  /**
+   * Creates the source for the CollabVector layer
+   * @param options 
+   * @param sourceOptions 
+   * @param table 
+   * @returns The source for the CollabVector layer
+   * 
+   * TODO
+   * Voir si on peut refacto l'attribut "table", options.table semble être égal à sourceOptions.table et table
+   */
+  public createSource(options: CollabVectorLayerOptions, sourceOptions: CollabVectorSourceOptions, table: Table) {
+
+    sourceOptions.table = table;
+    if (options.checkSourceOptions) {
+      options.checkSourceOptions(this, sourceOptions, table);
+    }
+
+    // CollabVector source
+    const vectorSource = new CollabVectorSource(sourceOptions);
+    this.setSource(vectorSource);
+
+    // CollabVector Layer
+    this.set("title", table.title);
+
+    // Set zoom level / resolution for the layer
+    const view = new View();
+
+    if (table.maxZoomLevel && table.maxZoomLevel < 20) {
+      view.setZoom(table.maxZoomLevel);
+      this.setMinResolution(view.getResolution() ?? 0);
+    }
+
+    if (table.minZoomLevel || table.minZoomLevel === 0) {
+      view.setZoom(Math.max(table.minZoomLevel, 4));
+      this.setMaxResolution((view.getResolution() ?? 0) + 1);
+    }
+
+    // Decode condition (parse string)
+    if (table.style && table.style.children) {
+      for (const child of table.style.children as StyleRule[]) {
+        if (typeof (child.condition) === 'string') {
+          try { child.condition = JSON.parse(child.condition); }
+          catch (e) { /* ok */ }
+        }
+      }
+    }
+    if (table.styles && table.styles.length) {
+      let found = false;
+      table.styles.forEach((st: LayerStyle) => {
+        if (table.style && st.id === table.style.id) {
+          found = true;
+        }
+        if (st.children) {
+          st.children.forEach((s: StyleRule) => {
+            if (typeof (s.condition) === 'string') {
+              try { s.condition = JSON.parse(s.condition); }
+              catch (e) { /* ok */ }
+            }
+          })
+        }
+      })
+      if (!found && table.style) {
+        table.styles.unshift(table.style);
+      }
+    }
+
+    // Style of the feature style
+    // Todo: search that, I don't understand this test 'CollabStyler' => isn't it a class?
+    if (!options.style && CollabStyler) {
+      // todo, "options.cacheUrl" was before CordovApp.File.getFileURI(options.cacheUrl)
+      // see if we can now pass directly the cacheURL in the options (see this file in the contructor - same issue)
+      this.setStyle(CollabStyler.getFeatureStyleFunction(table, options.cacheUrl ?? '', sourceOptions));
+    }
+
+    this.dispatchEvent({ type: "ready", source: vectorSource } as any);
+
+  }
+
+  /**
+   * Get the table for the CollabVector layer
+   * @returns The table for the CollabVector layer, or undefined if not ready
+   */
+  public getTable(): Table | undefined {
+    const source = this.getSource();
+    if (this.isReady() && source) return source.table;
+    return undefined;
+  }
+
+  /**
+   * Get the style for features in this layer
+   * @returns The layer style, or undefined if not ready
+   */
+  public getFeatureStyle(): LayerStyle | undefined {
+    const source = this.getSource();
+    if (this.isReady() && source) return source.table.style;
+    return undefined;
+  }
+
+  /**
+   * Check if the layer is ready (has a source with a table)
+   * @returns True if the layer is ready, false otherwise
+   */
+  public isReady(): boolean {
+    const source = this.getSource();
+    return source !== null && source.table !== undefined;
+  }
+
+  /**
+   * Set the online/offline mode for the layer
+   * @param online - True for online mode, false for offline mode
+   */
+  public setOnline(online: boolean): void {
+    const source = this.getSource();
+    if (!source) return;
+    source.localProperties.online = online;
+    source.refresh();
   }
 
 }
