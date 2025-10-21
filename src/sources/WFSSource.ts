@@ -3,10 +3,12 @@
  * @migrated from: ol/source/WFS.js of the CordovApp module
  */
 
-import { Collection } from "ol";
+import { Collection, Feature } from "ol";
 import VectorSource from "ol/source/Vector";
 import { bbox, tile } from "ol/loadingstrategy";
 import { TileGrid, createXYZ } from "ol/tilegrid";
+import GeoJSON from "ol/format/GeoJSON";
+import WFS from "ol/format/WFS";
 
 import PathUtils from "../utils/PathUtils";
 const pathUtils = new PathUtils();
@@ -15,11 +17,14 @@ import { WFSSourceOptions } from "./types";
 import { WFS_DEFAULT_VALUES } from "./DefaultSourceValues";
 import { SOURCE_ERROR_CODES } from "./ErrorCodes";
 import { Projection, transformExtent } from "ol/proj";
+import GML3 from "ol/format/GML3";
+import GML2 from "ol/format/GML2";
 
 
 export default class WFSSource extends VectorSource {
   public localProperties: Record<string, any> = {};
   public requestProperties: Record<string, any> = {};
+  private _tileLoading: number = 0;
 
   constructor(options: WFSSourceOptions) {
     const superOptions = WFSSource._computeWFSSourceOptions(options, {});
@@ -104,19 +109,16 @@ export default class WFSSource extends VectorSource {
     this.localProperties.featureFilter = options.filter;
 
     // Request properties
-    this.requestProperties.url = options.geoservice.url;
-    const cacheDir = pathUtils.getEscapedDomainFromURL(options.geoservice.url);
-    this.requestProperties.cacheDir = cacheDir + '/' + options.geoservice.layers;
-    this.requestProperties.once = options.once;
-    this.requestProperties.typename = options.geoservice.layers;
-    this.requestProperties.version = options.geoservice.version;
-    this.requestProperties.projection = options.srs || WFS_DEFAULT_VALUES.SRS_NAME;
-    this.requestProperties.id = options.geoservice.inputMask?.id ?? -1;
-    this.requestProperties.maxFeatures = options.maxFeatures;
-    this.requestProperties.format = options.geoservice.format;
-
+    this.set("url", options.geoservice.url);
+    this.set("cacheDir", pathUtils.getEscapedDomainFromURL(options.geoservice.url) + '/' + options.geoservice.layers);
+    this.set("once", options.once);
+    this.set("typename", options.geoservice.layers);
+    this.set("version", options.geoservice.version);
+    this.set("projection", options.srs || WFS_DEFAULT_VALUES.SRS_NAME);
+    this.set("id", options.geoservice.inputMask?.id ?? -1);
+    this.set("maxFeatures", options.maxFeatures);
+    this.set("format", options.geoservice.format);
     this.setAuthentication(options.username ?? '', options.password ?? '');
-
   }
 
   public setAuthentication(username: string, password: string) {
@@ -147,7 +149,7 @@ export default class WFSSource extends VectorSource {
   public async loadFromCache(extent0: number[], resolution: number, projection: Projection): Promise<void> {
     if (this.localProperties.loadCache) { // condition necessary?
 
-      const extent = transformExtent(extent0, projection, this.requestProperties.projection);
+      const extent = transformExtent(extent0, projection, this.get("projection"));
 
       // define cache load parameters
       const cacheParameters = {
@@ -155,6 +157,9 @@ export default class WFSSource extends VectorSource {
         extent: extent,
         resolution: resolution,
       };
+
+      this.dispatchEvent({ type: "loadstart", remains: ++this._tileLoading } as any);
+
       // First request: load cache locally
       this.localProperties.loadCache(cacheParameters).then((response: any) => {
         this._readWFSResponse(response, projection);
@@ -167,13 +172,13 @@ export default class WFSSource extends VectorSource {
           const parameters = {
             service: 'WFS',
             request: 'GetFeature',
-            outputFormat: this.requestProperties.format,
-            typeName: this.requestProperties.typename,
-            bbox: this.requestProperties.once ? undefined : extent.join(','),
-            maxFeatures: this.requestProperties.maxFeatures,
-            filter: this.requestProperties.featureFilter,
+            outputFormat: this.get("format"),
+            typeName: this.get("typename"),
+            bbox: this.get("once") ? undefined : extent.join(','),
+            maxFeatures: this.get("maxFeatures"),
+            filter: this.get("featureFilter"),
             srsname: WFS_DEFAULT_VALUES.SRS_NAME,
-            version: this.requestProperties.version,
+            version: this.get("version"),
           };
 
           const tcoord = this.localProperties.tileGrid ? this.localProperties.tileGrid.getTileCoordForCoordAndResolution(extent0, resolution) : null;
@@ -192,7 +197,7 @@ export default class WFSSource extends VectorSource {
             headers["Authorization"] = `Basic ${btoa(this.requestProperties.username + ':' + this.requestProperties.password)}`;
           }
 
-          fetch(this.requestProperties.url.replace(/\?$/, ''), {
+          fetch(this.get("url").replace(/\?$/, ''), {
             method: 'GET',
             headers: headers,
             cache: 'no-cache',
@@ -202,13 +207,17 @@ export default class WFSSource extends VectorSource {
             clearTimeout(timeoutId);
             response.json().then(async (data: any) => {
               // if fetched from server, save to cache
-              await this.saveToCache(data, extent, resolution, tcoord);
+              // await this.saveToCache(data, extent, resolution, tcoord);
+              await this.localProperties.saveCache(data, extent, resolution, tcoord);
             });
           })
             // server cache fetch failed
             .catch((error: any) => {
               clearTimeout(timeoutId);
               console.error('ERROR: loadFromCache on layer', error);
+
+              // TODO: make sure this is the correct way to handle the status
+              const status = error.name === 'AbortError' ? 'abort' : 'error';
 
               // if failed and the error is 'obsolete', try to get cache with obsolete flag
               if (cacheError === 'obsolete') {
@@ -222,13 +231,13 @@ export default class WFSSource extends VectorSource {
                   this._readWFSResponse(response, projection);
                 }).catch(() => {
                   console.error('ERROR: loadFromCache on layer', cacheError);
-                  this._handleWFSLoadError(error);
+                  this._handleWFSLoadError(status, error);
                 });
               }
               // else, the fetch failed but the error is not 'obsolete'
               else {
                 console.error('ERROR: loadFromCache on layer', error);
-                this._handleWFSLoadError(error);
+                this._handleWFSLoadError(status, error);
               }
 
             });
@@ -236,15 +245,71 @@ export default class WFSSource extends VectorSource {
     }
   }
 
+  /**
+   * Read WFS response and add features to the source
+   * 
+   * @param response: response from WFS
+   * @param projection: projection
+   */
   private _readWFSResponse(response: any, projection: Projection) {
-    // to implement
+    let data: Feature[] = [];
+    if (this.get("format") === 'GeoJSON') {
+      data = new GeoJSON().readFeatures(response);
+    }
+    else {
+      const format = new WFS({ gmlFormat: new GML3() });
+      data = format.readFeatures(response);
+
+      // If no data found, try to load GML2 instead
+      if (data.length && (!data[0]?.getGeometry() || !data[0]?.getGeometry()?.getExtent())) { // .getFirstCoordinate doesn't seem to exist anymore on Geometry
+        const format = new WFS({ gmlFormat: new GML2() });
+        data = format.readFeatures(response);
+      }
+    }
+
+    const features: Feature[] = [];
+    const hasFeatures = this.getFeatures().length > 0; // from VectorSource.getFeatures()
+
+    for (const feature of data) {
+      const geometry = feature.getGeometry();
+      if (!geometry) continue;
+
+      const extent = geometry.getExtent();
+      // Skip invalid coordinates (longitude >= 360 or <= -360)
+      if (extent[0] >= 360 || extent[0] <= -360 || extent[2] >= 360 || extent[2] <= -360) {
+        continue;
+      }
+
+      // Transform from WFS_DEFAULT_VALUES.SRS_NAME to target projection
+      geometry.transform(WFS_DEFAULT_VALUES.SRS_NAME, projection);
+
+      // Add feature if: no existing features OR no 'id' property OR feature doesn't exist yet
+      if (!hasFeatures || !this.get('id') || !this.hasFeature(feature)) {
+        features.push(feature);
+      }
+    }
+
+    this.addFeatures(features);
+
+    // Dispatch loadend event with remaining tiles count
+    this.dispatchEvent({ type: 'loadend', remains: --this._tileLoading } as any);
+
   }
 
-  private _handleWFSLoadError(error: any) {
+  private _handleWFSLoadError(status: string, error: any) {
+    if (status !== 'abort') {
+      this.dispatchEvent({ type: "loadend", error: error, status: status, remains: --this._tileLoading } as any);
+    } else {
+      this.dispatchEvent({ type: "loadend", remains: --this._tileLoading } as any);
+    }
 
   }
 
-  public async saveToCache(response: any, extent: number[], resolution: number, tcoord: number[]): Promise<void> {
-    // to implement
+  public getFileCacheName() {
+    if (this.get('once')) {
+      return this.get('cache') + '.cache';
+    }
+    else return '';
   }
+
 }
