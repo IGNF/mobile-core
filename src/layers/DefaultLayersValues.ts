@@ -1,0 +1,4 @@
+export const DEFAULT_LAYERS_VALUES = {
+  COLLAB_VECTOR_RENDER_MODE: 'image',
+
+}

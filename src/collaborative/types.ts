@@ -104,7 +104,7 @@ export interface Geoservice {
   version?: string;
   format?: string;
   authentication?: boolean;
-  inputMask?: {
+  input_mask?: {
     id?: number;
     attributes?: Record<string, any>;
     searchAttribute?: string;

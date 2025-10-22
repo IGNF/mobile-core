@@ -26,8 +26,8 @@ export default class WFSSource extends VectorSource {
   public requestProperties: Record<string, any> = {};
   private _tileLoading: number = 0;
 
-  constructor(options: WFSSourceOptions) {
-    const superOptions = WFSSource._computeWFSSourceOptions(options, {});
+  constructor(options: WFSSourceOptions, cache?: any) {
+    const superOptions = WFSSource._computeWFSSourceOptions(options, cache);
     super(superOptions);
 
     this.localProperties = superOptions.computedLocalProperties;
@@ -115,7 +115,7 @@ export default class WFSSource extends VectorSource {
     this.set("typename", options.geoservice.layers);
     this.set("version", options.geoservice.version);
     this.set("projection", options.srs || WFS_DEFAULT_VALUES.SRS_NAME);
-    this.set("id", options.geoservice.inputMask?.id ?? -1);
+    this.set("id", options.geoservice.input_mask?.id ?? -1);
     this.set("maxFeatures", options.maxFeatures);
     this.set("format", options.geoservice.format);
     this.setAuthentication(options.username ?? '', options.password ?? '');
