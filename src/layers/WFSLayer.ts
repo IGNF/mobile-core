@@ -4,7 +4,12 @@
  */
 
 import VectorLayer from "ol/layer/Vector";
+import { Style, Fill, Stroke, Circle, Text } from "ol/style";
+import { Feature, View } from "ol";
+import { Geometry } from "ol/geom";
+import FillPattern from "ol-ext/style/FillPattern";
 import { WFSLayerOptions } from "./types";
+import { WFS_STYLE_DEFAULTS } from "./DefaultLayersValues";
 
 import PathUtils from "../utils/PathUtils";
 import { Table } from "../collaborative/types";
@@ -33,13 +38,24 @@ export class WFSLayer extends VectorLayer {
 
     // TODO, in the old code, we seem to use the options for both the layer and the source, which doesn't make sense
     // once implemented, test and find a solution
-    
-
     if (options.getCapabilities !== false) {
       this.getCapabilities(options);
     }
     else {
       this.createSource(options as WFSSourceOptions);
+    }
+
+    // Zoom level
+    const view = new View();
+    let maxZoom = options.geoservice.maxZoom;
+    let minZoom = options.geoservice.minZoom;
+    if (maxZoom && maxZoom < 20) {
+      view.setZoom(maxZoom);
+      this.setMinResolution(view.getResolution() ?? 0);
+    }
+    if (minZoom) {
+      view.setZoom(minZoom);
+      this.setMaxResolution(view.getResolution() ?? 0);
     }
   }
 
@@ -67,31 +83,31 @@ export class WFSLayer extends VectorLayer {
 
   public async getCapabilities(options: WFSLayerOptions): Promise<void> {
     const authenticationFn = this.layerOptions?.authentication;
-    
+
     // Build URL with query parameters
     const url = new URL(options.geoservice.url);
     url.searchParams.append('service', 'WFS');
     url.searchParams.append('request', 'GetCapabilities');
-    
+
     // Setup headers
     const headers: HeadersInit = {};
     if (options.username && options.password) {
       const credentials = btoa(`${options.username}:${options.password}`);
       headers['Authorization'] = `Basic ${credentials}`;
     }
-    
+
     // Setup timeout with AbortController
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
-    
+
     try {
       const response = await fetch(url.toString(), {
         headers,
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         // Handle HTTP errors
         this.handleGetCapabilitiesError(
@@ -103,17 +119,17 @@ export class WFSLayer extends VectorLayer {
         );
         return;
       }
-      
+
       // Success: create source
       this.createSource(options as WFSSourceOptions, this.cache);
-      
+
     } catch (error: any) {
       clearTimeout(timeoutId);
-      
+
       // Handle network errors and timeouts
       const status = error.name === 'AbortError' ? 0 : 0;
       const statusText = error.name === 'AbortError' ? 'timeout' : 'error';
-      
+
       this.handleGetCapabilitiesError(
         status,
         error,
@@ -193,11 +209,145 @@ export class WFSLayer extends VectorLayer {
 
 
 
-  private static _createWFSStyle(attributes: Record<string, any>): any {
-    if (attributes && Object.keys(attributes).length > 0) {
-      return;
+  /**
+   * Create a WFS style function based on feature attributes
+   * Returns a style function that reads symbology from feature properties
+   * @param attributes Attribute configuration mapping titles to property names
+   * @returns Style function or default styles
+   */
+  private static _createWFSStyle(attributes: Record<string, any>): Style[] | ((feature: Feature<Geometry>) => Style[]) {
+    // Default styles for WFS features
+    const defaultFill = new Fill({
+      color: WFS_STYLE_DEFAULTS.FILL_COLOR
+    });
+    const defaultStroke = new Stroke({
+      color: WFS_STYLE_DEFAULTS.STROKE_COLOR,
+      width: WFS_STYLE_DEFAULTS.STROKE_WIDTH
+    });
+    const defaultStyles = [
+      new Style({
+        image: new Circle({
+          fill: defaultFill,
+          stroke: defaultStroke,
+          radius: WFS_STYLE_DEFAULTS.CIRCLE_RADIUS
+        }),
+        fill: defaultFill,
+        stroke: defaultStroke
+      })
+    ];
+
+    // If no attributes, return default styles
+    if (!attributes || Object.keys(attributes).length === 0) {
+      return defaultStyles;
     }
-    // to implement in the style manager
+
+    // Build lookup table for symbology attributes (symb@*)
+    const lut: Record<string, string> = {};
+    for (const key in attributes) {
+      if (attributes[key].title && /^symb@/.test(attributes[key].title)) {
+        lut[attributes[key].title] = key;
+      }
+    }
+
+    // Helper function to get attribute name from symbolic name
+    const getAttr = (name: string): string => {
+      return lut[name] || name;
+    };
+
+    // Return style function that reads feature properties
+    return (feature: Feature<Geometry>): Style[] => {
+      // Check if style is already cached on feature
+      const cachedStyle = (feature as any).wfsStyle;
+      if (cachedStyle) {
+        return cachedStyle;
+      }
+
+      // Check if feature has symbology color defined
+      const symbColor = feature.get(getAttr('symb@sColor'));
+      if (!symbColor) {
+        return defaultStyles;
+      }
+
+      // Build dynamic style from feature properties
+      const fillColor = feature.get(getAttr('symb@fColor')) || WFS_STYLE_DEFAULTS.FILL_COLOR;
+      const patternType = feature.get(getAttr('symb@fPattern'));
+
+      // Build fill with optional pattern
+      let fill: Fill | FillPattern;
+      if (patternType) {
+        // Extract pattern properties
+        const patternAngle = feature.get(getAttr('symb@pAngle'));
+        const patternSize = feature.get(getAttr('symb@pWidth'));
+        const patternSpacing = feature.get(getAttr('symb@pSpace'));
+        const patternColor = feature.get(getAttr('symb@pColor'));
+
+        fill = new FillPattern({
+          pattern: patternType,
+          color: patternColor || 'transparent',
+          fill: new Fill({
+            color: fillColor
+          }),
+          size: patternSize || 2,
+          spacing: patternSpacing || 5,
+          angle: patternAngle
+        });
+      } else {
+        fill = new Fill({ color: fillColor });
+      }
+
+      // Build text/label if defined
+      let text: Text | undefined;
+      const label = feature.get(getAttr('symb@label'));
+      if (label) {
+        const labelColor = feature.get(getAttr('symb@lColor')) || WFS_STYLE_DEFAULTS.LABEL_COLOR;
+        const labelStrokeColor = feature.get(getAttr('symb@lsColor')) || WFS_STYLE_DEFAULTS.LABEL_STROKE_COLOR;
+        const labelSize = feature.get(getAttr('symb@lSize')) || WFS_STYLE_DEFAULTS.LABEL_SIZE;
+
+        text = new Text({
+          text: String(label),
+          stroke: new Stroke({
+            color: labelStrokeColor,
+            width: WFS_STYLE_DEFAULTS.LABEL_STROKE_WIDTH
+          }),
+          fill: new Fill({
+            color: labelColor
+          }),
+          overflow: false,
+          font: `${labelSize}px sans-serif`
+        });
+      }
+
+      // Build stroke with optional dash pattern
+      const strokeColor = feature.get(getAttr('symb@sColor')) || WFS_STYLE_DEFAULTS.STROKE_COLOR;
+      const strokeWidth = feature.get(getAttr('symb@sWidth')) || WFS_STYLE_DEFAULTS.STROKE_WIDTH;
+      const dashString = feature.get(getAttr('symb@sDash'));
+      const lineDash = dashString ? dashString.split(',').map((n: string) => parseFloat(n)) : undefined;
+
+      const stroke = new Stroke({
+        color: strokeColor,
+        width: strokeWidth,
+        lineDash: lineDash && lineDash.length > 1 ? lineDash : undefined
+      });
+
+      // Create final style
+      const wfsStyle = [
+        new Style({
+          image: new Circle({
+            fill: defaultFill,
+            stroke: defaultStroke,
+            radius: WFS_STYLE_DEFAULTS.CIRCLE_RADIUS
+          }),
+          text: text,
+          fill: fill,
+          stroke: stroke
+        })
+      ];
+
+      // Cache style on feature for performance
+      (feature as any).wfsStyle = wfsStyle;
+
+      return wfsStyle;
+    };
   }
 
 
