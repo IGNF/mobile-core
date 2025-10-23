@@ -8,6 +8,11 @@ declare module 'collaboratif-client-api' {
     login(username: string, password: string): Promise<{ data: User }>;
     disconnect(): Promise<void>;
 
+
+    getDocument(url: string): Promise<{ data: Blob }> {
+      return fetch(url).then(response => response.blob());
+    }
+
     /**
      * Community related methods
      * to implement

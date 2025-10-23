@@ -22,16 +22,16 @@ import EventManager from '../utils/EventManager';
 
 export class UserManager {
 
-  private _apiClient: ApiClient;
+  public apiClient: ApiClient;
   private _eventManager: EventManager;
 
   constructor(apiClient: ApiClient) {
-    this._apiClient = apiClient;
+    this.apiClient = apiClient;
     this._eventManager = new EventManager();
   }
 
   async login(username: string, password: string): Promise<User> {
-    const userResponse = await this._apiClient.login(username, password); // see what exists instead
+    const userResponse = await this.apiClient.login(username, password); // see what exists instead
     if(!userResponse.data) {
       throw new Error('Login failed');
     }
@@ -43,7 +43,7 @@ export class UserManager {
   }
 
   async logout(): Promise<void> {
-    await this._apiClient.disconnect(); // see what exists instead
+    await this.apiClient.disconnect(); // see what exists instead
     this._eventManager.emit('disconnect');
   }
 
@@ -54,7 +54,7 @@ export class UserManager {
    * @returns User
    */
   async getUser(): Promise<User> {
-    const userResponse = await this._apiClient.getUser();
+    const userResponse = await this.apiClient.getUser();
     let user: User = userResponse.data;
     user.communities_member = user.communities_member || [];
 
@@ -65,7 +65,7 @@ export class UserManager {
 
     const responseCommunities = await Promise.all(
       user.communities_member.map((member: CommunityMember) =>
-        this._apiClient.getCommunity(member.community_id)!
+        this.apiClient.getCommunity(member.community_id)!
       )!
     );
 
