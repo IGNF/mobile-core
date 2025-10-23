@@ -2,6 +2,7 @@
  * Definition of the style interface for the map
  */
 
+import { Color } from 'ol/color';
 import { Fill, Stroke, Circle, Text, Icon, RegularShape } from 'ol/style';
 
 export interface MobileCoreStyle {
@@ -28,13 +29,13 @@ export interface StyleRule {
   color?: string;
 
   // Fill properties
-  fillColor?: string;
+  fillColor?: Color | string;
   fillOpacity?: number; // More granular than opacity
   fillPattern?: string;
   patternColor?: string;
 
   // Stroke properties
-  strokeColor?: string;
+  strokeColor?: Color | string;
   strokeWidth?: number;
   strokeDashstyle?: 'dot' | 'dash' | 'dashdot' | 'longdash' | 'longdashdot';
   strokeOpacity?: number; // More granular than opacity

@@ -16,6 +16,7 @@ import { LineString, MultiLineString } from "ol/geom";
 
 import { UserManager } from "../collaborative/UserManager";
 import { ApiClient } from "collaboratif-client-api";
+import { CollabStylePresets } from "./CollabStylePresets";
 
 /**
  * NOTE:
@@ -38,11 +39,13 @@ export class CollabStyler {
   private _symbolCache: any;
   private _cacheLoading: string[] = [];
   public defaultStyleFn: (feature: Feature, resolution: number) => Style | Style[];
+  public presets: CollabStylePresets;
 
   constructor() {
     const apiClient = new ApiClient();
     this._userManager = new UserManager(apiClient);
     this._symbolCache = {};
+    this.presets = new CollabStylePresets(this);
     this.defaultStyleFn = this.getFeatureStyleFn();
 
   }
@@ -355,11 +358,11 @@ export class CollabStyler {
 
       // Check if this feature type has a custom style method (e.g., zombie, vivant, etc.)
       if (!featureType.style && featureType.name) {
-        // Try to call a named method on this class (e.g., this.zombie, this.vivant)
-        const methodName = featureType.name as keyof CollabStyler;
-        if (typeof this[methodName] === 'function' && methodName !== 'getFeatureStyleFn') {
+        // Try to call a named method on presets (e.g., this.presets.zombie, this.presets.vivant)
+        const methodName = featureType.name as keyof CollabStylePresets;
+        if (typeof this.presets[methodName] === 'function') {
           // Call the custom style method which should return a style function
-          const customFn = (this[methodName] as any)(featureType);
+          const customFn = (this.presets[methodName] as any)(featureType);
           if (typeof customFn === 'function') {
             return customFn(feature);
           }
@@ -544,46 +547,15 @@ export class CollabStyler {
       // - call another function here to update the symbol cache, that would as well call feature.changed();
       feature.changed(); // used to be 'feature.layer.changed();', see if it's still valid
     });
-    
+
     return null;
   }
 
-  ///////////////////////
-  // CODE BELOW MIGHT NEED TO BE PUT IN A SEPARATE FILE //
-  ///////////////////////
-
-  public zombie() {
-
-  }
-
-  public detruit() {
-
-  }
-
-  public vivant() {
-
-  }
-
-  public combine() {
-
-  }
-
-  public troncon_de_route() {
-
-  }
-
-  public sens() {
-
-  }
-
-  public toponyme() {
-
-  }
-
-  public batiment() {
-
-  }
-
+  /**
+   * Get the glyph for a graphic
+   * @param graphicName the name of the graphic
+   * @returns the glyph for the graphic
+   */
   public getGlyph(graphicName: string): string | null {
     switch (graphicName) {
       case "lightning": return "fa-bolt";
@@ -591,17 +563,5 @@ export class CollabStyler {
       default: return null;
     }
   }
-
-  public getSymbol(feature: Feature): string | null {
-    switch (feature.get('fonction')) {
-      case "Commerciale": return "\uf217";
-      case "Sportive": return "\uf1e3";
-      case "Mairie": return "\uf19c";
-      case "Gare": return "\uf239";
-      case "Industrielle": return "\uf275";
-      default: return null;
-    }
-  }
-
 
 }

@@ -16,4 +16,5 @@ export { ReportValidator } from './report/ReportValidator';
 
 // Styles
 export { CollabStyler } from './styles/CollabStyler';
+export { CollabStylePresets } from './styles/CollabStylePresets';
 export { StyleManager } from './styles/StyleManager';
