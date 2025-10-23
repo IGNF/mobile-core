@@ -1,6 +1,9 @@
 /**
  * Styling system for collaborative layers
  * Migrated from: ol/style/Collaboratif.js (749 LOC)
+ * 
+ * Note:
+ * A lot of values are hardcoded here, we could probably create default values for them
  */
 import { Feature } from "ol";
 import { Circle, Style, Text, Icon, RegularShape } from "ol/style";

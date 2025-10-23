@@ -63,6 +63,11 @@ export class TileCache extends OlObject {
   // ol_ext_inherits(CacheTile, ol_Object);
   // Can't find any matching function in ol-ext
 
+  /**
+   * Write a tile to cache by dispatching a 'save' event
+   * @param id - Unique tile identifier (format: "zoom-col-row")
+   * @param url - URL of the tile to save
+   */
   public writeTile(id: string, url: string): void {
     this.dispatchEvent({ type: 'save', id: id, url: url } as any);
   }
@@ -112,7 +117,7 @@ export class TileCache extends OlObject {
     // in OpenLayers 10, TileGrid is immutable, so we can't set the minZoom and maxZoom
     // this.source.getTileGrid().minZoom = this._tileGridMinZoom;
     // this.source.getTileGrid().maxZoom = this._tileGridMaxZoom;
-    this.asyncTileLoad(); // to implement
+    await this.asyncTileLoad(); // to implement
 
     // Calculate 
     this._view.setZoom(minZoom);
@@ -133,7 +138,136 @@ export class TileCache extends OlObject {
     if (!this._estimate) this.dispatchEvent({ type: 'saveend', length: this._length } as any);
   }
 
-  public asyncTileLoad(): void {
+  /**
+   * Restore the cache to the original state
+   * Resets the layer extent and resolution, and refreshes the source
+   * 
+   * @param minZoom - Minimum zoom level to restore
+   * @param extent - Geographic extent to restore
+   * @note In OpenLayers 10, TileGrid is immutable, so we can't modify minZoom/maxZoom directly
+   */
+  public restore(minZoom: number, extent: Extent) {
+    this.asyncTileLoad(() => { });
+    this._layer.setExtent(extent);
+    this._layer.setMaxResolution(this._source?.getTileGrid()?.getResolution(minZoom - 3) || Infinity);
+    // Force refresh
+    this._source?.refresh();
+  }
+
+  public asyncTileLoad(asyncLoadFn): void {
     // to implement
+
+    /**
+     * Old code:
+     * 
+     *  // Change tileloadFunction to load async images //this.getTileLoadFunction();
+  var _tileLoadFunction = function(imageTile, src) {
+    imageTile.getImage().src = src;
+  };
+  var source = this.source;
+  // TileLoad
+  if (!asyncLoadFn) {
+    source.setTileLoadFunction (_tileLoadFunction);
+  } else {
+    source.setTileLoadFunction (function(imageTile, src) {
+      var tilecoord = imageTile.getTileCoord();
+      var id = tilecoord[0]+"-"+tilecoord[2]+"-"+tilecoord[1];
+      asyncLoadFn({ id:id, url:src }, function(url) {
+        _tileLoadFunction(imageTile, url||src);
+        //img.crossOrigin = null;
+        //self.changed();
+      });
+    });
+  }
+     */
+  }
+
+  /**
+   * Get the current cache extent
+   * @returns The geographic extent being cached
+   */
+  public getExtent(): Extent {
+    return this._extent;
+  }
+
+  /**
+   * Get the number of tiles in the current cache operation
+   * @returns The total number of tiles
+   */
+  public getLength(): number {
+    return this._length;
+  }
+
+  /**
+   * Estimate the total size of tiles to cache for a given extent and zoom range
+   * Performs a sample fetch to determine average tile size and calculates total cache size
+   * 
+   * @param minZoom - Minimum zoom level to cache
+   * @param maxZoom - Maximum zoom level to cache
+   * @param extent - Geographic extent to cache tiles for
+   * @returns Promise resolving to an object containing:
+   *   - length: Number of tiles to cache
+   *   - size: Estimated total size in MB
+   *   - time: Estimated total download time in milliseconds (optional)
+   */
+  public async estimateSize(minZoom: number, maxZoom: number, extent: Extent): Promise<{ length: number; size: number; time?: number }> {
+    // Save current state to restore later
+    const tileLoadFunction = this._source?.getTileLoadFunction() ?? null;
+    const nb0 = this._length;
+    this._estimate = true;
+
+    // Calculate the number of tiles needed for the given extent and zoom range
+    // This populates this._length with the total tile count
+    await this.saveTile(minZoom, maxZoom, extent);
+
+    const nb = this._length;
+    const authentication = this._authentication;
+
+    if (!nb) {
+      return { length: 0, size: 0 };
+    }
+
+    const time = (new Date()).getTime();
+
+    try {
+      // Prepare authentication headers if needed
+      const headers: HeadersInit = {};
+      if (authentication) {
+        headers['Authorization'] = `Basic ${authentication}`;
+      }
+
+      // Fetch a sample tile to estimate the average tile size
+      const response = await fetch(this._baseUrl + "&dtime=" + time, {
+        method: 'GET',
+        headers
+      });
+
+      if (!response.ok) {
+        return { length: nb, size: 0 };
+      }
+
+      // Get tile size from Content-Length header or response body length
+      const contentLength = response.headers.get('Content-Length');
+      const responseText = await response.text();
+      const size = contentLength ? parseInt(contentLength, 10) : responseText.length;
+
+      // Calculate total estimated size in MB and estimated download time
+      return {
+        length: nb,
+        size: Math.round(10 * nb * size / 1024 / 1024) / 10,
+        time: nb * ((new Date()).getTime() - time)
+      };
+    } catch (error) {
+      return { length: nb, size: 0 };
+    } finally {
+      // Restore original state after estimation
+      if (this._estimate) {
+        this._estimate = false;
+        this._length = nb0;
+        if (tileLoadFunction) {
+          this._source?.setTileLoadFunction(tileLoadFunction);
+        }
+      }
+    }
   }
 }
