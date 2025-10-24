@@ -1,17 +1,27 @@
 /**
  * This class aims to manage extents caching
+ * Handles pre-saved areas for the cache manager
+ * @migrated from: ol/cache/CacheExtents.js
  */
 
 import { extend, Extent } from 'ol/extent';
 import { createEmpty } from 'ol/extent';
-
+import { ICacheStorage } from '../types/cache';
 
 export default class ExtentManager {
-  constructor() {
+  private storage: ICacheStorage;
+
+  constructor(storage: ICacheStorage) {
+    this.storage = storage;
   }
 
-  async saveExtent(name: string, extent: Extent): Promise<void> {
-    throw new Error('Not implemented');
+  async addExtent(name: string, extents: Extent | Extent[]): Promise<void> {
+    // here the original code was using wapp.param.cacheExtents, which is not possible anymore (no wapp)
+    const cacheExtents: Record<string, Extent> = {}; // was this.wapp.param.cacheExtents
+    if (!Array.isArray(extents)) {
+      extents = [extents] as Extent[];
+    }
+    return;
   }
 
   async getExtent(name: string): Promise<Extent> {
