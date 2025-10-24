@@ -5,9 +5,12 @@
 
 import ol_layer_Group from 'ol/layer/Group'
 import LayerGroup from "ol/layer/Group";
+import { ICacheStorage } from '../types/cache';
+import { ApiClient } from 'collaboratif-client-api';
 
 export class VectorCacheManager {
-  constructor() {
+  constructor(private storage: ICacheStorage,
+    private apiClient: ApiClient) {
   }
 
   /**
