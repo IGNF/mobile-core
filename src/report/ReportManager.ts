@@ -2,6 +2,8 @@
  * Report manager
  * Manages the creation, submission, and management of reports
  * 
+ * @migrated from: report/Report.js
+ * 
  * TODO:
  * - See if the functions sketch2feature and feature2sketch are required here, and what they do (see report/Report.js line 131)
  */

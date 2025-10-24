@@ -1,6 +1,6 @@
 /**
  * This class is responsible for managing the vector cache
- * 
+ * @migrated from: ol/cache/CacheVector.js
  */
 
 import ol_layer_Group from 'ol/layer/Group'

@@ -13,14 +13,16 @@ declare module 'collaboratif-client-api' {
       return fetch(url).then(response => response.blob());
     }
 
+
+
     /**
      * Community related methods
      * to implement
      */
-    // getCommunity(communityId: number): Promise<{ data: Community }>;
-    // getCommunities(): Promise<{ data: Community[] }>;
-    // setActiveCommunity(communityId: number): Promise<void>;
-    // getActiveCommunity(): Promise<{ data: Community }>;
+    getCommunity(communityId: number): Promise<{ data: Community }>;
+    getCommunities(): Promise<{ data: Community[] }>;
+    setActiveCommunity(communityId: number): Promise<void>;
+    getActiveCommunity(): Promise<{ data: Community }>;
 
     /**
      * Report related methods

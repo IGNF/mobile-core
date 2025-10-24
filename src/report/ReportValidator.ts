@@ -1,5 +1,7 @@
 /**
  * Report validator
+ * @migrated from: report/ReportForm.js
+ * 
  * Note:
  * - The form validation should be done on the app side as much as possible
  */

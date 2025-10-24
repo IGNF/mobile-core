@@ -32,7 +32,7 @@ export class UserManager {
 
   async login(username: string, password: string): Promise<User> {
     const userResponse = await this.apiClient.login(username, password); // see what exists instead
-    if(!userResponse.data) {
+    if (!userResponse.data) {
       throw new Error('Login failed');
     }
     return userResponse.data;
@@ -63,10 +63,9 @@ export class UserManager {
      * Can't we return directly the profile key in the user object?
      */
 
-    const responseCommunities = await Promise.all(
-      user.communities_member.map((member: CommunityMember) =>
-        this.apiClient.getCommunity(member.community_id)!
-      )!
+    const responseCommunities = (await this.apiClient.getCommunities()).data;
+    user.communities_member.map((member: CommunityMember) =>
+      this.apiClient.getCommunity(member.community_id)!
     );
 
     user.communities = responseCommunities.map((response: Community, index: number) => ({
@@ -111,7 +110,7 @@ export class UserManager {
         });
      */
   }
-  
+
   async getCommunities(): Promise<Community[]> {
     const user = await this.getUser();
     return user.communities;

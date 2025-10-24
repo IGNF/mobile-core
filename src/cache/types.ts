@@ -19,6 +19,32 @@ export interface CacheMetadata {
 }
 
 /**
+ * Raster cache configuration
+ */
+export interface RasterCacheConfig {
+  id: string;
+  name: string;
+  layer: string; // Geoportail layer name
+  extent: Extent;
+  minZoom: number;
+  maxZoom: number;
+  apiKey?: string;
+  authentication?: string;
+  projection?: string;
+}
+
+/**
+ * Raster cache options
+ */
+export interface RasterCacheOptions {
+  apiKey?: string;
+  authentication?: string;
+  dirName?: string; // Directory name for cache storage (default: "geoportail")
+  cacheRoot?: string; // Root path for cache storage
+  silentErrors?: boolean; // Don't emit error events (default: false)
+}
+
+/**
  * Vector cache configuration
  */
 export interface VectorCacheConfig {
@@ -28,4 +54,19 @@ export interface VectorCacheConfig {
   extent: Extent;
   projection?: string;
   filter?: Record<string, any>;
+}
+
+/**
+ * Cache download progress
+ */
+export interface CacheProgress {
+  id: string;
+  type: 'raster' | 'vector';
+  total: number;
+  current: number;
+  percent: number;
+  status: 'downloading' | 'processing' | 'complete' | 'error' | 'cancelled';
+  error?: string;
+  bytesDownloaded?: number;
+  bytesTotal?: number;
 }
