@@ -9,60 +9,144 @@ import { createEmpty } from 'ol/extent';
 import { ICacheStorage } from '../types/cache';
 
 export default class ExtentManager {
-  private storage: ICacheStorage;
+  private readonly EXTENT_PREFIX = 'extent:';
 
-  constructor(storage: ICacheStorage) {
-    this.storage = storage;
+  constructor(private storage: ICacheStorage) {
   }
 
-  async addExtent(name: string, extents: Extent | Extent[]): Promise<void> {
-    // here the original code was using wapp.param.cacheExtents, which is not possible anymore (no wapp)
-    const cacheExtents: Record<string, Extent> = {}; // was this.wapp.param.cacheExtents
-    if (!Array.isArray(extents)) {
-      extents = [extents] as Extent[];
+  /**
+   * Adds or replaces a named extent area
+   * @param name - Name of the extent area (generated if not provided)
+   * @param extents - Single extent or array of extents
+   * @returns The name used to store the extents
+   */
+  async addExtent(name: string, extents: Extent | Extent[]): Promise<string> {
+    const extentArray = Array.isArray(extents) ? extents : [extents];
+    
+    // Generate default name if not provided
+    if (!name || name.trim() === '') {
+      const existingNames = await this.getNames();
+      name = `Sans titre ${existingNames.length}`;
     }
-    return;
-  }
 
-  async getExtent(name: string): Promise<Extent> {
-    throw new Error('Not implemented');
-  }
+    const key = this.EXTENT_PREFIX + name;
+    await this.storage.saveMetadata(key, {
+      id: key,
+      name: name,
+      type: 'vector',
+      created: new Date(),
+      modified: new Date(),
+      size: 0,
+      extra: {
+        extents: extentArray
+      }
+    });
 
-  async deleteExtent(name: string): Promise<void> {
-    throw new Error('Not implemented');
+    return name;
   }
 
   /**
-     * Array of key value pairs of extent names
-     * @return {Array<String>} 
-     */
+   * Appends a single extent to an existing named area
+   * @param name - Name of the extent area
+   * @param extent - Extent to append
+   */
+  async appendExtent(name: string, extent: Extent): Promise<void> {
+    const existing = await this.get(name);
+    const extents = existing.length > 0 ? [...existing, extent] : [extent];
+    await this.addExtent(name, extents);
+  }
+
+  /**
+   * Retrieves the extent array for a given name
+   * Returns empty array if not found
+   * @param name - Name of the extent area
+   * @returns Array of extents
+   */
+  async get(name: string): Promise<Extent[]> {
+    const key = this.EXTENT_PREFIX + name;
+    const metadata = await this.storage.getMetadata(key);
+    
+    if (!metadata || !metadata.extra?.extents) {
+      return [];
+    }
+    
+    return metadata.extra.extents as Extent[];
+  }
+
+  /**
+   * Retrieves a single extent for a given name (alias for get)
+   * @param name - Name of the extent area
+   * @returns Array of extents
+   */
+  async getExtent(name: string): Promise<Extent[]> {
+    return this.get(name);
+  }
+
+  /**
+   * Returns all stored extent names
+   * @returns Array of extent area names
+   */
+  async getNames(): Promise<string[]> {
+    const allMetadata = await this.storage.listMetadata(this.EXTENT_PREFIX);
+    return allMetadata
+      .filter(meta => meta.id.startsWith(this.EXTENT_PREFIX))
+      .map(meta => meta.id.substring(this.EXTENT_PREFIX.length));
+  }
+
+  /**
+   * Returns key-value pairs of extent names
+   * @returns Object mapping names to themselves
+   */
   async getExtentNames(): Promise<{ [key: string]: string }> {
-    throw new Error('Not implemented');
-    // where do we get the names from?
+    const names = await this.getNames();
+    const extentNames: { [key: string]: string } = {};
+    for (const name of names) {
+      extentNames[name] = name;
+    }
+    return extentNames;
   }
 
   /**
-   * Recupere un seul extent incluant tous les autres
-   * @param {String or Array<String>} names
-   * @return {ol.extent}
+   * Removes a named extent area
+   * @param name - Name of the extent area to remove
+   */
+  async deleteExtent(name: string): Promise<void> {
+    const key = this.EXTENT_PREFIX + name;
+    await this.storage.deleteMetadata(key);
+  }
+
+  /**
+   * Retrieves a single extent that encompasses all extents for the given name(s)
+   * @param names - Single name or array of names
+   * @returns Combined extent
    */
   async getAllInOneExtent(names: string | string[]): Promise<Extent> {
-    let extent = createEmpty();
-    let extents = Array.isArray(names) ? await this.getAllExtents(names) : await this.getExtent(names);
-    for (const extent of (extents as Extent[])) {
-      extend(extent, extent);
+    const extent = createEmpty();
+    const extents = Array.isArray(names) 
+      ? await this.getAllExtents(names) 
+      : await this.get(names);
+    
+    for (const ext of extents) {
+      extend(extent, ext);
     }
+    
     return extent;
   }
 
   /**
-   * Recupere un tableau de tous les extents
-   * @param {Array<String>} names
-   * @return {Array<ol.extent>}
+   * Retrieves all extents for multiple names as a flat array
+   * @param names - Array of extent area names
+   * @returns Flattened array of all extents
    */
   async getAllExtents(names: string[]): Promise<Extent[]> {
-    if (!Array.isArray(names)) throw new Error("names parameter must be an array");
-    const extents = await Promise.all(names.map(name => this.getExtent(name)));
-    return extents;
+    if (!Array.isArray(names)) {
+      throw new Error("names parameter must be an array");
+    }
+    
+    const extentsArrays = await Promise.all(
+      names.map(name => this.get(name))
+    );
+    
+    return extentsArrays.flat();
   }
 }
