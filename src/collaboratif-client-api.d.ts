@@ -25,6 +25,12 @@ declare module 'collaboratif-client-api' {
     getActiveCommunity(): Promise<{ data: Community }>;
 
     /**
+     * Service URL related methods
+     */
+    getBaseUrl(): Promise<string>;
+    setBaseUrl(url: string): Promise<void>;
+
+    /**
      * Report related methods
      */
     getReports(params: any): Promise<any>; // to type

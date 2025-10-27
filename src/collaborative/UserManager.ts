@@ -1,4 +1,6 @@
 /**
+ * User authentication and community management
+ * @migrated from: collaboratif/UserManager.js
  * Ajouter ici:
  * 
  * canReplyToReport(report) {
@@ -16,17 +18,19 @@
 import { ApiClient } from 'collaboratif-client-api';
 
 // import types
-import { User, Community, CommunityMember } from './types';
+import { User, Community, CommunityMember, UserManagerConfig, IUserStorage } from './types';
 
 import EventManager from '../utils/EventManager';
 
 export class UserManager {
 
   public apiClient: ApiClient;
+  public storage: IUserStorage;
   private _eventManager: EventManager;
 
-  constructor(apiClient: ApiClient) {
-    this.apiClient = apiClient;
+  constructor(config: UserManagerConfig) {
+    this.apiClient = config.apiClient;
+    this.storage = config.storage;
     this._eventManager = new EventManager();
   }
 
@@ -39,7 +43,11 @@ export class UserManager {
   }
 
   async initialize(): Promise<void> {
-    // see if we shouldn't handle this differently from the mobile side
+    const cacheData = await this.storage.getCredentials();
+    if(cacheData && cacheData.username && cacheData.password) {
+      const userResponse = await this.login(cacheData.username, cacheData.password);
+      await this.storage.saveUser(userResponse);
+    }
   }
 
   async logout(): Promise<void> {
@@ -125,7 +133,43 @@ export class UserManager {
     throw new Error('Not implemented');
   }
 
-  async setCommunity(communityId: number): Promise<void> {
-    throw new Error('Not implemented');
+  async setActiveCommunity(communityId: number): Promise<void> {
+    // const community = await this.getGroupById(communityId);
+    // if (community) {
+    //   community.isActive = true;
+
+    // }
+  }
+
+
+  /**
+  * Get the community with its ID
+  * @param {number} id - The ID of the community to get
+  * @returns {Community | null} - The community or null if not found
+  */
+  async getGroupById(id: number): Promise<Community | null> {
+    const user = await this.getUser();
+    return user.communities.find((community: Community) => community.id === id) || null;
+  }
+
+  /**
+   * 
+   * @returns The service URL of the collaboratif API
+   */
+  async getServiceUrl(): Promise<string> {
+    return this.apiClient.getBaseUrl();
+  }
+
+  /**
+   * Set the service URL of the collaboratif API
+   * @param url - The new service URL to set
+   * @returns {void} - The service URL of the collaboratif API
+   */
+  async setServiceUrl(url: string): Promise<void> {
+    if (url === (await this.apiClient.getBaseUrl())) {
+      return;
+    }
+    await this.logout();
+    await this.apiClient.setBaseUrl(url);
   }
 }
