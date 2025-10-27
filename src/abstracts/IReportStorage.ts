@@ -1,4 +1,4 @@
-import { Report } from "../types/report";
+import { Report, ReportPhoto } from "../types/report";
 
 /**
  * Storage abstraction for report operations
@@ -12,4 +12,10 @@ export interface IReportStorage {
   getReport(reportId: number): Promise<Report | null>;
   deleteReport(reportId: number): Promise<void>;
   listReports(): Promise<Report[]>;
+
+  getBlob(photo: ReportPhoto): Promise<Blob>;
+
+  saveParam(param: any): Promise<void>;
+  getParam(): Promise<any>;
+  clearParam(): Promise<void>;
 }

@@ -59,6 +59,7 @@ declare module 'collaboratif-client-api' {
      */
     getReports(params: any): Promise<any>; // to type
     addReport(params: any): Promise<any>; // to type
+    addAttachments(reportId: number, params: any): Promise<any>; // to type
     postPhotosPending(reportId: number, params: any): Promise<any>; // to type
     postPhotos(reportId: number, params: any): Promise<any>; // to type
   }

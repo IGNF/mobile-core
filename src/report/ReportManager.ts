@@ -103,9 +103,43 @@ export class ReportManager {
    * @param file: File to upload
    */
   async uploadAttachements(reportId: number, report: ReportPostParams): Promise<void> {
-    throw new Error('Not implemented');
-    // create postData and use:
-    // apiClient.addAttachments(reportId, postData)
+    if (!report.photos || !report.photos?.length || !report.photosToSend) return;
+
+
+    const gremIndice = new Date().getTime(); // temporary index, the getIndice is actually implemented in ReportForm.js, L418
+    // const gremIndice = this.getIndice(grem);
+
+    this.params.georems[gremIndice].photosToSend = false;
+    delete this.params.georems[gremIndice].error;
+    let photos = report.photos;
+
+
+    let photoPromises = [];
+    for (let i in photos) {
+      photoPromises.push(this._storage.getBlob(photos[i])); //  this will be implemented on the consuming app
+    }
+    Promise.all(photoPromises).then((blobs) => {
+      let post: any = {};
+      for (let i in blobs) {
+        post["photo" + i] = blobs[i];
+      }
+      this._apiClient.addAttachments(reportId, post).then(() => {
+        setTimeout(() => {
+          this._storage.saveParam(this.params);
+          // this.onUpdate(); // see what this does
+        }, 300)
+      }).catch(() => {
+        this.params.georems[gremIndice].photosToSend = true;
+        this.params.georems[gremIndice].error = "Echec d'envoi des images";
+        this._storage.saveParam(this.params);
+        // this.onUpdate(); // see what this does
+      })
+    }).catch((error) => {
+      this.params.georems[gremIndice].photosToSend = true;
+      this.params.georems[gremIndice].error = error;
+      this._storage.saveParam(this.params);
+      // this.onUpdate(); // see what this does
+    });
   }
 
   /**
@@ -143,10 +177,83 @@ export class ReportManager {
 
   feature2sketch(features: Feature[], proj: Projection): string {
     throw new Error('Not implemented');
+
+    // to implement:
+    // if (!f) return "";
+    //     if (!(f instanceof Array)) f = [f];
+    //     const format = new ol_format_WKT();
+    //     const geojsonFormat = new ol_format_GeoJSON();
+    //     var pt = f[0].getGeometry().getFirstCoordinate();
+    //     if (proj) {
+    //         pt = ol_proj_transform(pt, proj, 'EPSG:4326')
+    //     }
+
+    //     let style = {
+    //         "graphicName": "circle",
+    //         "diam": 2,
+    //         "frontcolor": "#FFAA00;1",
+    //         "backcolor": "#FFAA00;0.5"
+    //     };
+
+    //     var croquis = {
+    //         "contexte": {
+    //             "lon": pt[0].toFixed(7),
+    //             "lat": pt[1].toFixed(7),
+    //             "zoom": 15,
+    //             "layers": ["GEOGRAPHICALGRIDSYSTEMS.MAPS"]
+    //         },
+    //         "objects": []
+    //     };
+
+    //     for (var i=0; i<f.length; i++) {
+    //         var t=""; 
+    //         var object = {"style": style};
+    //         var g = f[i].getGeometry().clone();
+    //         var att = f[i].getProperties();
+    //         delete att.geometry;
+    //         if (proj) {
+    //             g.transform(proj, 'EPSG:4326');
+    //         }
+    //         if (g.getLayout()==='XYZM') {
+    //             att.geom = geojsonFormat.writeGeometry(g);
+    //         }
+    //         object.name = "";
+    //         object.attributes = att;
+    //         object.geometry = format.writeGeometry(g);
+    //         // Geometry
+    //         switch (f[i].getGeometry().getType()) {
+    //             case 'Point': 
+    //                 t = 'Point';
+    //                 break;
+    //             case 'LineString': 
+    //                 t = 'Ligne'; 
+    //                 break;
+    //             case 'MultiPolygon': 
+    //             case 'Polygon': 
+    //                 t = 'Polygone';
+    //                 break;
+    //         }
+    //         object.type = t;
+    //         croquis.objects.push(object);
+    //     }
+    //     return JSON.stringify(croquis);
   }
 
   sketch2feature(sketch: string, proj: Projection): Feature[] {
     throw new Error('Not implemented');
+
+    // to implement:
+    // if (typeof (sketch) === "string") sketch = JSON.parse(sketch);
+    // const features = [];
+    // const format = new ol_format_WKT();
+    // let objects = sketch.objects;
+    // for (var i = 0, f; f = objects[i]; i++) {
+    //   var prop = f.attributes ? f.attributes : {};
+    //   prop.geometry = format.readGeometry(f.geometry);
+    //   prop.geometry.transform("EPSG:4326", proj || "EPSG:3857")
+    //   features.push(new ol_Feature(prop));
+    // }
+    // return features;
   }
 
 }
