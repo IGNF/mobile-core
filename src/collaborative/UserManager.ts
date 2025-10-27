@@ -1,24 +1,12 @@
 /**
  * User authentication and community management
  * @migrated from: collaboratif/UserManager.js
- * Ajouter ici:
  * 
- * canReplyToReport(report) {
- * 
- * // add equivalent to:
- * let communities = wapp.userManager.param.communities;
-        let communityIds = communities.map(c => c.id);
-        for (var i in georem.attributes) {
-            if (communityIds.indexOf(georem.attributes[i].community) == -1) return false;
-        }
-        return true;
- * }
  */
 
 import { ApiClient } from 'collaboratif-client-api';
 
-// import types
-import { User, Community, CommunityMember, UserManagerConfig, IUserStorage } from './types';
+import { User, Community, CommunityMember, UserManagerConfig, IUserStorage, CommunityLayer, TableColumn } from './types';
 
 import EventManager from '../utils/EventManager';
 
@@ -44,7 +32,7 @@ export class UserManager {
 
   async initialize(): Promise<void> {
     const cacheData = await this.storage.getCredentials();
-    if(cacheData && cacheData.username && cacheData.password) {
+    if (cacheData && cacheData.username && cacheData.password) {
       const userResponse = await this.login(cacheData.username, cacheData.password);
       await this.storage.saveUser(userResponse);
     }
@@ -124,21 +112,137 @@ export class UserManager {
     return user.communities;
   }
 
+  /**
+   * community = groupe = guichet
+   * @returns The active community or null if not found
+   */
   async getActiveCommunity(): Promise<Community | null> {
     const user = await this.getUser();
-    return user.communities.find((community: Community) => community.isActive === true) || null;
+    return user.communities.find((community: Community) => community.active === true) || null;
   }
 
-  async getLayersInfo(): Promise<void> {
-    throw new Error('Not implemented');
+  /**
+   * Get the layers info for a given community
+   * @param communityId - The ID of the community to get the layers info for
+   * @returns CommunityLayer[]
+   */
+  async getLayersInfo(communityId: number): Promise<CommunityLayer[]> {
+    if (!this.apiClient.username) {
+      throw new Error('Unauthorized');
+    }
+
+    const responseLayers = await this.apiClient.getLayers(communityId, { limit: 100 });
+    const layers: CommunityLayer[] = responseLayers.data;
+
+    // Fetch all geoservices and tables in parallel
+    const layerDataPromises = layers.map((layer: CommunityLayer) => this._fetchLayerData(layer));
+
+    // Fetch unique database extents for table-based layers
+    const uniqueDatabaseIds = this._getUniqueDatabaseIds(layers);
+    const databaseExtentsMap = await this._fetchDatabaseExtents(uniqueDatabaseIds);
+
+    // Add fetched data to layers
+    const enrichedData = await Promise.all(layerDataPromises);
+    this._enrichLayers(layers, enrichedData, databaseExtentsMap);
+
+    return layers;
   }
 
+  /**
+   * Fetch geoservice or table data for a single layer
+   */
+  private async _fetchLayerData(layer: any): Promise<any> {
+    if (layer.geoservice) {
+      return this.apiClient.getGeoservice(layer.geoservice.id);
+    } else if (layer.table && layer.database) {
+      return this.apiClient.getTable(layer.database, layer.table);
+    }
+    return null;
+  }
+
+  /**
+   * Extract unique database IDs from layers
+   */
+  private _getUniqueDatabaseIds(layers: any[]): number[] {
+    const databaseIds = new Set<number>();
+    for (const layer of layers) {
+      if (layer.table && layer.database) {
+        databaseIds.add(layer.database);
+      }
+    }
+    return Array.from(databaseIds);
+  }
+
+  /**
+   * Fetch database extents for all database IDs
+   */
+  private async _fetchDatabaseExtents(databaseIds: number[]): Promise<Record<number, string>> {
+    if (databaseIds.length === 0) {
+      return {};
+    }
+
+    const databasePromises = databaseIds.map(dbId =>
+      this.apiClient.getDatabase(dbId, { fields: "extent,id" })
+    );
+    const databaseResponses = await Promise.all(databasePromises);
+
+    const extentsMap: Record<number, string> = {};
+    for (const response of databaseResponses) {
+      extentsMap[response.data.id] = response.data.extent;
+    }
+    return extentsMap;
+  }
+
+  /**
+   * Enrich layers with fetched geoservice/table data and database extents
+   * (UserManager.js lines 276-290)
+   */
+  private _enrichLayers(
+    layers: any[],
+    enrichedData: any[],
+    databaseExtentsMap: Record<number, string>
+  ): void {
+    for (let i = 0; i < layers.length; i++) {
+      const layer = layers[i];
+      const data = enrichedData[i];
+
+      if (!data) {
+        continue;
+      }
+
+      if (layer.geoservice) {
+        layer.geoservice = data.data;
+      } else if (layer.table && layer.database) {
+        const table = data.data;
+        // Transform columns from indexed array to array format
+        table.columns = Object.values(table.columns) as TableColumn[];
+        layer.table = table;
+        layer.extent = databaseExtentsMap[layer.database].split(',');
+      }
+    }
+  }
+
+  /**
+   * Set the active community
+   * If no layers are found, get them from the API
+   * @param communityId - The ID of the community to set as active
+   * @returns void
+   */
   async setActiveCommunity(communityId: number): Promise<void> {
-    // const community = await this.getGroupById(communityId);
-    // if (community) {
-    //   community.isActive = true;
+    const community: Community | null = await this.getGroupById(communityId);
+    if (!community) {
+      throw new Error('Community not found');
+    }
+    this.storage.setActiveCommunity(communityId); // save in cache storage
 
-    // }
+    const param = await this.storage.getParam();
+    param.offline = community.offline_allowed;
+
+    if (!community.layers) {
+      community.layers = await this.getLayersInfo(communityId);
+
+      this.storage.saveParam(param); // save in cache storage
+    }
   }
 
 

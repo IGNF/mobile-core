@@ -1,6 +1,11 @@
 declare module 'collaboratif-client-api' {
   export class ApiClient {
     constructor(...args: any[]);
+
+    // Should they really be here?
+    username: string;
+    password: string;
+
     /**
      * User related methods
      */
@@ -14,6 +19,25 @@ declare module 'collaboratif-client-api' {
     }
 
 
+    /**
+     * Geoservice related methods
+     */
+    getGeoservice(geoserviceId: number): Promise<{ data: Geoservice }>;
+
+    /**
+     * Layers related methods
+     */
+    getLayers(communityId: number, params: any): Promise<{ data: Layer[] }>;
+
+    /**
+     * Database related methods
+     */
+    getDatabase(databaseId: number, params: any): Promise<{ data: Database }>;
+
+    /**
+     * Table related methods
+     */
+    getTable(databaseId: number, tableName: string): Promise<{ data: Table }>;
 
     /**
      * Community related methods

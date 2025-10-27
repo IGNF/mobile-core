@@ -39,7 +39,8 @@ export interface Community {
   description?: string;
   logo?: string;
   layers?: CommunityLayer[];
-  isActive?: boolean;
+  active?: boolean;
+  offline_allowed?: boolean;
   profile?: any;
 }
 
@@ -133,6 +134,10 @@ export interface IUserStorage {
   saveUser(user: User): Promise<void>;
   getUser(): Promise<User | null>;
   clearUser(): Promise<void>;
+
+  saveParam(param: any): Promise<void>;
+  getParam(): Promise<any>;
+  clearParam(): Promise<void>;
 
   saveCommunities(communities: Community[]): Promise<void>;
   getCommunities(): Promise<Community[]>;
