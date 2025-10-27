@@ -11,6 +11,7 @@ import { ApiClient } from 'collaboratif-client-api';
 
 // Local types
 import { Report, ReportFilter } from '../types/report';
+import { IReportStorage } from '../abstracts/IReportStorage';
 
 /**
  * Report manager
@@ -18,16 +19,34 @@ import { Report, ReportFilter } from '../types/report';
 
 export class ReportManager {
   private _apiClient: ApiClient;
+  private _storage: IReportStorage;
 
-  constructor(apiClient: ApiClient) {
+  public options: any;
+  public params: any;
+
+  private _defaultParams: any = { georems: [], nbrem: 0};
+
+  constructor(apiClient: ApiClient, storage: IReportStorage, options: any) {
+    this.options = options;
+    this.params = {};
     this._apiClient = apiClient;
+    this._storage = storage;
+
+    this.initialize(options);
+  }
+
+  async initialize(options: any): Promise<void> {
+    this.params = this._storage.loadParams('report') || this._defaultParams;
+
+
   }
 
   /**
    * Create a new report *locally*
+   * equivalent to postGeorem of ReportForm.js
    * @param report 
    */
-  async createReport(report: Report): Promise<Report> {
+  async createReport(report: Report, withSubmit: boolean = false): Promise<Report> {
     throw new Error('Not implemented');
   }
 
@@ -41,6 +60,7 @@ export class ReportManager {
 
   /**
    * See if the type is correct
+   * equivalent to postPhotosPending of ReportForm.js
    * @param file: File to upload
    */
   async uploadAttachement(reportId: number, file: File): Promise<void> {
@@ -65,7 +85,7 @@ export class ReportManager {
   async deleteReport(reportId: number): Promise<void> {
     throw new Error('Not implemented');
   }
-  
+
   /**
    * Get a report
    * @param reportId 
