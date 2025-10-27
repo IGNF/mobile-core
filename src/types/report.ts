@@ -2,13 +2,14 @@ import { Fill, Stroke, Style } from 'ol/style';
 import CircleStyle from 'ol/style/Circle';
 import Text from 'ol/style/Text';
 import { Feature } from 'ol';
+import { Projection } from 'ol/proj';
 
 /**
  * Report (georep/georem) definition
  */
 export interface Report {
   id: number;
-  communityId: number;
+  communityId: number; // community_id ?
   themeId: number;
   geometry: string;
   comment: string;
@@ -20,6 +21,27 @@ export interface Report {
   createdAt: Date;
   modifiedAt?: Date;
   userId?: number;
+}
+
+export interface ReportPostParams {
+  community_id: number;
+  themeId: number;
+  geometry: string;
+  comment: string;
+  attributes?: string;
+  photos?: ReportPhoto[];
+  photosToSend?: boolean;
+  sketch?: string;
+  lon?: number;
+  lat?: number;
+  territory?: string;
+  features?: Feature[];
+  proj?: Projection;
+  insee?: string;
+  protocol?: string;
+  theme?: string;
+  themes?: string;
+  version?: string;
 }
 
 /**

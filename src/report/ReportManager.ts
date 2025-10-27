@@ -10,8 +10,10 @@
 import { ApiClient } from 'collaboratif-client-api';
 
 // Local types
-import { Report, ReportFilter } from '../types/report';
+import { Report, ReportFilter, ReportPostParams } from '../types/report';
 import { IReportStorage } from '../abstracts/IReportStorage';
+import Feature from 'ol/Feature';
+import { Projection } from 'ol/proj';
 
 /**
  * Report manager
@@ -24,7 +26,7 @@ export class ReportManager {
   public options: any;
   public params: any;
 
-  private _defaultParams: any = { georems: [], nbrem: 0};
+  private _defaultParams: any = { georems: [], nbrem: 0 };
 
   constructor(apiClient: ApiClient, storage: IReportStorage, options: any) {
     this.options = options;
@@ -37,17 +39,54 @@ export class ReportManager {
 
   async initialize(options: any): Promise<void> {
     this.params = this._storage.loadParams('report') || this._defaultParams;
-
-
   }
 
   /**
    * Create a new report *locally*
    * equivalent to postGeorem of ReportForm.js
    * @param report 
+   * 
+   * TODO: see the difference between the local and server report creation
    */
-  async createReport(report: Report, withSubmit: boolean = false): Promise<Report> {
-    throw new Error('Not implemented');
+  async createReport(params: ReportPostParams, withSubmit: boolean = false): Promise<Report> {
+    if (!this.params || !this.params.geometry || (!this.params.lon && !this.params.lat)) {
+      throw Error('BADREM: neither geometry, lon or lat exists');
+    }
+
+    const post: any = {
+      comment: params.comment,
+      geometry: this.params.geometry || `POINT(${this.params.lon} ${this.params.lat})`,
+    };
+
+    // Optional attributes => to implement
+    if (params.sketch) {
+      post.sketch = params.sketch;
+    } else if (params.features) {
+      post.sketch = this.feature2sketch(params.features, this.params.proj);
+    }
+
+
+    post.community = params.community_id > 0 ? params.community_id : "-1";
+    if (params.themes) {
+      let th = params.themes.split("::");
+      var group = parseInt(th[0]);
+      post.attributes = JSON.stringify({
+        "community": group,
+        "theme": params.theme,
+        "attributes": params.attributes ? JSON.parse(params.attributes) : {}
+      });
+    }
+
+    // if withSubmit?
+    const response = await this._apiClient.addReport(post);
+    const reportId = response.data.id;
+
+    if (params.photos && params.photos.length) {
+      params.photosToSend = true;
+    }
+    await this.uploadAttachements(reportId, params); // see type here
+
+    return response.data;
   }
 
   /**
@@ -63,7 +102,7 @@ export class ReportManager {
    * equivalent to postPhotosPending of ReportForm.js
    * @param file: File to upload
    */
-  async uploadAttachement(reportId: number, file: File): Promise<void> {
+  async uploadAttachements(reportId: number, report: ReportPostParams): Promise<void> {
     throw new Error('Not implemented');
     // create postData and use:
     // apiClient.addAttachments(reportId, postData)
@@ -99,6 +138,14 @@ export class ReportManager {
    * @param filter 
    */
   async listReports(filter?: ReportFilter, fromServer: boolean = true): Promise<Report[]> {
+    throw new Error('Not implemented');
+  }
+
+  feature2sketch(features: Feature[], proj: Projection): string {
+    throw new Error('Not implemented');
+  }
+
+  sketch2feature(sketch: string, proj: Projection): Feature[] {
     throw new Error('Not implemented');
   }
 
