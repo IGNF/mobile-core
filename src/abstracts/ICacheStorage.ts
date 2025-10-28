@@ -15,7 +15,7 @@ export interface ICacheStorage {
   listTiles(prefix: string): Promise<string[]>;
 
   // Metadata operations
-  saveMetadata(key: string, data: CacheMetadata): Promise<void>;
+  saveMetadata(key: string, data: VectorCacheMetadata | CacheMetadata): Promise<void>;
   getMetadata(key: string): Promise<CacheMetadata | null>;
   deleteMetadata(key: string): Promise<void>;
   listMetadata(prefix: string): Promise<VectorCacheMetadata[] | CacheMetadata[]>;

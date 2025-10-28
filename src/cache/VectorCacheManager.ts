@@ -2,14 +2,17 @@
  * This class is responsible for managing the vector cache
  * @migrated from: ol/cache/CacheVector.js
  */
-
 import LayerGroup from "ol/layer/Group";
-import { ICacheStorage } from '../abstracts/ICacheStorage';
-import { ApiClient } from 'collaboratif-client-api';
-import { VectorCacheMetadata } from "./types";
-import { CollabVectorLayer } from "../layers/CollabVectorLayer";
 import VectorSource from "ol/source/Vector";
 import VectorLayer from "ol/layer/Vector";
+
+import { ApiClient } from 'collaboratif-client-api';
+
+import { ICacheStorage } from '../abstracts/ICacheStorage';
+import { VectorCacheMetadata } from "./types";
+import { CollabVectorLayer } from "../layers/CollabVectorLayer";
+import { Community } from "../collaborative/types";
+import { createEmpty } from "ol/extent";
 
 export class VectorCacheManager {
   private readonly CACHE_PREFIX = 'vector:cache:';
@@ -78,59 +81,57 @@ export class VectorCacheManager {
       }
     }
     return layers;
-  } catch(error: any) {
-    console.error('Error getting cache layers:', error);
-    return [];
-  }
-
-  async deleteCache(id: string): Promise<void> {
-    // console.log('removeCACHE')
-    // // Remove in cache list
-    // for (var i = this.wapp.param.vectorCache.length - 1; i >= 0; i--) {
-    //   if (this.wapp.param.vectorCache[i] === cache) {
-    //     this.wapp.param.vectorCache.splice(i, 1);
-    //   }
-    // }
-    // // Remove file on device
-    // var dir = this.getCacheFileName(cache);
-    // CordovApp.File.getDirectory(dir, function (entry) {
-    //   if (entry.isDirectory) entry.removeRecursively();
-    // });
-    // // Update
-    // this.wapp.saveParam();
-    // var guichet = this.getCurrentGuichet();
-    // if (this.wapp.getIdGuichet() === guichet.id) {
-    //   this.wapp.setGuichet(guichet);
-    // }
   }
 
   /**
+   * Delete a cache
+   * @migrated from removeCache function
    * 
+   * @param id: Cache id
+   */
+  async deleteCache(id: string): Promise<void> {
+    const cacheKey = this.CACHE_PREFIX + id;
+    const cacheMetadata = await this.storage.getMetadata(cacheKey) as VectorCacheMetadata;
+    if (!cacheMetadata) {
+      return;
+    }
+    await this.storage.deleteMetadata(cacheKey);
+  }
+
+  /**
+   * Add a map in cache
    * @param name 
    * @param layers 
    */
   async addCache(name: string, layers: any[]): Promise<void> {
-    //   if (!layers.length) return;
-    // var guichet = this.getCurrentGuichet();
+    if (!layers.length) return;
+    const user = (await this.apiClient.getUser()).data;
+    if (!user) {
+      throw new Error('User not found');
+    }
+    const guichet = user.communities.find((community: Community) => community.active === true);
+    if (!guichet) {
+      throw new Error('Guichet not found');
+    }
 
-    // if (!this.wapp.param.vectorCache) this.wapp.param.vectorCache = [];
-    // var id = 0;
-    // for (var i=0, c; c=this.wapp.param.vectorCache[i]; i++) {
-    //   id = Math.max(id, c.id||0);
-    // }
-    // var cache = {
-    //   id: id+1,
-    //   id_guichet: guichet.id,
-    //   nom: name,
-    //   layers: layers,
-    //   date: (new Date()).toISODateString(),
-    //   extent: ol_extent_createEmpty(),
-    //   extents: [],
-    //   extentNames: [], // noms de CacheExtent
-    //   loaded: false
-    // }
-    // this.wapp.param.vectorCache.push (cache);
-    // this.wapp.saveParam();
+    const cacheMetadataList = await this.storage.listMetadata(this.CACHE_PREFIX) as VectorCacheMetadata[];
+    const maxId = Math.max(0, ...cacheMetadataList.map((cache: VectorCacheMetadata) => parseInt(cache.id)));
+    const now = new Date();
+    const cache: VectorCacheMetadata = {
+      id: String(maxId + 1),
+      name: name,
+      type: 'vector',
+      created: now,
+      modified: now,
+      size: 0,
+      id_guichet: guichet.id,
+      nom: name,
+      layers: layers,
+      extent: createEmpty(),
+      projection: 'EPSG:3857' // see if it's correct
+    };
+
+    await this.storage.saveMetadata(this.CACHE_PREFIX, cache);
   }
 
 }

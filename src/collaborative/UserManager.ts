@@ -6,7 +6,9 @@
 
 import { ApiClient } from 'collaboratif-client-api';
 
-import { User, Community, CommunityMember, UserManagerConfig, IUserStorage, CommunityLayer, TableColumn } from './types';
+import { User, Community, CommunityMember, UserManagerConfig, CommunityLayer, TableColumn } from './types';
+
+import { IUserStorage } from '../abstracts/IUserStorage';
 
 import EventManager from '../utils/EventManager';
 
