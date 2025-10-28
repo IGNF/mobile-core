@@ -1,5 +1,5 @@
 import { Feature } from "ol";
-import { CacheMetadata } from "../cache/types";
+import { CacheMetadata, VectorCacheMetadata } from "../cache/types";
 
 /**
  * Storage abstraction for cache operations
@@ -18,7 +18,7 @@ export interface ICacheStorage {
   saveMetadata(key: string, data: CacheMetadata): Promise<void>;
   getMetadata(key: string): Promise<CacheMetadata | null>;
   deleteMetadata(key: string): Promise<void>;
-  listMetadata(prefix: string): Promise<CacheMetadata[]>;
+  listMetadata(prefix: string): Promise<VectorCacheMetadata[] | CacheMetadata[]>;
 
   // Vector feature operations
   saveFeatures(layerId: string, features: Feature[]): Promise<void>;

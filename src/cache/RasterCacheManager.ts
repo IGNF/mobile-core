@@ -4,7 +4,7 @@
  */
 
 import EventManager from "../utils/EventManager";
-import { ICacheStorage } from "../types/cache";
+import { ICacheStorage } from "../abstracts/ICacheStorage";
 import LayerGroup from "ol/layer/Group";
 import { CacheMetadata, CacheProgress, RasterCacheConfig, RasterCacheOptions } from "./types";
 import ExtentManager from "./ExtentManager";
@@ -145,7 +145,7 @@ export default class RasterCacheManager {
    */
   private async saveCacheOrder(): Promise<void> {
     const cacheMetadataList = await this.storage.listMetadata(this.CACHE_PREFIX);
-    const order = cacheMetadataList.map(meta => meta.id.replace(this.CACHE_PREFIX, ''));
+    const order = cacheMetadataList.map((meta: CacheMetadata) => meta.id.replace(this.CACHE_PREFIX, ''));
 
     await this.storage.saveMetadata(this.ORDER_KEY, {
       id: this.ORDER_KEY,

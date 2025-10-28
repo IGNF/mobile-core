@@ -3,7 +3,7 @@
  * Coordinates raster and vector cache managers
  */
 
-import { ICacheStorage } from '../types/cache';
+import { ICacheStorage } from '../abstracts/ICacheStorage';
 import RasterCacheManager from './RasterCacheManager';
 import { CacheMetadata } from './types';
 import { VectorCacheManager } from './VectorCacheManager';

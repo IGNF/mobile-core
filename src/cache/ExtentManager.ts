@@ -6,7 +6,7 @@
 
 import { extend, Extent } from 'ol/extent';
 import { createEmpty } from 'ol/extent';
-import { ICacheStorage } from '../types/cache';
+import { ICacheStorage } from '../abstracts/ICacheStorage';
 
 export default class ExtentManager {
   private readonly EXTENT_PREFIX = 'extent:';

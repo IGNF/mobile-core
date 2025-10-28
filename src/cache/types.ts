@@ -1,4 +1,5 @@
 import { Extent } from 'ol/extent';
+import { CollabVectorLayerOptions } from '../layers/types';
 
 export interface CacheMetadata {
   id: string;
@@ -16,6 +17,12 @@ export interface CacheMetadata {
   featureCount?: number;
   projection?: string;
   extra?: Record<string, any>; // Extensible metadata
+}
+
+export interface VectorCacheMetadata extends CacheMetadata {
+  id_guichet: number;
+  nom: string;
+  layers: CollabVectorLayerOptions[];
 }
 
 /**
