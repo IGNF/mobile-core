@@ -5,7 +5,7 @@
  * @migrated from: report/Report.js
  * 
  * TODO:
- * - See if the functions sketch2feature and feature2sketch are required here, and what they do (see report/Report.js line 131)
+ * - See if the functions FEATURE2SKETCH and feature2sketch are required here, and what they do (see report/Report.js line 131)
  */
 import { ApiClient } from 'collaboratif-client-api';
 
@@ -13,7 +13,12 @@ import { ApiClient } from 'collaboratif-client-api';
 import { Report, ReportFilter, ReportPostParams } from '../types/report';
 import { IReportStorage } from '../abstracts/IReportStorage';
 import Feature from 'ol/Feature';
-import { Projection } from 'ol/proj';
+import { Projection, transform } from 'ol/proj';
+import WKT from 'ol/format/WKT';
+import GeoJSON from 'ol/format/GeoJSON';
+import { SimpleGeometry } from 'ol/geom';
+import { getCenter } from 'ol/extent';
+import { DEFAULT_REPORT_VALUES } from './DefaultReportValues';
 
 /**
  * Report manager
@@ -175,85 +180,95 @@ export class ReportManager {
     throw new Error('Not implemented');
   }
 
+  /** Write feature(s) to sketch
+     * @param {ol.feature|Array<ol.feature>} the feature(s) to write
+     * @param {ol.proj.ProjectionLike} projection of the features
+     * @return {Object} the sketch in json format
+     */
   feature2sketch(features: Feature[], proj: Projection): string {
-    throw new Error('Not implemented');
+    if (!features) return "";
+    if (!(features instanceof Array)) features = [features];
 
-    // to implement:
-    // if (!f) return "";
-    //     if (!(f instanceof Array)) f = [f];
-    //     const format = new ol_format_WKT();
-    //     const geojsonFormat = new ol_format_GeoJSON();
-    //     var pt = f[0].getGeometry().getFirstCoordinate();
-    //     if (proj) {
-    //         pt = ol_proj_transform(pt, proj, 'EPSG:4326')
-    //     }
+    const format = new WKT();
+    const geoJsonFormat = new GeoJSON();
+    let projectionTransform;
 
-    //     let style = {
-    //         "graphicName": "circle",
-    //         "diam": 2,
-    //         "frontcolor": "#FFAA00;1",
-    //         "backcolor": "#FFAA00;0.5"
-    //     };
+    const geometry = features[0]?.getGeometry();
+    // we add a test here because getGeometry seems to return a Geometry object, not a SimpleGeometry object
+    // but Geometry does not have a getFirstCoordinate method
+    if (geometry instanceof SimpleGeometry) {
+      projectionTransform = geometry.getFirstCoordinate();
+    } else if (geometry) { // just as fallback
+      projectionTransform = getCenter(geometry.getExtent());
+    }
 
-    //     var croquis = {
-    //         "contexte": {
-    //             "lon": pt[0].toFixed(7),
-    //             "lat": pt[1].toFixed(7),
-    //             "zoom": 15,
-    //             "layers": ["GEOGRAPHICALGRIDSYSTEMS.MAPS"]
-    //         },
-    //         "objects": []
-    //     };
+    if (projectionTransform) {
+      projectionTransform = transform(projectionTransform, proj, DEFAULT_REPORT_VALUES.FEATURE2SKETCH.TRANSFORM_PROJECTION);
+    }
 
-    //     for (var i=0; i<f.length; i++) {
-    //         var t=""; 
-    //         var object = {"style": style};
-    //         var g = f[i].getGeometry().clone();
-    //         var att = f[i].getProperties();
-    //         delete att.geometry;
-    //         if (proj) {
-    //             g.transform(proj, 'EPSG:4326');
-    //         }
-    //         if (g.getLayout()==='XYZM') {
-    //             att.geom = geojsonFormat.writeGeometry(g);
-    //         }
-    //         object.name = "";
-    //         object.attributes = att;
-    //         object.geometry = format.writeGeometry(g);
-    //         // Geometry
-    //         switch (f[i].getGeometry().getType()) {
-    //             case 'Point': 
-    //                 t = 'Point';
-    //                 break;
-    //             case 'LineString': 
-    //                 t = 'Ligne'; 
-    //                 break;
-    //             case 'MultiPolygon': 
-    //             case 'Polygon': 
-    //                 t = 'Polygone';
-    //                 break;
-    //         }
-    //         object.type = t;
-    //         croquis.objects.push(object);
-    //     }
-    //     return JSON.stringify(croquis);
+    const croquis: any = {
+      context: {
+        ...DEFAULT_REPORT_VALUES.FEATURE2SKETCH.SKETCH_CONTEXT,
+        lon: projectionTransform?.[0]?.toFixed(7) || DEFAULT_REPORT_VALUES.FEATURE2SKETCH.SKETCH_CONTEXT.lon,
+        lat: projectionTransform?.[1]?.toFixed(7) || DEFAULT_REPORT_VALUES.FEATURE2SKETCH.SKETCH_CONTEXT.lat,
+      },
+      objects: []
+    };
+
+    for (const feature of features) {
+      const object: any = { style: DEFAULT_REPORT_VALUES.FEATURE2SKETCH.SKETCH_STYLE };
+      const geoClone = feature.getGeometry()?.clone();
+      const attributes = feature.getProperties();
+      delete attributes.geometry;
+
+      if (proj) {
+        geoClone?.transform(proj, DEFAULT_REPORT_VALUES.FEATURE2SKETCH.TRANSFORM_PROJECTION);
+      }
+      if ((geoClone as SimpleGeometry)?.getLayout() === 'XYZM') {
+        attributes.geom = geoJsonFormat.writeGeometry(geoClone as SimpleGeometry);
+      }
+
+      object.name = "";
+      object.attributes = attributes;
+      object.geometry = format.writeGeometry(geoClone as SimpleGeometry);
+      switch ((geoClone as SimpleGeometry)?.getType()) {
+        case 'Point':
+          object.type = 'Point';
+          break;
+        case 'LineString':
+          object.type = 'LineString';
+          break;
+        case 'Polygon':
+        case 'MultiPolygon':
+          object.type = 'Polygone';
+          break;
+      }
+      croquis.objects.push(object);
+    }
+
+    return JSON.stringify(croquis);
   }
 
-  sketch2feature(sketch: string, proj: Projection): Feature[] {
-    throw new Error('Not implemented');
+  /** Get feature(s) from sketch
+    * @param sketch the sketch in json
+    * @param proj projection of the features, default `EPSG:3857`
+    * @return the feature(s)
+    */
+  sketch2feature(sketch: string | any, proj: Projection): Feature[] {
+    if (typeof sketch === 'string') {
+      sketch = JSON.parse(sketch);
+    }
 
-    // to implement:
-    // if (typeof (sketch) === "string") sketch = JSON.parse(sketch);
-    // const features = [];
-    // const format = new ol_format_WKT();
-    // let objects = sketch.objects;
-    // for (var i = 0, f; f = objects[i]; i++) {
-    //   var prop = f.attributes ? f.attributes : {};
-    //   prop.geometry = format.readGeometry(f.geometry);
-    //   prop.geometry.transform("EPSG:4326", proj || "EPSG:3857")
-    //   features.push(new ol_Feature(prop));
-    // }
-    // return features;
+    const features: Feature[] = [];
+    const format = new WKT();
+    const objects = sketch.objects;
+    for (const object of objects) {
+      const prop: any = object.attributes ? object.attributes : {};
+      prop.geometry = format.readGeometry(object.geometry);
+      prop.geometry.transform(DEFAULT_REPORT_VALUES.SKETCH2FEATURE.TRANSFORM_PROJECTION, proj || DEFAULT_REPORT_VALUES.SKETCH2FEATURE.TRANSFORM_PROJECTION_FALLBACK);
+      features.push(new Feature(prop));
+    }
+    return features;
   }
 
 }
