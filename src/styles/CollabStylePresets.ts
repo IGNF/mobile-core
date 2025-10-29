@@ -127,14 +127,13 @@ export class CollabStylePresets {
       else return Math.PI - Math.atan2(y, x);
     }
 
-    // try to find a type for the feature - Feature doesn't have getGeometry() method
-    return (feature: any): Style[] => {
+    return (feature: Feature): Style[] => {
       const sens = feature.get(options.attribute)
       const fstyle: StyleRule = {
         label: fleche(sens),
         fontWeight: "bold",
         fontSize: options.size,
-        labelRotation: lrot(sens, feature.getGeometry())
+        labelRotation: lrot(sens, feature.getGeometry() as LineString | MultiLineString) // we have to cast to LineString | MultiLineString because getGeometry() can return undefined
       }
       const style = new Style({
         text: this.styler.text(fstyle)

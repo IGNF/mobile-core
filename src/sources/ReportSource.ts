@@ -1,18 +1,14 @@
 /**
  * Report source for displaying georep reports on the map
  * Migrated from: ol/source/Report.js
- * 
- * TODO:
- * - Add cache management for reports saving and loading
- * - See the implementation of "addFeatures" in the old code
  */
 
 import { ApiClient } from 'collaboratif-client-api';
 
 import EventManager from '../utils/EventManager';
 
-import { UserManager } from '../collaborative/UserManager';
 import { Community, User } from '../collaborative/types';
+import { ReportSourceOptions } from './types';
 
 import { Feature } from 'ol';
 import { BASE_RADIUS, ReportStatus, STATUS_STYLES, ClosedReportStatus } from '../types/report';
@@ -26,14 +22,18 @@ export default class ReportSource {
 
   private _cluster: Style[] = [];
   private _apiClient: ApiClient;
-  private _userManager: UserManager;
   private _eventManager: EventManager;
+  private _cache?: any; // ICacheStorage - avoiding circular dependency
+  private _communityId?: number;
+  private _loadClosed: boolean;
 
-  constructor() {
-    this._apiClient = new ApiClient();
+  constructor(options: ReportSourceOptions) {
+    this._apiClient = options.client;
     this._eventManager = new EventManager();
     this._cluster = [];
-    this._userManager = new UserManager(this._apiClient);
+    this._cache = options.cache;
+    this._communityId = options.communityId;
+    this._loadClosed = options.loadClosed ?? false;
   }
 
   /**
@@ -61,6 +61,55 @@ export default class ReportSource {
     }
     else {
       return STATUS_STYLES[ReportStatus.Pending] || new Style({});
+    }
+  }
+
+  /**
+   * Gets the cache key for reports based on community ID
+   * @returns Cache key string
+   */
+  private getCacheKey(): string {
+    const communityId = this._communityId || 'default';
+    return `reports:${communityId}`;
+  }
+
+  /**
+   * Saves reports to cache
+   * @param reports - Reports to cache
+   */
+  private async saveToCache(reports: Report[]): Promise<void> {
+    if (!this._cache) return;
+
+    try {
+      // Convert reports to features for storage
+      const features = reports.map(report => {
+        const feature = new Feature(report);
+        return feature;
+      });
+
+      const cacheKey = this.getCacheKey();
+      await this._cache.saveFeatures(cacheKey, features);
+    } catch (error) {
+      console.error('Failed to save reports to cache:', error);
+    }
+  }
+
+  /**
+   * Loads reports from cache
+   * @returns Cached reports or empty array
+   */
+  private async loadFromCache(): Promise<Report[]> {
+    if (!this._cache) return [];
+
+    try {
+      const cacheKey = this.getCacheKey();
+      const features: Feature[] = await this._cache.loadFeatures(cacheKey);
+      
+      // Convert features back to reports
+      return features.map((feature: Feature) => feature.getProperties() as Report);
+    } catch (error) {
+      console.error('Failed to load reports from cache:', error);
+      return [];
     }
   }
 
@@ -101,47 +150,67 @@ export default class ReportSource {
    *
    * @param extent - The extent to load reports for
    * @param page - The page number to load
-   * @param loadClosedReports - Whether to load closed reports
+   * @param loadClosedReports - Whether to load closed reports (defaults to instance setting)
    * @returns The reports
    */
-  async loadReports(extent: Extent, page: number = 1, loadClosedReports: boolean = false): Promise<Report[]> {
-    const user: User = await this._userManager.getUser();
-    const activeCommunity = user.communities.find((community: Community) => community.isActive === true)?.id;
+  async loadReports(extent: Extent, page: number = 1, loadClosedReports?: boolean): Promise<Report[]> {
+    try {
+      const user: User = (await this._apiClient.getUser()).data;
+      const activeCommunity = user.communities.find((community: Community) => community.active === true)?.id;
 
-    // to type
-    let params = {
-      box: extent.join(','),
-      limit: 100,
-      communities: [activeCommunity],
-      page: page
-    };
+      // Use instance setting if not explicitly provided
+      const shouldLoadClosed = loadClosedReports ?? this._loadClosed;
 
-    let reportStatus = Object.values(ReportStatus);
-    if(!loadClosedReports) {
-      const closedStatus = Object.values(ClosedReportStatus);
-      reportStatus = reportStatus.filter(status => !closedStatus.includes(status as unknown as ClosedReportStatus));
-    }
-
-    const reportsResponse = await this._apiClient.getReports(params);
-
-    let contentRangeParts = reportsResponse.headers["content-range"].split('/');
-      let range = contentRangeParts[0].split('-');
-      if (reportsResponse.status == 200 || (reportsResponse.status == 206 && range[1] === contentRangeParts[1])) {
-        return reportsResponse.data;
-      } else if (reportsResponse.status == 206) {
-        page = page + 1;
-        const nextResult = await this.loadReports(extent, page, loadClosedReports);
-        const featuresResult = nextResult.concat(reportsResponse.data);
-        // add to cache here
-        // TODO: add to cache here (call cache manager ?)
-        return featuresResult;
-      } else {
-        // TODO: load cache here (call cache manager ?)
-        return [];
+      // Update community ID if not set
+      if (!this._communityId && activeCommunity) {
+        this._communityId = activeCommunity;
       }
+
+      let params = {
+        box: extent.join(','),
+        limit: 100,
+        communities: [activeCommunity],
+        page: page
+      };
+
+      let reportStatus = Object.values(ReportStatus);
+      if (!shouldLoadClosed) {
+        const closedStatus = Object.values(ClosedReportStatus);
+        reportStatus = reportStatus.filter(status => !closedStatus.includes(status as unknown as ClosedReportStatus));
+      }
+
+      const reportsResponse = await this._apiClient.getReports(params);
+
+      let contentRangeParts = reportsResponse.headers["content-range"].split('/');
+      let range = contentRangeParts[0].split('-');
+      
+      if (reportsResponse.status == 200 || (reportsResponse.status == 206 && range[1] === contentRangeParts[1])) {
+        // Successfully loaded all reports - save to cache
+        const reports = reportsResponse.data;
+        await this.saveToCache(reports);
+        return reports;
+      } else if (reportsResponse.status == 206) {
+        // Partial content - load next page recursively
+        page = page + 1;
+        const nextResult = await this.loadReports(extent, page, shouldLoadClosed);
+        const allReports = nextResult.concat(reportsResponse.data);
+        
+        // Save complete result to cache
+        await this.saveToCache(allReports);
+        return allReports;
+      } else {
+        // Request failed - load from cache
+        console.warn('Failed to load reports from server, loading from cache');
+        return await this.loadFromCache();
+      }
+    } catch (error) {
+      // On error, try to load from cache
+      console.error('Error loading reports:', error);
+      return await this.loadFromCache();
+    }
   }
 
-  async getReport(reportId: number): Promise<Report | null> {
+  async getReport(_reportId: number): Promise<Report | null> {
     throw new Error('Not implemented');
   }
 

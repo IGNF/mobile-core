@@ -41,8 +41,22 @@ export interface WFSSourceOptions extends SourceOptions {
   proxy: string;
   cache?: string; // Cache directory path
   srs?: string;
+  table?: Table; // Not sure about this one, see once implemented
   // authentication?: (callback: (username: string, password: string) => void) => void;
   // getCapabilities?: boolean; // Fetch capabilities
+}
+
+/**
+ * Report source options
+ */
+export interface ReportSourceOptions {
+  client: ApiClient;
+  communityId?: number;
+  projection?: string;
+  tileZoom?: number;
+  filter?: ReportFilter;
+  cache?: any; // ICacheStorage - avoiding circular dependency
+  loadClosed?: boolean;
 }
 
 /**

@@ -19,6 +19,7 @@ import { SOURCE_ERROR_CODES } from "./ErrorCodes";
 import { Projection, transformExtent } from "ol/proj";
 import GML3 from "ol/format/GML3";
 import GML2 from "ol/format/GML2";
+import { Table } from "../collaborative/types";
 
 
 export default class WFSSource extends VectorSource {
@@ -59,6 +60,7 @@ export default class WFSSource extends VectorSource {
       strategy = tile(tileGrid);
 
       computedLocalProperties.tileGrid = tileGrid;
+      computedLocalProperties.table = options.table as Table;
     }
     else {
       strategy = bbox;

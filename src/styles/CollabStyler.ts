@@ -351,9 +351,7 @@ export class CollabStyler {
       })
     });
 
-
-    // TODO: find the right type for the feature
-    return (feature: any, res: number): Style | Style[] => {
+    return (feature: Feature, res: number): Style | Style[] => {
       // so, here should pass in parameter the directory list fetched from capacitor
       if (options?.directoryList) {
         this.loadSymbolCache(options.directoryList);
@@ -479,9 +477,12 @@ export class CollabStyler {
 
           const sens = feature.get(directionField.attribute);
           if (sens === direct || sens === inverse) {
-            const rotation = lrot(sens, feature.getGeometry());
-            directionStyle.getText()?.setRotation(rotation);
-            return [olStyle, directionStyle];
+            const geom = feature.getGeometry();
+            if (geom && (geom instanceof LineString || geom instanceof MultiLineString)) {
+              const rotation = lrot(sens, geom);
+              directionStyle.getText()?.setRotation(rotation);
+              return [olStyle, directionStyle];
+            }
           }
         }
       }

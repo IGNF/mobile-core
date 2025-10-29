@@ -185,8 +185,8 @@ export class WFSLayer extends VectorLayer {
 
   public createSource(options: WFSSourceOptions, cache?: any) {
     const source = new WFSSource(options, cache);
-    // TODO, there is no table property in the source, see why and how to implement it here
-    (source as any).table = {
+    // this seems strange because table doesn't have an attributes property
+    source.localProperties.table = {
       attributes: options.geoservice.input_mask?.attributes ?? {}
     }
     this.setSource(source);
@@ -199,11 +199,10 @@ export class WFSLayer extends VectorLayer {
   /**
    * Get the table for the WFS layer
    * @returns The table for the WFS layer, or undefined if not ready
-   * TODO, see TODO in createSource, we have the same issue here
    */
   public getTable(): Table | undefined {
     const source = this.getSource();
-    if (source && source instanceof WFSSource) return (source as any).table;
+    if (source && source instanceof WFSSource) return source.localProperties.table;
     return undefined;
   }
 
