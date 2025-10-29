@@ -24,12 +24,20 @@ export class WFSLayer extends VectorLayer {
 
   constructor(options?: WFSLayerOptions, cache?: string) {
     options = options || {} as WFSLayerOptions;
-    if (!options.geoservice.input_mask) options.geoservice.input_mask = {};
-
-    if (!options.geoservice?.url) return;
+    if (!options.geoservice) {
+      options.geoservice = {} as any; // Provide minimal geoservice to prevent errors
+    }
+    if (!options.geoservice.input_mask) {
+      options.geoservice.input_mask = {};
+    }
 
     const superOptions = WFSLayer._computeWFSLayerOptions(options);
     super(superOptions);
+
+    if (!options.geoservice?.url) {
+      console.error('WFSLayer: geoservice.url is required');
+      return;
+    }
 
     this.cache = cache;
     this.layerOptions = options;

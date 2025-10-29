@@ -49,12 +49,8 @@ export class VectorCacheManager {
             // see what to do here:
             // l = this.wapp.layerCollabVector(l, this.getCacheFileName(c,k)+'/', c.extent);
             const layerBase = new CollabVectorLayer(layer, {
-              properties: {
-                name: layer.name,
-                tableId: layer.table.id,
-                extent: cacheMetadata.extent,
-                projection: cacheMetadata.projection
-              }
+              // Source options for the collaborative vector
+              cache: this.storage,
             });
             layerGroup.getLayers().push(layerBase);
 

@@ -15,7 +15,7 @@ import { CollabStyler } from "../styles/CollabStyler";
 
 export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
 
-  constructor(options: CollabVectorLayerOptions, sourceOptions: any) {
+  constructor(options: CollabVectorLayerOptions, sourceOptions?: Partial<CollabVectorSourceOptions>) {
     sourceOptions = sourceOptions || {};
 
     const superOptions = CollabVectorLayer._computeCollabVectorLayerOptions(options);
@@ -38,9 +38,9 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
   /**
    * Computes the options for the CollabVector layer
    * @param options 
-   * @returns The options for the CollabVector layer
+   * @returns The options for the VectorLayer super constructor
    */
-  private static _computeCollabVectorLayerOptions(options: CollabVectorLayerOptions): any {
+  private static _computeCollabVectorLayerOptions(options: CollabVectorLayerOptions): Record<string, any> {
     return {
       database: options.database,
       name: options.name,
@@ -59,15 +59,19 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
    * TODO
    * Voir si on peut refacto l'attribut "table", options.table semble être égal à sourceOptions.table et table
    */
-  public createSource(options: CollabVectorLayerOptions, sourceOptions: CollabVectorSourceOptions, table: Table) {
-
-    sourceOptions.table = table;
+  public createSource(options: CollabVectorLayerOptions, sourceOptions: Partial<CollabVectorSourceOptions>, table: Table) {
+    // Ensure sourceOptions has required properties
+    const completeSourceOptions: CollabVectorSourceOptions = {
+      ...sourceOptions,
+      table: table,
+      client: sourceOptions.client || options.client,
+    } as CollabVectorSourceOptions;
     if (options.checkSourceOptions) {
-      options.checkSourceOptions(this, sourceOptions, table);
+      options.checkSourceOptions(this, completeSourceOptions, table);
     }
 
     // CollabVector source
-    const vectorSource = new CollabVectorSource(sourceOptions);
+    const vectorSource = new CollabVectorSource(completeSourceOptions);
     this.setSource(vectorSource);
 
     // CollabVector Layer
@@ -115,12 +119,11 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
       }
     }
 
-    // Style of the feature style
-    // Todo: search that, I don't understand this test 'CollabStyler' => isn't it a class?
-    if (!options.style && CollabStyler) {
+    // Apply default styling using CollabStyler if no custom style provided
+    if (!options.style) {
       // todo, "options.cacheUrl" was before CordovApp.File.getFileURI(options.cacheUrl)
       // see if we can now pass directly the cacheURL in the options (see this file in the contructor - same issue)
-      this.setStyle(CollabStyler.getFeatureStyleFunction(table, options.cacheUrl ?? '', sourceOptions));
+      this.setStyle(CollabStyler.getFeatureStyleFunction(table, options.cacheUrl ?? '', completeSourceOptions));
     }
 
     this.dispatchEvent({ type: "ready", source: vectorSource } as any);

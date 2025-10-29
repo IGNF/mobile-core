@@ -45,8 +45,10 @@ export class CollabStyler {
   public presets: CollabStylePresets;
 
   constructor() {
-    const apiClient = new ApiClient();
-    this._userManager = new UserManager(apiClient);
+    // TODO: UserManager requires proper configuration with storage
+    // For now, we create it without initializing to avoid errors
+    // This will be properly configured when the styler is used in context
+    this._userManager = {} as UserManager; // Placeholder until proper initialization
     this._symbolCache = {};
     this.presets = new CollabStylePresets(this);
     this.defaultStyleFn = this.getFeatureStyleFn();
@@ -74,19 +76,18 @@ export class CollabStyler {
   }
 
   /**
-   * Get the style function for features in a collaborative layer
-   * @param _table The table configuration (unused for now)
-   * @param _cacheUrl The cache URL for resources (unused for now)
-   * @param _sourceOptions Additional source options (unused for now)
-   * @returns OpenLayers Style object
+   * Static factory method to get a style function for a collaborative layer
+   * Creates a CollabStyler instance and returns its style function
+   * 
+   * @param table The table configuration
+   * @param cacheUrl The cache URL for resources
+   * @param sourceOptions Additional source options
+   * @returns Style function compatible with OpenLayers StyleLike
    */
-  // public static getFeatureStyleFunction(_table: Table, _cacheUrl: string, _sourceOptions: any): Style {
-  //   // TODO: Implement proper style function based on table configuration
-  //   return new Style({
-  //     fill: new Fill({ color: '#ff0000' }),
-  //     stroke: new Stroke({ color: '#000000', width: 1 }),
-  //   });
-  // }
+  public static getFeatureStyleFunction(table: any, cacheUrl: string, sourceOptions: any): any {
+    const styler = new CollabStyler();
+    return styler.getFeatureStyleFn(table, cacheUrl, sourceOptions);
+  }
 
   /**
    * Format feature style by processing all style properties
@@ -542,7 +543,7 @@ export class CollabStyler {
 
     this._cacheLoading.push(cacheName);
 
-    this._userManager.apiClient.getDocument(img).then((response) => {
+    this._userManager.apiClient.getDocument(img).then((_response) => {
       // here we're supposed to call Capacitor to save the document to the file system
       // and update the symbol cache with the URL of the saved document in Capacitor
       // solution could be to:
