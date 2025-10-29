@@ -10,7 +10,8 @@
 import { ApiClient } from 'collaboratif-client-api';
 
 // Local types
-import { Report, ReportFilter, ReportPostParams } from '../types/report';
+import { Report, ReportPostParams } from './types';
+import { ReportFilter } from '../sources/types';
 import { IReportStorage } from '../abstracts/IReportStorage';
 import Feature from 'ol/Feature';
 import { Projection, transform } from 'ol/proj';

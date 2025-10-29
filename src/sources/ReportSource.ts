@@ -11,7 +11,7 @@ import { Community, User } from '../collaborative/types';
 import { ReportSourceOptions } from './types';
 
 import { Feature } from 'ol';
-import { BASE_RADIUS, ReportStatus, STATUS_STYLES, ClosedReportStatus } from '../types/report';
+import { BASE_RADIUS, ReportStatus, STATUS_STYLES, ClosedReportStatus } from '../report/types';
 import { Style } from 'ol/style';
 import CircleStyle from 'ol/style/Circle';
 import { Extent } from 'ol/extent';

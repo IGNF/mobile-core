@@ -5,7 +5,7 @@
  * Note:
  * - The form validation should be done on the app side as much as possible
  */
-import { Report } from '../types/report';
+import { Report, ReportAttribute } from './types';
 
 /**
  * Report validator
@@ -19,6 +19,10 @@ export class ReportValidator {
    */
   static validate(report: Report): boolean {
     return true;
+  }
+
+  static validateAttribute(name: string, value: any, attribute: ReportAttribute): { valid: boolean, error?: string } {
+    return { valid: true };
   }
 
 }

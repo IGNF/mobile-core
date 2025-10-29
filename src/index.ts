@@ -7,7 +7,9 @@
 export * from './utils/EventManager';
 
 // Types
-export { Report, ReportPhoto, ReportStatus, ReportFilter } from './types/report';
+export { Report, ReportPhoto, ReportStatus } from './report/types';
+export { ReportFilter } from './sources/types';
+
 export { MobileCoreStyle, StyleRule } from './styles/MobileCoreStyle';
 export type { ICacheStorage } from './abstracts/ICacheStorage';
 

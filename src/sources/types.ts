@@ -1,7 +1,7 @@
 import { ApiClient } from "collaboratif-client-api";
 import { Collection, Feature } from "ol";
 import { Geoservice, Table } from "../collaborative/types";
-import { ReportStatus } from "../types/report";
+import { ReportStatus } from "../report/types";
 
 import { LoadingStrategy } from "ol/source/Vector";
 

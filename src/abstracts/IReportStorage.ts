@@ -1,4 +1,4 @@
-import { Report, ReportPhoto } from "../types/report";
+import { Report, ReportPhoto } from "../report/types";
 
 /**
  * Storage abstraction for report operations
