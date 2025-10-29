@@ -154,7 +154,14 @@ export class TileCache extends OlObject {
     this._source?.refresh();
   }
 
-  public asyncTileLoad(asyncLoadFn): void {
+  /**
+   * Sets up async tile loading function
+   * 
+   * @param asyncLoadFn - Optional callback for custom tile loading logic
+   *   - tile: Object with id and url properties
+   *   - callback: Function to call with the loaded URL
+   */
+  public asyncTileLoad(asyncLoadFn?: (tile: { id: string; url: string }, callback: (url: string) => void) => void): void {
     // to implement
 
     /**

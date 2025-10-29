@@ -23,6 +23,7 @@ export interface CollabVectorSourceOptions extends SourceOptions {
   table: Table;
   client: ApiClient;
   cacheUrl?: string;
+  cache?: any; // ICacheStorage - avoiding circular dependency
   online?: boolean;
   outputFormat?: 'CSV' | 'JSON';
   preserved?: Collection<Feature>;

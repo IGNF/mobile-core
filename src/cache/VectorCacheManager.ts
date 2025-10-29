@@ -22,21 +22,19 @@ export class VectorCacheManager {
   }
 
   /**
-   * Get the cache layers for a given guichet and cache
+   * Get the cache layers for a given community
    * 
    * @migrated from getLayers function
    * 
-   * @param guichet: Guichet object (to define)
-   * @param cache: Cache object (to define)
+   * @param community: Community object with id
    * @returns LayerGroup[]
    */
-  async getCacheLayers(guichet: any, cache: any): Promise<LayerGroup[]> {
-    cache = cache || [];
+  async getCacheLayers(community: Community): Promise<LayerGroup[]> {
     const layers: LayerGroup[] = [];
 
     const cacheMetadataList = await this.storage.listMetadata(this.CACHE_PREFIX) as VectorCacheMetadata[];
     for (const cacheMetadata of cacheMetadataList) {
-      if (cacheMetadata.id_guichet === guichet.id) {
+      if (cacheMetadata.id_guichet === community.id) {
         const layerGroup = new LayerGroup({
           properties: {
             title: cacheMetadata.nom,
@@ -95,6 +93,20 @@ export class VectorCacheManager {
     if (!cacheMetadata) {
       return;
     }
+
+    // Delete cached features for each layer
+    if (cacheMetadata.layers) {
+      for (const layer of cacheMetadata.layers) {
+        try {
+          const layerId = `${id}:${layer.table?.id || layer.name}`;
+          await this.storage.deleteFeatures(layerId);
+        } catch (error) {
+          console.error(`Failed to delete features for layer ${layer.name}:`, error);
+        }
+      }
+    }
+
+    // Delete metadata
     await this.storage.deleteMetadata(cacheKey);
   }
 
@@ -131,7 +143,7 @@ export class VectorCacheManager {
       projection: 'EPSG:3857' // see if it's correct
     };
 
-    await this.storage.saveMetadata(this.CACHE_PREFIX, cache);
+    await this.storage.saveMetadata(this.CACHE_PREFIX + cache.id, cache);
   }
 
 }

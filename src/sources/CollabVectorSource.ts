@@ -39,11 +39,11 @@ import EventManager from '../utils/EventManager';
 
 export default class CollabVectorSource extends VectorSource {
 
-  private _projectionUtils: ProjectionUtils;
   private _options: CollabVectorSourceOptions;
   private _eventManager: EventManager;
   private _isLoading: boolean = false;
   private _writeUpdateCounter: number = 0;
+  private _cache?: any; // ICacheStorage - avoiding circular dependency
 
   public table!: Table;
   public localProperties: Record<string, any> = {};
@@ -83,9 +83,9 @@ export default class CollabVectorSource extends VectorSource {
     super(superOptions);
 
     // Step 4: Store instance properties
-    this._projectionUtils = projectionUtils;
     this._options = options || {};
     this._eventManager = new EventManager();
+    this._cache = options.cache;
     this.localProperties = superOptions.properties || {};
 
     // Step 5: Complete collaborative-specific initialization
@@ -359,13 +359,18 @@ export default class CollabVectorSource extends VectorSource {
     const editionCacheFile = this.localProperties.editionCacheFile;
     if (!editionCacheFile) return;
 
-    // TODO: Implement file writing using mobile-device FileSystem module
-    // For now, store in memory/localStorage as a fallback
-    try {
-      // Temporary implementation: store in localStorage
-      localStorage.setItem(editionCacheFile, JSON.stringify(actions));
-    } catch (error) {
-      console.error('ERROR: writeChanges on layer', error);
+    // Save to cache storage if available
+    if (this._cache) {
+      this._saveEditionCache(editionCacheFile, actions).catch(error => {
+        console.error('ERROR: writeChanges on layer', error);
+      });
+    } else {
+      // Fallback to localStorage if no cache storage provided
+      try {
+        localStorage.setItem(editionCacheFile, JSON.stringify(actions));
+      } catch (error) {
+        console.error('ERROR: writeChanges fallback to localStorage', error);
+      }
     }
   }
 
@@ -431,49 +436,71 @@ export default class CollabVectorSource extends VectorSource {
     const editionCacheFile = this.localProperties.editionCacheFile;
     if (!editionCacheFile) return;
 
-    // TODO: Implement file reading using mobile-device FileSystem module
-    // For now, read from localStorage as a fallback
-    try {
-      const cached = localStorage.getItem(editionCacheFile);
-      if (!cached) return;
-
-      const actions = JSON.parse(cached);
-      const formatWKT = this.localProperties.formatWKT;
-
-      // Restore inserted features
-      if (actions.insert && Array.isArray(actions.insert)) {
-        actions.insert.forEach((serialized: any) => {
-          const feature = this.deserializeFeature(serialized, formatWKT);
-          if (feature) {
-            (feature as any).state = 'INSERT';
-            this.insertedFeatures.push(feature);
+    // Load from cache storage if available
+    if (this._cache) {
+      this._loadEditionCache(editionCacheFile)
+        .then(actions => {
+          if (actions) {
+            this._restoreActions(actions);
           }
+        })
+        .catch(error => {
+          console.error('ERROR: loadChanges on layer', error);
         });
+    } else {
+      // Fallback to localStorage if no cache storage provided
+      try {
+        const cached = localStorage.getItem(editionCacheFile);
+        if (cached) {
+          const actions = JSON.parse(cached);
+          this._restoreActions(actions);
+        }
+      } catch (error) {
+        console.error('ERROR: loadChanges fallback to localStorage', error);
       }
+    }
+  }
 
-      // Restore updated features
-      if (actions.update && Array.isArray(actions.update)) {
-        actions.update.forEach((serialized: any) => {
-          const feature = this.deserializeFeature(serialized, formatWKT);
-          if (feature) {
-            (feature as any).state = 'UPDATE';
-            this.updatedFeatures.push(feature);
-          }
-        });
-      }
+  /**
+   * Restores cached actions (inserts, updates, deletes) to their respective collections
+   * 
+   * @param actions - Object containing insert, update, and delete arrays
+   * @private
+   */
+  private _restoreActions(actions: any): void {
+    const formatWKT = this.localProperties.formatWKT;
 
-      // Restore deleted features
-      if (actions.delete && Array.isArray(actions.delete)) {
-        actions.delete.forEach((serialized: any) => {
-          const feature = this.deserializeFeature(serialized, formatWKT);
-          if (feature) {
-            (feature as any).state = 'DELETE';
-            this.deletedFeatures.push(feature);
-          }
-        });
-      }
-    } catch (error) {
-      console.error('ERROR: loadChanges on layer', error);
+    // Restore inserted features
+    if (actions.insert && Array.isArray(actions.insert)) {
+      actions.insert.forEach((serialized: any) => {
+        const feature = this.deserializeFeature(serialized, formatWKT);
+        if (feature) {
+          (feature as any).state = 'INSERT';
+          this.insertedFeatures.push(feature);
+        }
+      });
+    }
+
+    // Restore updated features
+    if (actions.update && Array.isArray(actions.update)) {
+      actions.update.forEach((serialized: any) => {
+        const feature = this.deserializeFeature(serialized, formatWKT);
+        if (feature) {
+          (feature as any).state = 'UPDATE';
+          this.updatedFeatures.push(feature);
+        }
+      });
+    }
+
+    // Restore deleted features
+    if (actions.delete && Array.isArray(actions.delete)) {
+      actions.delete.forEach((serialized: any) => {
+        const feature = this.deserializeFeature(serialized, formatWKT);
+        if (feature) {
+          (feature as any).state = 'DELETE';
+          this.deletedFeatures.push(feature);
+        }
+      });
     }
   }
 
@@ -537,6 +564,53 @@ export default class CollabVectorSource extends VectorSource {
 
     // Persist changes to cache
     this.writeChanges();
+  }
+
+  /**
+   * Saves edition cache to storage using ICacheStorage metadata operations
+   * 
+   * @param cacheKey - The cache key (editionCacheFile)
+   * @param actions - The pending actions to save
+   * @private
+   */
+  private async _saveEditionCache(cacheKey: string, actions: any): Promise<void> {
+    if (!this._cache) return;
+
+    const metadata = {
+      id: `edition:${cacheKey}`,
+      name: `Edition Cache: ${this.table.name}`,
+      type: 'vector' as const,
+      created: new Date(),
+      modified: new Date(),
+      size: JSON.stringify(actions).length,
+      extra: {
+        actions: actions
+      }
+    };
+
+    await this._cache.saveMetadata(metadata.id, metadata);
+  }
+
+  /**
+   * Loads edition cache from storage using ICacheStorage metadata operations
+   * 
+   * @param cacheKey - The cache key (editionCacheFile)
+   * @returns The cached actions or null if not found
+   * @private
+   */
+  private async _loadEditionCache(cacheKey: string): Promise<any | null> {
+    if (!this._cache) return null;
+
+    try {
+      const metadata = await this._cache.getMetadata(`edition:${cacheKey}`);
+      if (metadata && metadata.extra?.actions) {
+        return metadata.extra.actions;
+      }
+      return null;
+    } catch (error) {
+      console.error('ERROR: _loadEditionCache', error);
+      return null;
+    }
   }
 
   /**

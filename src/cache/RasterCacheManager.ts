@@ -164,7 +164,7 @@ export default class RasterCacheManager {
    * Might just have a 'getInfo' method that returns the info as a string
    * (see CacheMap.js line 140)
    */
-  public showInfo(){
+  public showInfo() {
     // not implemented
     /**
     CordovaApp code:
@@ -287,48 +287,61 @@ export default class RasterCacheManager {
   /**
    * Starts downloading tiles for a cache
    * @param id - Cache ID to start downloading
+   * @returns Promise that resolves when download starts (currently not implemented)
+   * 
+   * @todo Implement actual download logic with TileCache integration
    */
   async startDownload(id: string): Promise<void> {
     this.currentCacheId = id;
     this.currentErrors.clear();
 
-    // this._eventManager.emit('cache:download:start', { id });
+    console.warn(`startDownload(${id}): Not yet implemented - requires TileCache integration`);
+    this._eventManager.emit('cache:download:start', { id, status: 'not_implemented' });
 
-    // TODO: Implement actual download logic
-    throw new Error('Download implementation pending - requires TileCache integration');
+    // When implemented, this should:
+    // 1. Get cache metadata and configuration
+    // 2. Initialize TileCache for the layer
+    // 3. Calculate tile grid for extent and zoom range
+    // 4. Download tiles progressively
+    // 5. Emit progress events
+    // 6. Handle errors and cancellation
   }
 
   /**
    * Pauses an ongoing cache download
    * @param id - Cache ID to pause
+   * @returns Promise that resolves when download is paused (currently not implemented)
+   * 
+   * @todo Implement pause logic with TileCache integration
    */
   async pauseDownload(id: string): Promise<void> {
     if (this.currentCacheId !== id) {
-      throw new Error(`Cache ${id} is not currently downloading`);
+      console.warn(`pauseDownload(${id}): No active download for this cache`);
+      return;
     }
 
-    // this._eventManager.emit('cache:download:pause', { id });
-
-    // TODO: Implement pause logic
-    throw new Error('Pause implementation pending - requires TileCache integration');
+    console.warn(`pauseDownload(${id}): Not yet implemented - requires TileCache integration`);
+    this._eventManager.emit('cache:download:pause', { id, status: 'not_implemented' });
   }
 
   /**
    * Cancels an ongoing cache download
    * @param id - Cache ID to cancel
+   * @returns Promise that resolves when download is cancelled (currently not implemented)
+   * 
+   * @todo Implement cancel logic with TileCache integration
    */
   async cancelDownload(id: string): Promise<void> {
     if (this.currentCacheId !== id) {
-      throw new Error(`Cache ${id} is not currently downloading`);
+      console.warn(`cancelDownload(${id}): No active download for this cache`);
+      return;
     }
 
     this.currentCacheId = undefined;
     this.currentErrors.clear();
 
-    // this._eventManager.emit('cache:download:cancel', { id });
-
-    // TODO: Implement cancel logic
-    throw new Error('Cancel implementation pending - requires TileCache integration');
+    console.warn(`cancelDownload(${id}): Not yet implemented - requires TileCache integration`);
+    this._eventManager.emit('cache:download:cancel', { id, status: 'not_implemented' });
   }
 
   /**
@@ -362,13 +375,21 @@ export default class RasterCacheManager {
   /**
    * Adds a cache as a layer to the layer group
    * @param id - Cache ID
-   * @param _layerGroup - Target layer group (currently unused, will be used in full implementation)
+   * @param layerGroup - Target layer group
+   * @returns Promise that resolves when layer is added (currently not implemented)
+   * 
+   * @todo Create and configure TileLayer from cached tiles with TileCache integration
    */
-  async addCacheLayer(id: string, _layerGroup: LayerGroup): Promise<void> {
-    // TODO: Create and configure TileLayer from cached tiles
-    // This will require integration with TileCache and creation of a custom tile source
-    // this._eventManager.emit('cache:layer:add', { id });
-    throw new Error('addCacheLayer implementation pending - requires TileCache integration');
+  async addCacheLayer(id: string, layerGroup: LayerGroup): Promise<void> {
+    console.warn(`addCacheLayer(${id}): Not yet implemented - requires TileCache integration`);
+    this._eventManager.emit('cache:layer:add', { id, status: 'not_implemented' });
+
+    // When implemented, this should:
+    // 1. Load cache metadata
+    // 2. Create a custom TileSource that reads from ICacheStorage
+    // 3. Create a TileLayer with the custom source
+    // 4. Configure layer extent and zoom levels
+    // 5. Add layer to the provided layerGroup
   }
 
   /**
