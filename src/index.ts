@@ -7,7 +7,19 @@
 export * from './utils/EventManager';
 
 // Types
-export { Report, ReportPhoto, ReportStatus } from './report/types';
+export { 
+  Report, 
+  ReportPhoto, 
+  ReportStatus,
+  ReportPostParams,
+  ReportAttribute,
+  ClosedReportStatus
+} from './report/types';
+export type {
+  ReportManagerOptions,
+  ReportManagerParams,
+  ReportManagerEvents
+} from './report/types';
 export { ReportFilter } from './sources/types';
 
 export { MobileCoreStyle, StyleRule } from './styles/MobileCoreStyle';
@@ -48,6 +60,15 @@ export type {
 // Report
 export { ReportManager } from './report/ReportManager';
 export { ReportValidator } from './report/ReportValidator';
+export { SketchManager } from './report/SketchManager';
+export type {
+  SketchManagerOptions,
+  SketchAction,
+  InteractionMode,
+  DrawGeometryType,
+  ButtonConfig,
+  SketchManagerCallbacks
+} from './report/SketchManager';
 
 // Styles
 export { CollabStyler } from './styles/CollabStyler';

@@ -24,6 +24,14 @@ export default class EventManager {
     this.listeners[event].push(listener);
   }
 
+  once(event: string, listener: EventListener): void {
+    const wrapper = (payload: any) => {
+      listener(payload);
+      this.off(event, wrapper);
+    };
+    this.on(event, wrapper);
+  }
+
   off(event: string, listener: EventListener): void {
     const eventListeners = this.listeners[event];
 

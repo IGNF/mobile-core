@@ -2,7 +2,7 @@ import { Fill, Stroke, Style } from 'ol/style';
 import CircleStyle from 'ol/style/Circle';
 import Text from 'ol/style/Text';
 import { Feature } from 'ol';
-import { Projection } from 'ol/proj';
+import type { Projection } from 'ol/proj';
 
 /**
  * Report (georep/georem) definition
@@ -24,7 +24,7 @@ export interface Report {
 }
 
 export interface ReportPostParams {
-  community_id: number;
+  communityId: number; // Consistent naming with Report interface
   themeId: number;
   geometry: string;
   comment: string;
@@ -136,4 +136,46 @@ export interface ReportAttribute {
   required?: boolean;
   options?: string[]; // For select type
   defaultValue?: any;
+}
+
+/**
+ * Report Manager configuration options
+ */
+export interface ReportManagerOptions {
+  communityId?: number;
+  themeId?: number;
+  projection?: string;
+  defaultParams?: Partial<ReportManagerParams>;
+}
+
+/**
+ * Report Manager internal parameters
+ */
+export interface ReportManagerParams {
+  communityId?: number;
+  themeId?: number;
+  geometry?: string;
+  lon?: number;
+  lat?: number;
+  territory?: string;
+  insee?: string;
+  protocol?: string;
+  theme?: string;
+  themes?: string;
+  version?: string;
+  proj?: Projection; // Projection for geometry transformations
+  georems?: Record<number, any>; // Photo attachments indexed by timestamp
+}
+
+/**
+ * Report Manager events
+ */
+export interface ReportManagerEvents {
+  'report:created': { report: Report };
+  'report:updated': { report: Report };
+  'report:deleted': { reportId: number };
+  'report:submitted': { report: Report; serverId: number };
+  'report:error': { error: Error; message: string };
+  'attachment:uploading': { reportId: number; progress: number };
+  'attachment:uploaded': { reportId: number; attachmentId: number };
 }
