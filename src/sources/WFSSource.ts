@@ -47,11 +47,9 @@ export default class WFSSource extends VectorSource {
     const computedLocalProperties: any = {};
 
     let strategy = options.strategy;
-    let tiled = false;
 
     if (!strategy && options.tileZoom) {
       const tileZoom = options.tileZoom || (options.minZoom ?? + WFS_DEFAULT_VALUES.MIN_ZOOM_INCREASE);
-      tiled = true;
       const tileGrid: TileGrid = createXYZ({
         tileSize: options.tileSize || WFS_DEFAULT_VALUES.TILE_SIZE,
         minZoom: tileZoom,
@@ -61,9 +59,11 @@ export default class WFSSource extends VectorSource {
 
       computedLocalProperties.tileGrid = tileGrid;
       computedLocalProperties.table = options.table as Table;
+      computedLocalProperties.tiled = true; // Store tiled mode in properties for later use
     }
     else {
       strategy = bbox;
+      computedLocalProperties.tiled = false;
     }
 
     if (computedLocalProperties.tileGrid) computedLocalProperties.maxReload = options.maxReload

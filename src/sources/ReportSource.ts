@@ -11,7 +11,7 @@ import { Community, User } from '../collaborative/types';
 import { ReportSourceOptions } from './types';
 
 import { Feature } from 'ol';
-import { BASE_RADIUS, ReportStatus, STATUS_STYLES, ClosedReportStatus } from '../report/types';
+import { BASE_RADIUS, Report, ReportStatus, STATUS_STYLES, ClosedReportStatus } from '../report/types';
 import { Style } from 'ol/style';
 import CircleStyle from 'ol/style/Circle';
 import { Extent } from 'ol/extent';
@@ -82,8 +82,10 @@ export default class ReportSource {
 
     try {
       // Convert reports to features for storage
+      // Store report data as properties since Report.geometry is a WKT string, not a Geometry object
       const features = reports.map(report => {
-        const feature = new Feature(report);
+        const feature = new Feature();
+        feature.setProperties(report);
         return feature;
       });
 

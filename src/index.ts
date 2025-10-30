@@ -43,11 +43,16 @@ export { default as CollabVectorSource } from './sources/CollabVectorSource';
 export { default as WFSSource } from './sources/WFSSource';
 export { default as ReportSource } from './sources/ReportSource';
 export type {
+  SourceOptions,
   CollabVectorSourceOptions,
   WFSSourceOptions,
   ReportSourceOptions,
   ReportFilter as SourceReportFilter
 } from './sources/types';
+
+// Source constants and error codes
+export { COLLAB_VECTOR_DEFAULT_VALUES, WFS_DEFAULT_VALUES } from './sources/DefaultSourceValues';
+export { SOURCE_ERROR_CODES } from './sources/ErrorCodes';
 
 // Layers
 export { CollabVectorLayer } from './layers/CollabVectorLayer';
