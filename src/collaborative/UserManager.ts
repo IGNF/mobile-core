@@ -6,12 +6,21 @@
 
 import { ApiClient } from 'collaboratif-client-api';
 
-import { User, Community, CommunityMember, UserManagerConfig, CommunityLayer, TableColumn } from './types';
+import { User, Community, CommunityMember, UserManagerConfig, CommunityLayer, TableColumn, UserManagerEvents } from './types';
 
 import { IUserStorage } from '../abstracts/IUserStorage';
 
 import EventManager from '../utils/EventManager';
 
+/**
+ * User authentication and community management
+ * 
+ * Events:
+ * - 'user:connect': Emitted when a user successfully logs in
+ * - 'user:disconnect': Emitted when a user logs out
+ * - 'community:change': Emitted when the active community changes
+ * - 'user:error': Emitted when an error occurs
+ */
 export class UserManager {
 
   public apiClient: ApiClient;
@@ -24,25 +33,63 @@ export class UserManager {
     this._eventManager = new EventManager();
   }
 
+  /**
+   * Event subscription methods
+   */
+  on<K extends keyof UserManagerEvents>(event: K, handler: (data: UserManagerEvents[K]) => void): void {
+    this._eventManager.on(event, handler);
+  }
+
+  off<K extends keyof UserManagerEvents>(event: K, handler: (data: UserManagerEvents[K]) => void): void {
+    this._eventManager.off(event, handler);
+  }
+
+  once<K extends keyof UserManagerEvents>(event: K, handler: (data: UserManagerEvents[K]) => void): void {
+    this._eventManager.once(event, handler);
+  }
+
+  private emit<K extends keyof UserManagerEvents>(event: K, data: UserManagerEvents[K]): void {
+    this._eventManager.emit(event, data);
+  }
+
   async login(username: string, password: string): Promise<User> {
-    const userResponse = await this.apiClient.login(username, password); // see what exists instead
-    if (!userResponse.data) {
-      throw new Error('Login failed');
+    try {
+      const userResponse = await this.apiClient.login(username, password); // see what exists instead
+      if (!userResponse.data) {
+        throw new Error('Login failed');
+      }
+      const user = userResponse.data;
+      this.emit('user:connect', { user });
+      return user;
+    } catch (error: any) {
+      this.emit('user:error', { error, code: 'LOGIN_FAILED' });
+      throw error;
     }
-    return userResponse.data;
   }
 
   async initialize(): Promise<void> {
-    const cacheData = await this.storage.getCredentials();
-    if (cacheData && cacheData.username && cacheData.password) {
-      const userResponse = await this.login(cacheData.username, cacheData.password);
-      await this.storage.saveUser(userResponse);
+    try {
+      const cacheData = await this.storage.getCredentials();
+      if (cacheData && cacheData.username && cacheData.password) {
+        const user = await this.login(cacheData.username, cacheData.password);
+        await this.storage.saveUser(user);
+      }
+    } catch (error: any) {
+      this.emit('user:error', { error, code: 'INIT_FAILED' });
+      throw error;
     }
   }
 
   async logout(): Promise<void> {
-    await this.apiClient.disconnect(); // see what exists instead
-    this._eventManager.emit('disconnect');
+    try {
+      await this.apiClient.disconnect(); // see what exists instead
+      await this.storage.clearUser();
+      await this.storage.clearCredentials();
+      this.emit('user:disconnect', {});
+    } catch (error: any) {
+      this.emit('user:error', { error, code: 'LOGOUT_FAILED' });
+      throw error;
+    }
   }
 
   /**
@@ -153,11 +200,12 @@ export class UserManager {
   /**
    * Fetch geoservice or table data for a single layer
    */
-  private async _fetchLayerData(layer: any): Promise<any> {
-    if (layer.geoservice) {
-      return this.apiClient.getGeoservice(layer.geoservice.id);
-    } else if (layer.table && layer.database) {
-      return this.apiClient.getTable(layer.database, layer.table);
+  private async _fetchLayerData(layer: CommunityLayer): Promise<any> {
+    const layerAny = layer as any; // Temporary cast until API types are refined
+    if (layerAny.geoservice) {
+      return this.apiClient.getGeoservice(layerAny.geoservice.id);
+    } else if (layerAny.table && layerAny.database) {
+      return this.apiClient.getTable(layerAny.database, layerAny.table);
     }
     return null;
   }
@@ -165,11 +213,12 @@ export class UserManager {
   /**
    * Extract unique database IDs from layers
    */
-  private _getUniqueDatabaseIds(layers: any[]): number[] {
+  private _getUniqueDatabaseIds(layers: CommunityLayer[]): number[] {
     const databaseIds = new Set<number>();
     for (const layer of layers) {
-      if (layer.table && layer.database) {
-        databaseIds.add(layer.database);
+      const layerAny = layer as any; // Temporary cast until API types are refined
+      if (layerAny.table && layerAny.database) {
+        databaseIds.add(layerAny.database);
       }
     }
     return Array.from(databaseIds);
@@ -200,12 +249,12 @@ export class UserManager {
    * (UserManager.js lines 276-290)
    */
   private _enrichLayers(
-    layers: any[],
+    layers: CommunityLayer[],
     enrichedData: any[],
     databaseExtentsMap: Record<number, string>
   ): void {
     for (let i = 0; i < layers.length; i++) {
-      const layer = layers[i];
+      const layer = layers[i] as any; // Temporary cast until API types are refined
       const data = enrichedData[i];
 
       if (!data) {
@@ -231,19 +280,25 @@ export class UserManager {
    * @returns void
    */
   async setActiveCommunity(communityId: number): Promise<void> {
-    const community: Community | null = await this.getGroupById(communityId);
-    if (!community) {
-      throw new Error('Community not found');
-    }
-    this.storage.setActiveCommunity(communityId); // save in cache storage
+    try {
+      const community: Community | null = await this.getGroupById(communityId);
+      if (!community) {
+        throw new Error('Community not found');
+      }
+      await this.storage.setActiveCommunity(communityId); // save in cache storage
 
-    const param = await this.storage.getParam();
-    param.offline = community.offline_allowed;
+      const param = await this.storage.getParam();
+      param.offline = community.offline_allowed;
 
-    if (!community.layers) {
-      community.layers = await this.getLayersInfo(communityId);
-
-      this.storage.saveParam(param); // save in cache storage
+      if (!community.layers) {
+        community.layers = await this.getLayersInfo(communityId);
+        await this.storage.saveParam(param); // save in cache storage
+      }
+      
+      this.emit('community:change', { community });
+    } catch (error: any) {
+      this.emit('user:error', { error, code: 'SET_COMMUNITY_FAILED' });
+      throw error;
     }
   }
 

@@ -124,3 +124,13 @@ export interface UserManagerConfig {
   baseUrl?: string;
   storage: IUserStorage; // Storage abstraction
 }
+
+/**
+ * User manager events
+ */
+export interface UserManagerEvents {
+  'user:connect': { user: User };
+  'user:disconnect': {};
+  'community:change': { community: Community };
+  'user:error': { error: Error; code?: string };
+}

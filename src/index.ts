@@ -62,6 +62,23 @@ export type {
   WFSLayerOptions
 } from './layers/types';
 
+// Collaborative
+export { UserManager } from './collaborative/UserManager';
+export { DocumentManager } from './collaborative/DocumentManager';
+export type {
+  User,
+  Community,
+  CommunityMember,
+  CommunityLayer,
+  Table,
+  TableColumn,
+  Geoservice,
+  LayerStyle,
+  UserManagerConfig,
+  UserManagerEvents
+} from './collaborative/types';
+export type { IUserStorage } from './abstracts/IUserStorage';
+
 // Report
 export { ReportManager } from './report/ReportManager';
 export { ReportValidator } from './report/ReportValidator';

@@ -14,9 +14,24 @@ declare module 'collaboratif-client-api' {
     disconnect(): Promise<void>;
 
 
-    getDocument(url: string): Promise<{ data: Blob }> {
-      return fetch(url).then(response => response.blob());
+    /**
+     * Document related methods
+     */
+    /**
+     * Get a document by its ID
+     * @param id - The ID of the document
+     * @returns The document URL and name
+     */
+    getDocument(id: string): Promise<{ data: { url: string, name: string } }> {
+      // this is probably not the correct implementation, but it's a start
+      // finish the implementation during the mobile app development
+      return fetch(`${this.baseUrl}/documents/${id}`).then(response => { return { data: { url: response.url, name: response.name } }; });
     }
+
+    // see what format is expected for the file (Blob, FormData, etc.)
+    uploadFile(url: string, file: Blob | FormData): Promise<{ data: any }>;
+
+    deleteDocument(documentId: number): Promise<void>;
 
 
     /**
