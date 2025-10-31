@@ -15,7 +15,8 @@ export default class RasterCacheManager {
   private _eventManager: EventManager;
   private readonly CACHE_PREFIX = 'raster:cache:';
   private readonly ORDER_KEY = 'raster:cache:order';
-  private readonly LAYER_NAME = 'GEOGRAPHICALGRIDSYSTEMS.MAPS';
+  // Default Geoportail layer name for raster maps
+  private readonly LAYER_NAME = 'GEOGRAPHICALGRIDSYSTEMS.MAPS'; // Reserved for future use
 
   private extentManager: ExtentManager;
   private silentErrors: boolean;
@@ -101,11 +102,20 @@ export default class RasterCacheManager {
   /**
    * Gets the cache storage path (used for organizing cache data)
    * @returns Path string for cache directory
+   * @todo Will be used when tile caching is fully implemented
    */
-  private getCachePath(): string {
+  public getCachePath(): string {
     const root = this.options.cacheRoot || '';
     const dirName = this.options.dirName || 'geoportail';
     return `${root}${dirName}/`;
+  }
+  
+  /**
+   * Get the default layer name for Geoportail
+   * @returns The default Geoportail layer name
+   */
+  public getDefaultLayerName(): string {
+    return this.LAYER_NAME;
   }
 
   /**
@@ -380,7 +390,7 @@ export default class RasterCacheManager {
    * 
    * @todo Create and configure TileLayer from cached tiles with TileCache integration
    */
-  async addCacheLayer(id: string, layerGroup: LayerGroup): Promise<void> {
+  async addCacheLayer(id: string, _layerGroup: LayerGroup): Promise<void> {
     console.warn(`addCacheLayer(${id}): Not yet implemented - requires TileCache integration`);
     this._eventManager.emit('cache:layer:add', { id, status: 'not_implemented' });
 

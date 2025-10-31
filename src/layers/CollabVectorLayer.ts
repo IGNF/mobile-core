@@ -123,7 +123,8 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
     if (!options.style) {
       // todo, "options.cacheUrl" was before CordovApp.File.getFileURI(options.cacheUrl)
       // see if we can now pass directly the cacheURL in the options (see this file in the contructor - same issue)
-      this.setStyle(CollabStyler.getFeatureStyleFunction(table, options.cacheUrl ?? '', completeSourceOptions));
+      const styleFunction = CollabStyler.getFeatureStyleFunction(table, options.cacheUrl ?? '', completeSourceOptions);
+      this.setStyle(styleFunction as any); // Cast needed due to OL StyleLike vs StyleFunction typing
     }
 
     this.dispatchEvent({ type: "ready", source: vectorSource } as any);

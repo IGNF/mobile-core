@@ -6,6 +6,7 @@
 import { Style, Fill, Stroke, Circle, Text, Icon, RegularShape } from 'ol/style';
 import { Feature } from 'ol';
 import { Geometry } from 'ol/geom';
+import { Color } from 'ol/color';
 import { DEFAULT_STYLE, DEFAULT_STYLE_VALUES } from './DefaultStyle';
 import { MobileCoreStyle, StyleRule } from './MobileCoreStyle';
 
@@ -147,13 +148,13 @@ export class StyleManager {
   }
 
   /**
-   * Apply opacity to a color string
+   * Apply opacity to a color string or Color array
    * 
-   * Converts hex or rgb colors to rgba format with the specified opacity.
+   * Converts hex, rgb colors, or Color arrays to rgba format with the specified opacity.
    * If opacity is not specified or is 1, returns the original color unchanged.
    * 
    * @private
-   * @param {string} color - The color to modify (in formats hex, rgb, rgba)
+   * @param {string | Color} color - The color to modify (hex, rgb, rgba, or Color array)
    * @param {number} [opacity] - Opacity value from 0 (transparent) to 1 (opaque).
    *   If undefined or 1, the original color is returned
    * 
@@ -162,11 +163,18 @@ export class StyleManager {
    * @example
    * applyOpacity('#ff0000', 0.5) // returns 'rgba(255, 0, 0, 0.5)'
    * applyOpacity('rgb(255, 0, 0)', 0.7) // returns 'rgba(255, 0, 0, 0.7)'
+   * applyOpacity([255, 0, 0], 0.5) // returns 'rgba(255, 0, 0, 0.5)'
    * applyOpacity('#ff0000', 1) // returns '#ff0000'
    */
-  private applyOpacity(color: string, opacity?: number): string {
+  private applyOpacity(color: string | Color, opacity?: number): string {
     if (opacity === undefined || opacity === 1) {
-      return color;
+      // Return as string for consistency
+      return Array.isArray(color) ? `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] || 1})` : color;
+    }
+
+    // Handle Color array [r, g, b] or [r, g, b, a]
+    if (Array.isArray(color)) {
+      return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${opacity})`;
     }
 
     // Handle hex colors

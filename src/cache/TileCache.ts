@@ -20,11 +20,38 @@ export class TileCache extends OlObject {
   private _tileGridMinZoom: number;
   private _tileGridMaxZoom: number;
 
+  // Zoom level constraints for tile caching (reserved for future zoom validation)
   private _minZoom: number;
   private _maxZoom: number;
 
+  // Reserved for read-only mode implementation
   private _read: any;
   private _authentication: any;
+  
+  /**
+   * Get minimum zoom level
+   * @returns The minimum zoom level for this cache
+   */
+  public getMinZoom(): number {
+    return this._minZoom;
+  }
+  
+  /**
+   * Get maximum zoom level
+   * @returns The maximum zoom level for this cache
+   */
+  public getMaxZoom(): number {
+    return this._maxZoom;
+  }
+  
+  /**
+   * Check if cache is in read-only mode
+   * @returns True if cache is read-only
+   * @todo Implement read-only mode logic
+   */
+  public isReadOnly(): boolean {
+    return !!this._read;
+  }
 
   private _view: View;
 
@@ -161,8 +188,9 @@ export class TileCache extends OlObject {
    *   - tile: Object with id and url properties
    *   - callback: Function to call with the loaded URL
    */
-  public asyncTileLoad(asyncLoadFn?: (tile: { id: string; url: string }, callback: (url: string) => void) => void): void {
-    // to implement
+  public asyncTileLoad(_asyncLoadFn?: (tile: { id: string; url: string }, callback: (url: string) => void) => void): void {
+    // TODO: Implement async tile loading
+    // This method will use the provided callback to load tiles asynchronously
 
     /**
      * Old code:
