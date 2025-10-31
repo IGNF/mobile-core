@@ -18,7 +18,6 @@ import FontSymbol from "ol-ext/style/FontSymbol";
 import { LineString, MultiLineString } from "ol/geom";
 
 import { UserManager } from "../collaborative/UserManager";
-import { ApiClient } from "collaboratif-client-api";
 import { CollabStylePresets } from "./CollabStylePresets";
 
 /**
@@ -36,23 +35,38 @@ import { CollabStylePresets } from "./CollabStylePresets";
  */
 const imageCache: Record<string, Icon> = {};
 
+/**
+ * Symbol cache entry information
+ */
+export interface SymbolCacheEntry {
+  name: string;
+  nativeURL: string;
+}
+
+/**
+ * Feature type configuration
+ */
+export interface FeatureTypeConfig {
+  name?: string;
+  style?: StyleRule & { children?: StyleRule[]; directionField?: string };
+  styles?: StyleRule[];
+  symbo_attribute?: { name: string };
+}
+
 export class CollabStyler {
 
-  private _userManager: UserManager;
-  private _symbolCache: any;
+  private _userManager?: UserManager;
+  private _symbolCache: Record<string, string> = {};
   private _cacheLoading: string[] = [];
   public defaultStyleFn: (feature: Feature, resolution: number) => Style | Style[];
   public presets: CollabStylePresets;
 
-  constructor() {
-    // TODO: UserManager requires proper configuration with storage
-    // For now, we create it without initializing to avoid errors
-    // This will be properly configured when the styler is used in context
-    this._userManager = {} as UserManager; // Placeholder until proper initialization
-    this._symbolCache = {};
+  constructor(userManager?: UserManager) {
+    // UserManager is optional - only needed for symbol loading from API
+    // If not provided, external graphic features will fall back to default styling
+    this._userManager = userManager;
     this.presets = new CollabStylePresets(this);
     this.defaultStyleFn = this.getFeatureStyleFn();
-
   }
 
   /**
@@ -81,11 +95,12 @@ export class CollabStyler {
    * 
    * @param table The table configuration
    * @param cacheUrl The cache URL for resources
-   * @param sourceOptions Additional source options
+   * @param sourceOptions Additional source options (can include userManager for symbol loading)
    * @returns Style function compatible with OpenLayers StyleLike
    */
-  public static getFeatureStyleFunction(table: any, cacheUrl: string, sourceOptions: any): any {
-    const styler = new CollabStyler();
+  public static getFeatureStyleFunction(table: any, cacheUrl: string, sourceOptions: any): (feature: Feature, resolution: number) => Style | Style[] {
+    const userManager = sourceOptions?.userManager;
+    const styler = new CollabStyler(userManager);
     return styler.getFeatureStyleFn(table, cacheUrl, sourceOptions);
   }
 
@@ -325,9 +340,9 @@ export class CollabStyler {
    * We're passing the directory list as parameter
    * 
    * To understand more about that, see the ol/style/Collaboratif.js file, line 263
-   * @returns 
+   * @param entries Array of symbol cache entries with name and nativeURL
    */
-  public loadSymbolCache(entries: any) {
+  public loadSymbolCache(entries: SymbolCacheEntry[]): void {
     this._cacheLoading = [];
     for (let i = 0, entry; entry = entries[i]; i++) {
       this._symbolCache[entry.name] = entry.nativeURL;
@@ -341,7 +356,7 @@ export class CollabStyler {
    * @param options Additional options including directoryList for symbol cache
    * @returns A style function that takes (feature, resolution) and returns Style or Style[]
    */
-  public getFeatureStyleFn(featureType?: any, _cache?: any, options?: any): (feature: Feature, resolution: number) => Style | Style[] {
+  public getFeatureStyleFn(featureType?: FeatureTypeConfig, _cache?: any, options?: { directoryList?: SymbolCacheEntry[] }): (feature: Feature, resolution: number) => Style | Style[] {
     featureType = featureType || {};
 
     // Direction style for showing circulation arrows on roads
@@ -379,11 +394,15 @@ export class CollabStyler {
 
         // Find matching child style based on conditions
         for (let i = 0; i < featureType.style.children.length; i++) {
-          const child = featureType.style.children[i];
+          const child = featureType.style.children[i] as any;
 
-          if (!child.mongo || !child.mongo.matches) {
-            // TODO: ask where does it come from, in CordovApp there is no "mongo-parse" package installed...
-            // child.mongo = mongo.parse(child.condition)
+          // Note: The original code used mongo-parse package for MongoDB-style queries
+          // TODO: ask where does it come from, in CordovApp there is no "mongo-parse" package installed...
+          if (!(child.mongo && child.mongo.matches)) {
+            // TODO: Implement condition matching
+            // Would need to install and use mongo-parse: child.mongo = mongo.parse(child.condition)
+            // For now, skip child styles without proper condition matchers
+            continue;
           }
           if (child.mongo.matches(props)) {
             style = child;
@@ -397,13 +416,14 @@ export class CollabStyler {
 
       // Handle symbol libraries
       if (style?.name) {
+        const defaultIconSize = 16; // Default icon size
         if (featureType.symbo_attribute) {
           fstyle.radius = 5;
           fstyle.img = this.getSymbolURI(
             featureType,
             style.name + '/' + feature.get(featureType.symbo_attribute.name),
-            style.graphicWidth,
-            style.graphicHeight,
+            style.graphicWidth || defaultIconSize,
+            style.graphicHeight || defaultIconSize,
             feature
           );
         } else if (style.externalGraphic) {
@@ -411,8 +431,8 @@ export class CollabStyler {
           fstyle.img = this.getSymbolURI(
             featureType,
             style.externalGraphic,
-            style.graphicWidth,
-            style.graphicHeight,
+            style.graphicWidth || defaultIconSize,
+            style.graphicHeight || defaultIconSize,
             feature
           );
         }
@@ -495,51 +515,67 @@ export class CollabStyler {
   /**
    * Return the urls of the symbols used for a feature type
    * @param featureType the feature type configuration
-   * @returns the urls of the symbols used for a feature type
+   * @returns Record mapping symbol names to their URIs
    */
-  public getUrls(featureType: any): string[] {
-    let urls: string[] = [];
+  public getUrls(featureType: FeatureTypeConfig): Record<string, string> {
+    const urls: Record<string, string> = {};
 
-    for (let i in featureType.styles) {
-      if (featureType.style.externalGraphic) {
-        urls[featureType.styles[i].externalGraphic] = featureType.styles[i].uri
+    if (!featureType.styles) return urls;
+
+    for (const i in featureType.styles) {
+      const style = featureType.styles[i] as any;
+      if (style.externalGraphic && style.uri) {
+        urls[style.externalGraphic] = style.uri;
       }
-      for (let j in featureType.styles[i].children) {
-        let child = featureType.styles[i].children[j];
-        if (child.externalGraphic) {
-          urls[child.externalGraphic] = child.uri;
+      if (style.children) {
+        for (const j in style.children) {
+          const child = style.children[j];
+          if (child.externalGraphic && child.uri) {
+            urls[child.externalGraphic] = child.uri;
+          }
         }
       }
     }
 
     return urls;
   }
-  /** Get image uri and save to cache if not allready done
-   * @param {Object} featureType
-   * @param {string} name image name
-   * @param {number} width
-   * @param {number} height
-   * @param {ol.Feature} feature
+  /** 
+   * Get image uri and save to cache if not already done
+   * 
+   * Note: This method requires a properly initialized UserManager to load symbols from API.
+   * If UserManager is not provided, it will return null and features will use fallback styling.
+   * 
+   * @param featureType Feature type configuration
+   * @param name Symbol name
+   * @param width Symbol width
+   * @param height Symbol height
+   * @param feature The feature being styled
+   * @returns Symbol URI from cache, or null if not yet loaded
    */
-  public getSymbolURI(featureType: any, name: string, width: number, height: number, feature: Feature): string | null {
-    let img: string | null;
+  public getSymbolURI(featureType: FeatureTypeConfig, name: string, width: number, height: number, feature: Feature): string | null {
     const cacheName = name.replace(/\//g, '_') + '_' + width + 'x' + height;
 
     // Already in cache
     if (this._symbolCache[cacheName]) {
-      img = this._symbolCache[cacheName];
-      return img;
+      return this._symbolCache[cacheName];
     }
-    let stylePictos = this.getUrls(featureType);
 
-    if (!stylePictos[name as keyof typeof stylePictos]) {
-      console.log("Une erreur s'est produite au chargement du pictogramme");
+    const stylePictos = this.getUrls(featureType);
+
+    if (!stylePictos[name]) {
+      console.warn("Symbol not found in feature type styles:", name);
       return null;
     }
 
-    if (this._cacheLoading.indexOf(cacheName) != -1) return null;
+    if (this._cacheLoading.indexOf(cacheName) !== -1) return null;
 
-    img = stylePictos[name as keyof typeof stylePictos] + '?width=' + width + '&height=' + height;
+    // Check if UserManager is available for API calls
+    if (!this._userManager || !this._userManager.apiClient) {
+      console.warn("UserManager not initialized - cannot load symbol from API");
+      return null;
+    }
+
+    const img = stylePictos[name] + '?width=' + width + '&height=' + height;
 
     this._cacheLoading.push(cacheName);
 

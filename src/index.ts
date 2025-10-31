@@ -22,7 +22,7 @@ export type {
 } from './report/types';
 export { ReportFilter } from './sources/types';
 
-export { MobileCoreStyle, StyleRule } from './styles/MobileCoreStyle';
+export type { MobileCoreStyle, StyleRule } from './styles/MobileCoreStyle';
 export type { ICacheStorage } from './abstracts/ICacheStorage';
 
 // Cache Types
@@ -94,5 +94,7 @@ export type {
 
 // Styles
 export { CollabStyler } from './styles/CollabStyler';
+export type { SymbolCacheEntry, FeatureTypeConfig } from './styles/CollabStyler';
 export { CollabStylePresets } from './styles/CollabStylePresets';
 export { StyleManager } from './styles/StyleManager';
+export { DEFAULT_STYLE, DEFAULT_STYLE_VALUES } from './styles/DefaultStyle';
