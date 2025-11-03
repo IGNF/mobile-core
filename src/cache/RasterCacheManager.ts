@@ -62,7 +62,7 @@ export default class RasterCacheManager {
   }
 
   /**
-   * Non implémenté:
+   * Not implemented:
 
 
   (function(){

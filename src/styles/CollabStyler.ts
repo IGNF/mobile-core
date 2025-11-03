@@ -22,9 +22,9 @@ import { CollabStylePresets } from "./CollabStylePresets";
 
 /**
  * NOTE:
- * 2 fonctions vont posser problème ici, du à leur utilisation de Cordova.
- * - getSymbolURI (ligne 412 de l'ancienne classe)
- * - loadSymbolCache (ligne 263 de l'ancienne classe)
+ * 2 functions may cause issues here due to their use of Cordova:
+ * - getSymbolURI (line 412 of the original class)
+ * - loadSymbolCache (line 263 of the original class)
  * 
  * For the moment, we implemented what was possible
  * We'll see how to deal with that depending on how it has to be used

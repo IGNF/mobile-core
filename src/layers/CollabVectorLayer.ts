@@ -57,7 +57,7 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
    * @returns The source for the CollabVector layer
    * 
    * TODO
-   * Voir si on peut refacto l'attribut "table", options.table semble être égal à sourceOptions.table et table
+   * See if we can refactor the "table" attribute, options.table seems to equal sourceOptions.table and table
    */
   public createSource(options: CollabVectorLayerOptions, sourceOptions: Partial<CollabVectorSourceOptions>, table: Table) {
     // Ensure sourceOptions has required properties
