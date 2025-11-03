@@ -117,6 +117,7 @@ export default class ExtentManager {
 
   /**
    * Retrieves a single extent that encompasses all extents for the given name(s)
+   * Unions multiple extent boxes into one bounding box that contains all of them
    * @param names - Single name or array of names
    * @returns Combined extent
    */
@@ -126,6 +127,7 @@ export default class ExtentManager {
       ? await this.getAllExtents(names) 
       : await this.get(names);
     
+    // Expand the bounding box to include each extent
     for (const ext of extents) {
       extend(extent, ext);
     }

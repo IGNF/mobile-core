@@ -123,6 +123,7 @@ export class VectorCacheManager {
     }
 
     const cacheMetadataList = await this.storage.listMetadata(this.CACHE_PREFIX) as VectorCacheMetadata[];
+    // Generate a new unique ID by finding the maximum existing ID and incrementing
     const maxId = Math.max(0, ...cacheMetadataList.map((cache: VectorCacheMetadata) => parseInt(cache.id)));
     const now = new Date();
     const cache: VectorCacheMetadata = {

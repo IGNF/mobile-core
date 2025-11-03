@@ -92,19 +92,19 @@ export class WFSLayer extends VectorLayer {
   public async getCapabilities(options: WFSLayerOptions): Promise<void> {
     const authenticationFn = this.layerOptions?.authentication;
 
-    // Build URL with query parameters
+    // Build WFS GetCapabilities request URL
     const url = new URL(options.geoservice.url);
     url.searchParams.append('service', 'WFS');
     url.searchParams.append('request', 'GetCapabilities');
 
-    // Setup headers
+    // Setup Basic authentication if credentials provided
     const headers: HeadersInit = {};
     if (options.username && options.password) {
       const credentials = btoa(`${options.username}:${options.password}`);
       headers['Authorization'] = `Basic ${credentials}`;
     }
 
-    // Setup timeout with AbortController
+    // Setup 10-second timeout for the request
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 

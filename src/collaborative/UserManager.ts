@@ -183,14 +183,14 @@ export class UserManager {
     const responseLayers = await this.apiClient.getLayers(communityId, { limit: 100 });
     const layers: CommunityLayer[] = responseLayers.data;
 
-    // Fetch all geoservices and tables in parallel
+    // Parallel fetch pattern: batch all geoservice/table requests together for performance
     const layerDataPromises = layers.map((layer: CommunityLayer) => this._fetchLayerData(layer));
 
-    // Fetch unique database extents for table-based layers
+    // Also fetch database extents in parallel for table-based layers
     const uniqueDatabaseIds = this._getUniqueDatabaseIds(layers);
     const databaseExtentsMap = await this._fetchDatabaseExtents(uniqueDatabaseIds);
 
-    // Add fetched data to layers
+    // Merge fetched geoservice/table data back into layers
     const enrichedData = await Promise.all(layerDataPromises);
     this._enrichLayers(layers, enrichedData, databaseExtentsMap);
 
@@ -265,7 +265,7 @@ export class UserManager {
         layer.geoservice = data.data;
       } else if (layer.table && layer.database) {
         const table = data.data;
-        // Transform columns from indexed array to array format
+        // API returns columns as {0: col1, 1: col2, ...}, convert to [col1, col2, ...]
         table.columns = Object.values(table.columns) as TableColumn[];
         layer.table = table;
         layer.extent = databaseExtentsMap[layer.database].split(',');

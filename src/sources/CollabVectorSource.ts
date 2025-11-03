@@ -292,6 +292,7 @@ export default class CollabVectorSource extends VectorSource {
 
     const featureState = (feature as any).state;
 
+    // State transitions: INSERT->removed, UPDATE->DELETE, or default->DELETE
     if (featureState === 'INSERT') {
       // Feature was only inserted locally, just remove it from inserts
       this.removeFeatureFromCollection(this.insertedFeatures, feature);
@@ -337,7 +338,7 @@ export default class CollabVectorSource extends VectorSource {
    * @param force - If true, writes immediately; if false, debounces the write
    */
   public writeChanges(force: boolean = false): void {
-    // Prevent many updates at once by debouncing
+    // Debounce rapid changes: increment counter and schedule write after 100ms
     if (!force) {
       this._writeUpdateCounter++;
       setTimeout(() => {
@@ -346,7 +347,7 @@ export default class CollabVectorSource extends VectorSource {
       return;
     }
 
-    // Decrement counter and check if other writes are pending
+    // Decrement counter; only write if no more pending updates (counter reaches 0)
     this._writeUpdateCounter--;
     if (this._writeUpdateCounter > 0) return;
 

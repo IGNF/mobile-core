@@ -203,6 +203,7 @@ export class CollabStyler {
 
   /**
    * Set image on a style based on feature style configuration
+   * Creates point symbols from images, circles, or font icons
    * @param olStyle The OpenLayers style to modify
    * @param fstyle The feature style configuration
    * @param feature The feature being styled (unused for now)
@@ -386,13 +387,13 @@ export class CollabStyler {
         }
       }
 
-      // Handle conditional styles with children
+      // Handle conditional styles with children (e.g., style roads differently based on speed limit)
       let style = featureType.style;
       if (featureType.style?.children) {
         const props = feature.getProperties();
         delete props.geometry;
 
-        // Find matching child style based on conditions
+        // Find the first matching child style based on feature property conditions
         for (let i = 0; i < featureType.style.children.length; i++) {
           const child = featureType.style.children[i] as any;
 
@@ -468,7 +469,8 @@ export class CollabStyler {
           const direct: string = directionField.sensDirect;
           const inverse: string = directionField.sensInverse;
 
-          // Calculate rotation based on line geometry
+          // Calculate rotation angle for direction arrow based on line geometry
+          // Arrow points along the line at its midpoint
           const lrot = (sens: string, geom: LineString | MultiLineString): number => {
             if (sens !== direct && sens !== inverse) return 0;
 
@@ -481,7 +483,7 @@ export class CollabStyler {
             let x: number = 0, y: number = 0, dl: number = 0;
             const length = geometry.getLength();
 
-            // Find point at middle of line
+            // Walk along segments until we reach the middle of the line
             for (let i = 0; i < coords.length - 1; i++) {
               x = (coords[i + 1][0] as number) - (coords[i][0] as number);
               y = (coords[i + 1][1] as number) - (coords[i][1] as number);
@@ -489,6 +491,7 @@ export class CollabStyler {
               if (dl >= length / 2) break;
             }
 
+            // Return rotation angle based on direction (direct vs inverse)
             if (sens === direct) {
               return -Math.atan2(y, x);
             } else {

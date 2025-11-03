@@ -132,7 +132,7 @@ export default class RasterCacheManager {
 
     const order = metadata.extra.order as string[];
 
-    // Sort layers based on stored order
+    // Sort layers based on stored order (lower index = rendered first/bottom)
     const sortedLayers = [...layers].sort((a, b) => {
       const nameA = a.get('name') as string;
       const nameB = b.get('name') as string;

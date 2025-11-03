@@ -101,10 +101,12 @@ export class TileCache extends OlObject {
 
   /**
    * Save the tiles for a given extent and resolution
+   * Calculates which tiles cover the extent and iterates through them
    * @param e - Extent
    * @param res - Resolution
    */
   public saveResolution(e: Extent, res: number): void {
+    // Convert extent corners to tile coordinates (top-left and bottom-right)
     const tileCoordTopLeft = this._source?.getTileGrid()?.getTileCoordForCoordAndResolution([e[0], e[1]], res) ?? [];
     const tileCoordBottomRight = this._source?.getTileGrid()?.getTileCoordForCoordAndResolution([e[2], e[3]], res) ?? [];
     const zoom = tileCoordTopLeft[0];
@@ -113,6 +115,7 @@ export class TileCache extends OlObject {
     const col1 = Math.min(tileCoordTopLeft[2], tileCoordBottomRight[2]);
     const col2 = Math.max(tileCoordTopLeft[2], tileCoordBottomRight[2]);
     const tileUrlFunction = this._source?.getTileUrlFunction() ?? null;
+    // Iterate through all tiles in the extent
     for (let col = col1; col <= col2; col++) {
       for (let row = row1; row <= row2; row++) {
         const url = tileUrlFunction?.call(this._source, [zoom, row, col], 1, this._source?.getProjection() as Projection) ?? null;

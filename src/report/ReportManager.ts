@@ -126,6 +126,7 @@ export class ReportManager {
 
 
     post.community = params.communityId > 0 ? params.communityId : "-1";
+    // Parse theme string (format: "groupId::themeName") and bundle with custom attributes
     if (params.themes) {
       let th = params.themes.split("::");
       var group = parseInt(th[0]);

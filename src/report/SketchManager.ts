@@ -264,9 +264,10 @@ export class SketchManager extends BaseObject {
 
   /**
    * Set up event listeners for interactions
+   * Notify callbacks and emit events when features are modified or moved
    */
   private setupEventListeners(): void {
-    // Modify end event
+    // Modify end event (vertex/shape editing)
     this.modifyInteraction.on('modifyend', (event) => {
       const features = event.features.getArray();
       features.forEach((feature) => {
@@ -278,7 +279,7 @@ export class SketchManager extends BaseObject {
       });
     });
 
-    // Translate end event
+    // Translate end event (drag to move)
     this.translateInteraction.on('translateend', (event) => {
       event.features.forEach((feature) => {
         this.callbacks.onFeatureModified(feature);

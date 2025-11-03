@@ -128,6 +128,7 @@ export default class ReportSource {
     }
     const loadedFeatures: Feature[] = [];
     let format = new WKT();
+    // Convert WKT geometry strings to OpenLayers geometries and reproject to map projection
     features.forEach(feature => {
       const f = format.readFeature(feature.get('geometry'), {
         dataProjection: 'EPSG:4326',

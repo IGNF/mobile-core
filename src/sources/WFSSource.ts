@@ -153,7 +153,7 @@ export default class WFSSource extends VectorSource {
 
       const extent = transformExtent(extent0, projection, this.get("projection"));
 
-      // define cache load parameters
+      // Build cache request parameters (tile coordinates + extent for tile-based or bbox-based strategy)
       const cacheParameters = {
         tileCord: this.localProperties.tileGrid ? this.localProperties.tileGrid.getTileCoordForCoordAndResolution(extent0, resolution) : null,
         extent: extent,
