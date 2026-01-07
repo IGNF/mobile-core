@@ -8,6 +8,7 @@ export type { Report, ReportPhoto, ReportPostParams, ReportAttribute, ReportMana
 export type { ReportFilter } from './sources/types';
 export type { MobileCoreStyle, StyleRule } from './styles/MobileCoreStyle';
 export type { ICacheStorage } from './abstracts/ICacheStorage';
+export type { IReportStorage } from './abstracts/IReportStorage';
 export type { CacheMetadata, RasterCacheConfig, RasterCacheOptions, VectorCacheConfig, CacheProgress } from './cache/types';
 export { default as ExtentManager } from './cache/ExtentManager';
 export { default as RasterCacheManager } from './cache/RasterCacheManager';
