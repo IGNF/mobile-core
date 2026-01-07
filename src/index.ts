@@ -26,6 +26,7 @@ export type { ReportFilter } from './sources/types';
 
 export type { MobileCoreStyle, StyleRule } from './styles/MobileCoreStyle';
 export type { ICacheStorage } from './abstracts/ICacheStorage';
+export type { IReportStorage } from './abstracts/IReportStorage';
 
 // Cache Types
 export type {
