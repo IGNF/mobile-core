@@ -1,0 +1,526 @@
+import { Circle, Style, Text, Icon, RegularShape } from "ol/style";
+import { Fill } from "ol/style";
+import { Stroke } from "ol/style";
+import { asArray } from "ol/color";
+import FillPattern from "ol-ext/style/FillPattern";
+import FontSymbol from "ol-ext/style/FontSymbol";
+import { LineString, MultiLineString } from "ol/geom";
+import { CollabStylePresets } from "./CollabStylePresets";
+/**
+ * NOTE:
+ * 2 functions may cause issues here due to their use of Cordova:
+ * - getSymbolURI (line 412 of the original class)
+ * - loadSymbolCache (line 263 of the original class)
+ *
+ * For the moment, we implemented what was possible
+ * We'll see how to deal with that depending on how it has to be used
+ */
+/**
+ * Cache for loaded images to avoid redundant downloads
+ */
+const imageCache = {};
+export class CollabStyler {
+    constructor(userManager) {
+        this._symbolCache = {};
+        this._cacheLoading = [];
+        // UserManager is optional - only needed for symbol loading from API
+        // If not provided, external graphic features will fall back to default styling
+        this._userManager = userManager;
+        this.presets = new CollabStylePresets(this);
+        this.defaultStyleFn = this.getFeatureStyleFn();
+    }
+    /**
+     * Format properties with feature context
+     * @param format The format configuration
+     * @param _feature The feature to format properties for (unused for now)
+     * @returns Formatted property value
+     */
+    formatProperties(format, feature) {
+        if (!format || !format.replace || !feature)
+            return format;
+        // Extract the property name from the format string (example: "Hello ${name} world" => "name")
+        const propertyName = format.replace(/.*\$\{([^}]*)\}.*/, "$1");
+        if (propertyName === format) {
+            return format;
+        }
+        else {
+            return this.formatProperties(format.replace("${" + propertyName + "}", feature.get(propertyName)), feature);
+        }
+    }
+    /**
+     * Static factory method to get a style function for a collaborative layer
+     * Creates a CollabStyler instance and returns its style function
+     *
+     * @param table The table configuration
+     * @param cacheUrl The cache URL for resources
+     * @param sourceOptions Additional source options (can include userManager for symbol loading)
+     * @returns Style function compatible with OpenLayers StyleLike
+     */
+    static getFeatureStyleFunction(table, cacheUrl, sourceOptions) {
+        const userManager = sourceOptions?.userManager;
+        const styler = new CollabStyler(userManager);
+        return styler.getFeatureStyleFn(table, cacheUrl, sourceOptions);
+    }
+    /**
+     * Format feature style by processing all style properties
+     * @param fstyle The feature style configuration
+     * @param feature The feature to style
+     * @returns Formatted feature style object
+     */
+    formatFeatureStyle(fstyle, feature) {
+        if (!fstyle)
+            return {};
+        const fs = {};
+        for (const i in fstyle) {
+            fs[i] = this.formatProperties(fstyle[i], feature);
+        }
+        return fs;
+    }
+    /**
+     * Get stroke LineDash style from featureType.style
+     * @param fstyle The feature style configuration
+     * @returns Line dash array or undefined
+     */
+    strokeLineDash(fstyle) {
+        var width = Number(fstyle.strokeWidth) || 2;
+        switch (fstyle.strokeDashstyle) {
+            case 'dot': return [1, 2 * width];
+            case 'dash': return [2 * width, 2 * width];
+            case 'dashdot': return [2 * width, 4 * width, 1, 4 * width];
+            case 'longdash': return [4 * width, 2 * width];
+            case 'longdashdot': return [4 * width, 4 * width, 1, 4 * width];
+            default: return undefined;
+        }
+    }
+    /**
+     * Create a Stroke style from feature style configuration
+     * @param fstyle The feature style configuration
+     * @returns OpenLayers Stroke object or undefined
+     */
+    stroke(fstyle) {
+        if (fstyle.strokeOpacity === 0)
+            return undefined;
+        const lineDash = this.strokeLineDash(fstyle);
+        const stroke = new Stroke({
+            color: fstyle.strokeColor || "#00f",
+            width: Number(fstyle.strokeWidth) || 1,
+            lineDash: lineDash,
+            lineCap: fstyle.strokeLinecap || "round"
+        });
+        if (fstyle.strokeOpacity !== undefined && fstyle.strokeOpacity < 1) {
+            const a = asArray(stroke.getColor());
+            if (a.length) {
+                a[4] = fstyle.strokeOpacity;
+                stroke.setColor(a);
+            }
+        }
+        return stroke;
+    }
+    /**
+     * Create a Fill style from feature style configuration
+     * @param fstyle The feature style configuration
+     * @returns OpenLayers Fill or FillPattern object or undefined
+     */
+    fill(fstyle) {
+        if (fstyle.fillOpacity === 0)
+            return;
+        let fill = new Fill({
+            color: fstyle.fillColor || "rgba(255,255,255,0.5)",
+        });
+        if (fstyle.fillOpacity !== undefined && fstyle.fillOpacity < 1) {
+            const colorArray = asArray(fill.getColor());
+            if (colorArray.length) {
+                colorArray[3] = Number(fstyle.fillOpacity); // fourth element is the opacity
+                fill.setColor(colorArray);
+            }
+        }
+        if (fstyle.fillPattern) {
+            fill = new FillPattern({
+                fill: fill,
+                pattern: fstyle.fillPattern,
+                color: fstyle.patternColor,
+                angle: 45
+            });
+        }
+        return fill;
+    }
+    /**
+     * Get default circle image for point features
+     * @returns OpenLayers Circle style
+     */
+    getDefaultCircleImage() {
+        return new Circle({
+            radius: 10,
+            fill: new Fill({ color: 'rgba(255,0,0,.5)' }),
+            stroke: new Stroke({ color: '#fff', width: 1.5 }),
+        });
+    }
+    /**
+     * Set image on a style based on feature style configuration
+     * Creates point symbols from images, circles, or font icons
+     * @param olStyle The OpenLayers style to modify
+     * @param fstyle The feature style configuration
+     * @param feature The feature being styled (unused for now)
+     */
+    setImage(olStyle, fstyle, feature) {
+        // old code - needs refactoring for modern usage:
+        let image;
+        let img;
+        // TODO: .img seems to be a legacy property, see if it's still the way to use it
+        if (fstyle.img) {
+            img = fstyle.img;
+        }
+        else if (fstyle.externalGraphic && fstyle.externalGraphic !== 'undefined') {
+            img = fstyle.uri + '?width=' + fstyle.graphicWidth + '&height=' + fstyle.graphicWidth;
+        }
+        if (img) {
+            if (imageCache[img]) { // TODO: see where this is loaded, for the moment it's not
+                image = imageCache[img];
+            }
+            else {
+                // Test download
+                const i = new Image();
+                // Save cache Image
+                i.addEventListener('load', () => {
+                    imageCache[img] = new Icon({ src: img });
+                    olStyle.setImage(imageCache[img]);
+                    // Note: feature.layer doesn't exist in OpenLayers 10+
+                    // We replaced 'feature.layer.changed();' with 'feature.changed();'
+                    // see if it's still correct of if it creates issues
+                    feature.changed();
+                });
+                i.src = img;
+                // Use default circle while image loads
+                image = this.getDefaultCircleImage();
+            }
+        }
+        else {
+            const radius = Number(fstyle.pointRadius) || 5;
+            const graphic = {
+                cross: [4, radius, 0, 0],
+                square: [4, radius, undefined, Math.PI / 4],
+                triangle: [3, radius, undefined, 0],
+                star: [5, radius, radius / 2, 0],
+                x: [4, radius, 0, Math.PI / 4],
+                rectangle: [4, radius, undefined, Math.PI / 4] // added
+            };
+            switch (fstyle.graphicName) {
+                case "cross":
+                case "star":
+                case "rectangle":
+                case "square":
+                case "triangle":
+                case "x": {
+                    const g = graphic[fstyle.graphicName] || graphic.square;
+                    image = new RegularShape({
+                        points: g[0],
+                        radius: g[1],
+                        radius2: g[2],
+                        rotation: g[3],
+                        stroke: this.stroke(fstyle),
+                        fill: this.fill(fstyle)
+                    });
+                    if (fstyle.graphicName === 'rectangle') {
+                        const canvas = image.getImage(1);
+                        const newCanvas = document.createElement('canvas');
+                        newCanvas.width = canvas.width;
+                        newCanvas.height = canvas.height;
+                        const newCtx = newCanvas.getContext("2d");
+                        const canvasCtx = canvas.getContext("2d");
+                        if (newCtx && canvasCtx) {
+                            newCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height, canvas.width / 4, 0, canvas.width / 2, canvas.height);
+                            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+                            canvasCtx.drawImage(newCanvas, 0, 0);
+                        }
+                    }
+                    break;
+                }
+                case 'lightning':
+                case 'church':
+                    image = new FontSymbol({
+                        glyph: this.getGlyph(fstyle.graphicName),
+                        radius: radius,
+                        rotation: Math.PI,
+                        stroke: this.stroke(fstyle),
+                        fill: this.fill(fstyle)
+                    });
+                    break;
+                default:
+                    image = new Circle({
+                        radius: radius,
+                        stroke: this.stroke(fstyle),
+                        fill: this.fill(fstyle)
+                    });
+                    break;
+            }
+        }
+        if (image) {
+            olStyle.setImage(image);
+        }
+    }
+    /**
+     * Create a Text style from feature style configuration
+     * @param fstyle The feature style configuration
+     * @returns OpenLayers Text object or undefined
+     */
+    text(fstyle) {
+        if (!fstyle.label)
+            return undefined;
+        const textOptions = {
+            font: (fstyle.fontWeight || '')
+                + " "
+                + (fstyle.fontSize || '12') + 'px'
+                + " "
+                + (fstyle.fontFamily || 'Sans-serif'),
+            text: fstyle.label || '',
+            rotation: (fstyle.labelRotation || 0),
+            textAlign: 'left',
+            textBaseline: 'middle',
+            offsetX: fstyle.labelXOffset || 0,
+            offsetY: -(fstyle.labelYOffset || 0),
+            stroke: new Stroke({
+                color: fstyle.labelOutlineColor || '#fff',
+                width: Number(fstyle.labelOutlineWidth) || 2
+            }),
+            fill: new Fill({
+                color: fstyle.fontColor || '#000'
+            })
+        };
+        return new Text(textOptions);
+    }
+    /**
+     * This function was using Cordova to load symbols from the file system.
+     * Instead of calling Capacitor here (we want to separate the logic)
+     * We're passing the directory list as parameter
+     *
+     * To understand more about that, see the ol/style/Collaboratif.js file, line 263
+     * @param entries Array of symbol cache entries with name and nativeURL
+     */
+    loadSymbolCache(entries) {
+        this._cacheLoading = [];
+        for (let i = 0, entry; entry = entries[i]; i++) {
+            this._symbolCache[entry.name] = entry.nativeURL;
+        }
+    }
+    /** Get ol style function as defined in featureType
+     *
+     * @param featureType Feature type configuration with style rules
+     * @param cache Cache configuration (unused for now)
+     * @param options Additional options including directoryList for symbol cache
+     * @returns A style function that takes (feature, resolution) and returns Style or Style[]
+     */
+    getFeatureStyleFn(featureType, _cache, options) {
+        featureType = featureType || {};
+        // Direction style for showing circulation arrows on roads
+        const directionStyle = new Style({
+            text: new Text({
+                text: '\u203A',
+                font: "bold 25px Arial",
+            })
+        });
+        return (feature, res) => {
+            // so, here should pass in parameter the directory list fetched from capacitor
+            if (options?.directoryList) {
+                this.loadSymbolCache(options.directoryList);
+            }
+            // Check if this feature type has a custom style method (e.g., zombie, vivant, etc.)
+            if (!featureType.style && featureType.name) {
+                // Try to call a named method on presets (e.g., this.presets.zombie, this.presets.vivant)
+                const methodName = featureType.name;
+                if (typeof this.presets[methodName] === 'function') {
+                    // Call the custom style method which should return a style function
+                    const customFn = this.presets[methodName](featureType);
+                    if (typeof customFn === 'function') {
+                        return customFn(feature);
+                    }
+                }
+            }
+            // Handle conditional styles with children (e.g., style roads differently based on speed limit)
+            let style = featureType.style;
+            if (featureType.style?.children) {
+                const props = feature.getProperties();
+                delete props.geometry;
+                // Find the first matching child style based on feature property conditions
+                for (let i = 0; i < featureType.style.children.length; i++) {
+                    const child = featureType.style.children[i];
+                    // Note: The original code used mongo-parse package for MongoDB-style queries
+                    // TODO: ask where does it come from, in CordovApp there is no "mongo-parse" package installed...
+                    if (!(child.mongo && child.mongo.matches)) {
+                        // TODO: Implement condition matching
+                        // Would need to install and use mongo-parse: child.mongo = mongo.parse(child.condition)
+                        // For now, skip child styles without proper condition matchers
+                        continue;
+                    }
+                    if (child.mongo.matches(props)) {
+                        style = child;
+                        break;
+                    }
+                }
+            }
+            // Format the style with feature properties
+            const fstyle = this.formatFeatureStyle(style || {}, feature);
+            // Handle symbol libraries
+            if (style?.name) {
+                const defaultIconSize = 16; // Default icon size
+                if (featureType.symbo_attribute) {
+                    fstyle.radius = 5;
+                    fstyle.img = this.getSymbolURI(featureType, style.name + '/' + feature.get(featureType.symbo_attribute.name), style.graphicWidth || defaultIconSize, style.graphicHeight || defaultIconSize, feature);
+                }
+                else if (style.externalGraphic) {
+                    fstyle.radius = 5;
+                    fstyle.img = this.getSymbolURI(featureType, style.externalGraphic, style.graphicWidth || defaultIconSize, style.graphicHeight || defaultIconSize, feature);
+                }
+            }
+            // Create the OpenLayers style
+            const olStyle = new Style({});
+            const textStyle = this.text(fstyle);
+            if (textStyle)
+                olStyle.setText(textStyle);
+            this.setImage(olStyle, fstyle, feature);
+            const fillStyle = this.fill(fstyle);
+            if (fillStyle)
+                olStyle.setFill(fillStyle);
+            const strokeStyle = this.stroke(fstyle);
+            if (strokeStyle)
+                olStyle.setStroke(strokeStyle);
+            // Add direction arrows for linear features at high zoom levels
+            let directionField;
+            if (featureType.style?.directionField) {
+                try {
+                    directionField = JSON.parse(featureType.style.directionField);
+                }
+                catch (e) {
+                    directionField = null;
+                    console.log("bad json direction field for style " + featureType.style.name);
+                }
+            }
+            // Only show direction at high zoom (res < 2)
+            if (res < 2 && directionField && typeof directionField === 'object') {
+                if ('attribute' in directionField && 'sensDirect' in directionField && 'sensInverse' in directionField) {
+                    const direct = directionField.sensDirect;
+                    const inverse = directionField.sensInverse;
+                    // Calculate rotation angle for direction arrow based on line geometry
+                    // Arrow points along the line at its midpoint
+                    const lrot = (sens, geom) => {
+                        if (sens !== direct && sens !== inverse)
+                            return 0;
+                        let geometry = geom;
+                        if (geom instanceof MultiLineString) {
+                            geometry = geom.getLineString(0);
+                        }
+                        const coords = geometry.getCoordinates();
+                        let x = 0, y = 0, dl = 0;
+                        const length = geometry.getLength();
+                        // Walk along segments until we reach the middle of the line
+                        for (let i = 0; i < coords.length - 1; i++) {
+                            x = coords[i + 1][0] - coords[i][0];
+                            y = coords[i + 1][1] - coords[i][1];
+                            dl += Math.sqrt(x * x + y * y);
+                            if (dl >= length / 2)
+                                break;
+                        }
+                        // Return rotation angle based on direction (direct vs inverse)
+                        if (sens === direct) {
+                            return -Math.atan2(y, x);
+                        }
+                        else {
+                            return Math.PI - Math.atan2(y, x);
+                        }
+                    };
+                    const sens = feature.get(directionField.attribute);
+                    if (sens === direct || sens === inverse) {
+                        const geom = feature.getGeometry();
+                        if (geom && (geom instanceof LineString || geom instanceof MultiLineString)) {
+                            const rotation = lrot(sens, geom);
+                            directionStyle.getText()?.setRotation(rotation);
+                            return [olStyle, directionStyle];
+                        }
+                    }
+                }
+            }
+            return olStyle;
+        };
+    }
+    /**
+     * Return the urls of the symbols used for a feature type
+     * @param featureType the feature type configuration
+     * @returns Record mapping symbol names to their URIs
+     */
+    getUrls(featureType) {
+        const urls = {};
+        if (!featureType.styles)
+            return urls;
+        for (const i in featureType.styles) {
+            const style = featureType.styles[i];
+            if (style.externalGraphic && style.uri) {
+                urls[style.externalGraphic] = style.uri;
+            }
+            if (style.children) {
+                for (const j in style.children) {
+                    const child = style.children[j];
+                    if (child.externalGraphic && child.uri) {
+                        urls[child.externalGraphic] = child.uri;
+                    }
+                }
+            }
+        }
+        return urls;
+    }
+    /**
+     * Get image uri and save to cache if not already done
+     *
+     * Note: This method requires a properly initialized UserManager to load symbols from API.
+     * If UserManager is not provided, it will return null and features will use fallback styling.
+     *
+     * @param featureType Feature type configuration
+     * @param name Symbol name
+     * @param width Symbol width
+     * @param height Symbol height
+     * @param feature The feature being styled
+     * @returns Symbol URI from cache, or null if not yet loaded
+     */
+    getSymbolURI(featureType, name, width, height, feature) {
+        const cacheName = name.replace(/\//g, '_') + '_' + width + 'x' + height;
+        // Already in cache
+        if (this._symbolCache[cacheName]) {
+            return this._symbolCache[cacheName];
+        }
+        const stylePictos = this.getUrls(featureType);
+        if (!stylePictos[name]) {
+            console.warn("Symbol not found in feature type styles:", name);
+            return null;
+        }
+        if (this._cacheLoading.indexOf(cacheName) !== -1)
+            return null;
+        // Check if UserManager is available for API calls
+        if (!this._userManager || !this._userManager.apiClient) {
+            console.warn("UserManager not initialized - cannot load symbol from API");
+            return null;
+        }
+        const img = stylePictos[name] + '?width=' + width + '&height=' + height;
+        this._cacheLoading.push(cacheName);
+        this._userManager.apiClient.getDocument(img).then((_response) => {
+            // here we're supposed to call Capacitor to save the document to the file system
+            // and update the symbol cache with the URL of the saved document in Capacitor
+            // solution could be to:
+            // - return the response
+            // - on the app side, call Capacitor to save the document to the file system
+            // - call another function here to update the symbol cache, that would as well call feature.changed();
+            feature.changed(); // used to be 'feature.layer.changed();', see if it's still valid
+        });
+        return null;
+    }
+    /**
+     * Get the glyph for a graphic
+     * @param graphicName the name of the graphic
+     * @returns the glyph for the graphic
+     */
+    getGlyph(graphicName) {
+        switch (graphicName) {
+            case "lightning": return "fa-bolt";
+            case "church": return "fa-venus";
+            default: return null;
+        }
+    }
+}
+//# sourceMappingURL=CollabStyler.js.map
