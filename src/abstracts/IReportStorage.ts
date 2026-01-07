@@ -6,8 +6,7 @@ import { Report, ReportPhoto } from "../report/types";
  * Necessary to remove the dependency to Cordova/Capacitor Storage from the core library
  */
 export interface IReportStorage {
-  // Synchronous methods for initialization
-  loadParams(key: string): any;
+  loadParams(key: string): Promise<any>;
 
   // Report CRUD operations
   saveReport(report: Report): Promise<void>;
@@ -19,7 +18,7 @@ export interface IReportStorage {
   getBlob(photo: ReportPhoto): Promise<Blob>;
 
   // Parameter operations
-  saveParam(param: any): void;
-  getParam(): any;
-  clearParam(): void;
+  saveParam(param: any): Promise<void>;
+  getParam(): Promise<any>;
+  clearParam(): Promise<void>;
 }
