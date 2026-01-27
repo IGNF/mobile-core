@@ -18,6 +18,23 @@ export interface Report {
     createdAt: Date;
     modifiedAt?: Date;
     userId?: number;
+    author?: {
+        id: number;
+        username: string;
+    };
+    closingDate?: Date;
+    validator?: {
+        id: number;
+        username: string;
+    };
+    commune?: Record<string, any>;
+    departement?: Record<string, any>;
+    territory?: Record<string, any>;
+    deviceVersion?: string;
+    inputDevice?: string;
+    sketchXml?: string;
+    replies?: Record<string, any>;
+    attachments?: Record<string, any>;
 }
 export interface ReportPostParams {
     communityId: number;
