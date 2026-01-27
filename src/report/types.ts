@@ -9,7 +9,7 @@ import type { Projection } from 'ol/proj';
  */
 export interface Report {
   id: number;
-  communityId: number; // community_id ?
+  communityId: number;
   themeId: number;
   geometry: string;
   comment: string;
@@ -21,6 +21,23 @@ export interface Report {
   createdAt: Date;
   modifiedAt?: Date;
   userId?: number;
+  author?: {
+    id: number;
+    username: string;
+  };
+  closingDate?: Date;
+  validator?: {
+    id: number;
+    username: string;
+  };
+  commune?: Record<string, any>;
+  departement?: Record<string, any>;
+  territory?: Record<string, any>;
+  deviceVersion?: string;
+  inputDevice?: string;
+  sketchXml?: string;
+  replies?: Record<string, any>;
+  attachments?: Record<string, any>;
 }
 
 export interface ReportPostParams {
@@ -93,7 +110,7 @@ export const STATUS_STYLES: Partial<Record<ReportStatus, Style>> = {
       textAlign: 'center',
       textBaseline: 'middle',
       offsetY: 1,
-      fill: new Fill({ color: [255,255,255] })
+      fill: new Fill({ color: [255, 255, 255] })
     })
   }),
   [ReportStatus.Pending]: new Style({
