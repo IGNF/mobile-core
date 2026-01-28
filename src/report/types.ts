@@ -76,6 +76,7 @@ export interface ReportPhoto {
  * Report status
  */
 export enum ReportStatus {
+  Draft = 'draft',
   Cluster = 'cluster',
   Submit = 'submit',
   Pending = 'pending',

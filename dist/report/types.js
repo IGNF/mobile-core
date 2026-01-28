@@ -6,6 +6,7 @@ import Text from 'ol/style/Text';
  */
 export var ReportStatus;
 (function (ReportStatus) {
+    ReportStatus["Draft"] = "draft";
     ReportStatus["Cluster"] = "cluster";
     ReportStatus["Submit"] = "submit";
     ReportStatus["Pending"] = "pending";
