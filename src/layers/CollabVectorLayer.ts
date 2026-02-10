@@ -2,16 +2,16 @@
  * Collaborative vector layer
  * @migrated from: ol/layer/CollabVector.js
  */
-import VectorLayer from "ol/layer/Vector";
+import VectorLayer from 'ol/layer/Vector';
 
-import { DEFAULT_LAYERS_VALUES } from "./DefaultLayersValues";
-import { CollabVectorLayerOptions } from "./types";
-import { LayerStyle, Table } from "../collaborative/types";
-import CollabVectorSource from "../sources/CollabVectorSource";
-import { CollabVectorSourceOptions } from "../sources/types";
-import { View } from "ol";
-import { StyleRule } from "../styles/MobileCoreStyle";
-import { CollabStyler } from "../styles/CollabStyler";
+import { DEFAULT_LAYERS_VALUES } from './DefaultLayersValues';
+import { CollabVectorLayerOptions } from './types';
+import { LayerStyle, Table } from '../collaborative/types';
+import CollabVectorSource from '../sources/CollabVectorSource';
+import { CollabVectorSourceOptions } from '../sources/types';
+import { View } from 'ol';
+import { StyleRule } from '../styles/MobileCoreStyle';
+import { CollabStyler } from '../styles/CollabStyler';
 
 export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
 
@@ -21,15 +21,13 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
     const superOptions = CollabVectorLayer._computeCollabVectorLayerOptions(options);
     super(superOptions);
 
-    this.set("name", options.database + ':' + options.name);
+    this.set('name', `${options.database}:${options.name}`);
     sourceOptions.client = options.client;
-    if (options.cacheUrl) {
-      // TODO, pass directly the file uri from the file system in the options???
-      // previous code: source_options.cacheUrl = CordovApp.File.getFileURI(options.cacheUrl) //options.cacheUrl;
-      sourceOptions.cacheUrl = options.cacheUrl;
 
-      sourceOptions.online = (sourceOptions.online != undefined) ? sourceOptions.online : false;
-      this.set("cache", true);
+    if (options.cacheUrl) {
+      sourceOptions.cacheUrl = options.cacheUrl;
+      sourceOptions.online = sourceOptions.online != undefined ? sourceOptions.online : false;
+      this.set('cache', true);
     }
 
     this.createSource(options, sourceOptions, options.table);
@@ -37,8 +35,6 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
 
   /**
    * Computes the options for the CollabVector layer
-   * @param options 
-   * @returns The options for the VectorLayer super constructor
    */
   private static _computeCollabVectorLayerOptions(options: CollabVectorLayerOptions): Record<string, any> {
     return {
@@ -51,54 +47,48 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
 
   /**
    * Creates the source for the CollabVector layer
-   * @param options 
-   * @param sourceOptions 
-   * @param table 
-   * @returns The source for the CollabVector layer
-   * 
-   * TODO
-   * See if we can refactor the "table" attribute, options.table seems to equal sourceOptions.table and table
    */
-  public createSource(options: CollabVectorLayerOptions, sourceOptions: Partial<CollabVectorSourceOptions>, table: Table) {
-    // Ensure sourceOptions has required properties
+  public createSource(options: CollabVectorLayerOptions, sourceOptions: Partial<CollabVectorSourceOptions>, table: Table): void {
     const completeSourceOptions: CollabVectorSourceOptions = {
       ...sourceOptions,
-      table: table,
+      table,
       client: sourceOptions.client || options.client,
     } as CollabVectorSourceOptions;
+
     if (options.checkSourceOptions) {
       options.checkSourceOptions(this, completeSourceOptions, table);
     }
 
-    // CollabVector source
     const vectorSource = new CollabVectorSource(completeSourceOptions);
     this.setSource(vectorSource);
 
-    // CollabVector Layer
-    this.set("title", table.title);
+    this.set('title', table.title);
 
-    // Set zoom level / resolution for the layer
     const view = new View();
+    const tableAny = table as any;
 
-    if (table.maxZoomLevel && table.maxZoomLevel < 20) {
-      view.setZoom(table.maxZoomLevel);
+    const maxZoom = tableAny.maxZoomLevel ?? tableAny.max_zoom_level;
+    const minZoom = tableAny.minZoomLevel ?? tableAny.min_zoom_level;
+
+    if (maxZoom && maxZoom < 20) {
+      view.setZoom(maxZoom);
       this.setMinResolution(view.getResolution() ?? 0);
     }
 
-    if (table.minZoomLevel || table.minZoomLevel === 0) {
-      view.setZoom(Math.max(table.minZoomLevel, 4));
+    if (minZoom || minZoom === 0) {
+      view.setZoom(Math.max(minZoom, 4));
       this.setMaxResolution((view.getResolution() ?? 0) + 1);
     }
 
-    // Decode condition (parse string)
     if (table.style && table.style.children) {
       for (const child of table.style.children as StyleRule[]) {
-        if (typeof (child.condition) === 'string') {
+        if (typeof child.condition === 'string') {
           try { child.condition = JSON.parse(child.condition); }
-          catch (e) { /* ok */ }
+          catch { /* no-op */ }
         }
       }
     }
+
     if (table.styles && table.styles.length) {
       let found = false;
       table.styles.forEach((st: LayerStyle) => {
@@ -107,33 +97,29 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
         }
         if (st.children) {
           st.children.forEach((s: StyleRule) => {
-            if (typeof (s.condition) === 'string') {
+            if (typeof s.condition === 'string') {
               try { s.condition = JSON.parse(s.condition); }
-              catch (e) { /* ok */ }
+              catch { /* no-op */ }
             }
-          })
+          });
         }
-      })
+      });
+
       if (!found && table.style) {
         table.styles.unshift(table.style);
       }
     }
 
-    // Apply default styling using CollabStyler if no custom style provided
     if (!options.style) {
-      // todo, "options.cacheUrl" was before CordovApp.File.getFileURI(options.cacheUrl)
-      // see if we can now pass directly the cacheURL in the options (see this file in the contructor - same issue)
       const styleFunction = CollabStyler.getFeatureStyleFunction(table, options.cacheUrl ?? '', completeSourceOptions);
-      this.setStyle(styleFunction as any); // Cast needed due to OL StyleLike vs StyleFunction typing
+      this.setStyle(styleFunction as any);
     }
 
-    this.dispatchEvent({ type: "ready", source: vectorSource } as any);
-
+    this.dispatchEvent({ type: 'ready', source: vectorSource } as any);
   }
 
   /**
    * Get the table for the CollabVector layer
-   * @returns The table for the CollabVector layer, or undefined if not ready
    */
   public getTable(): Table | undefined {
     const source = this.getSource();
@@ -143,7 +129,6 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
 
   /**
    * Get the style for features in this layer
-   * @returns The layer style, or undefined if not ready
    */
   public getFeatureStyle(): LayerStyle | undefined {
     const source = this.getSource();
@@ -153,7 +138,6 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
 
   /**
    * Check if the layer is ready (has a source with a table)
-   * @returns True if the layer is ready, false otherwise
    */
   public isReady(): boolean {
     const source = this.getSource();
@@ -162,13 +146,18 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
 
   /**
    * Set the online/offline mode for the layer
-   * @param online - True for online mode, false for offline mode
    */
   public setOnline(online: boolean): void {
     const source = this.getSource();
     if (!source) return;
+
     source.localProperties.online = online;
-    source.refresh();
+
+    if (typeof (source as any).reload === 'function') {
+      (source as any).reload();
+    } else {
+      source.refresh();
+    }
   }
 
 }

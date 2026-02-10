@@ -1,51 +1,31 @@
 /**
  * CollabVectorSource - OpenLayers source for collaborative vector layers
- *
- * This class extends OpenLayers VectorSource to provide collaborative editing capabilities
- * with support for offline caching, differential updates, and feature preservation.
- *
- * Key features:
- * - Tile-based or bbox loading strategies
- * - Offline cache support with local edition tracking
- * - Differential feature management (inserts, updates, deletes)
- * - Feature preservation during reloads
- * - Integration with collaborative client API
- *
- * @extends VectorSource
  * @migrated from ol/source/CollabVector.js of the CordovApp module
  */
 import { ProjectionUtils } from '../utils/ProjectionUtils';
-import { COLLAB_VECTOR_DEFAULT_VALUES } from "./DefaultSourceValues";
+import { COLLAB_VECTOR_DEFAULT_VALUES } from './DefaultSourceValues';
 import VectorSource from 'ol/source/Vector';
 import { tile, bbox } from 'ol/loadingstrategy';
 import { createXYZ } from 'ol/tilegrid';
 import { Collection, Feature } from 'ol';
 import WKT from 'ol/format/WKT';
+import GeoJSON from 'ol/format/GeoJSON';
 import proj4 from 'proj4';
+import { getCenter } from 'ol/extent';
+import { transformExtent } from 'ol/proj';
 import { SOURCE_ERROR_CODES } from './ErrorCodes';
 import PathUtils from '../utils/PathUtils';
 const pathUtils = new PathUtils();
-// Initialize ProjectionUtils instance
-import EventManager from '../utils/EventManager';
 export default class CollabVectorSource extends VectorSource {
-    /**
-     * Creates a new CollabVectorSource
-     *
-     * @param options - Configuration options for the collaborative vector source
-     * @throws {Error} If client or table are not defined in options
-     */
     constructor(options) {
-        // Step 1: Initialize utilities before calling super()
-        // These are needed to compute VectorSource options
         const projectionUtils = new ProjectionUtils();
         projectionUtils.initProjections();
-        // Step 2: Compute VectorSource configuration
-        // This validates required options and determines loading strategy (tile vs bbox)
         const superOptions = CollabVectorSource._computeVectorSourceOptions(options);
-        // Step 3: Initialize parent VectorSource with computed options
         super(superOptions);
         this._isLoading = false;
         this._writeUpdateCounter = 0;
+        this._tileLoading = 0;
+        this._projectionCode = 'EPSG:3857';
         this.localProperties = {};
         /** Features that should persist across source reloads (e.g., currently edited features) */
         this.preservedFeatures = new Collection();
@@ -57,28 +37,13 @@ export default class CollabVectorSource extends VectorSource {
         this.deletedFeatures = new Collection();
         /** Features that have been updated locally and need to be synced */
         this.updatedFeatures = new Collection();
-        // Step 4: Store instance properties
         this._options = options || {};
-        this._eventManager = new EventManager();
         this._cache = options.cache;
         this.localProperties = superOptions.properties || {};
-        // Step 5: Complete collaborative-specific initialization
-        // Sets up event handlers, preserved features, and loads cached edits
         this._initCollabVectorSource();
     }
-    /**
-     * Computes and validates VectorSource configuration options
-     *
-     * This static method is called before super() to prepare the configuration
-     *
-     * @param options - User-provided collaborative vector source options
-     * @returns Configuration object for VectorSource constructor
-     * @throws {Error} If client or table are not defined
-     * @private
-     */
     static _computeVectorSourceOptions(options) {
         const opts = options || {};
-        // Validate required options
         if (opts.client === undefined) {
             throw new Error(SOURCE_ERROR_CODES.COLLAB_NO_CLIENT_DEFINED);
         }
@@ -86,179 +51,117 @@ export default class CollabVectorSource extends VectorSource {
             throw new Error(SOURCE_ERROR_CODES.COLLAB_NO_TABLE_DEFINED);
         }
         const table = opts.table;
-        // Determine loading strategy: tile-based or bbox-based
         let strategy = opts.strategy || bbox;
+        const properties = {
+            online: opts.online ?? true,
+            cacheUrl: opts.cacheUrl,
+            editionCacheFile: pathUtils.sanitizeFileName(`${table.database}-${table.name}-editions.txt`),
+            formatWKT: new WKT(),
+            tiled: false,
+            tileGrid: undefined,
+            maxReload: undefined,
+        };
         if (opts.tileZoom) {
-            // Tile-based strategy: loads features in fixed zoom tiles
             const tileGrid = createXYZ({
                 tileSize: opts.tileSize || COLLAB_VECTOR_DEFAULT_VALUES.TILE_SIZE,
                 minZoom: opts.tileZoom,
                 maxZoom: opts.tileZoom,
             });
             strategy = tile(tileGrid);
-        }
-        // Extended properties beyond standard VectorSource options
-        const properties = {
-            online: opts.online ?? true,
-            cacheUrl: opts.cacheUrl,
-            editionCacheFile: pathUtils.sanitizeFileName(table.database + '-' + table.name + '-editions.txt'),
-            formatWKT: new WKT(), // WKT format handler for geometry serialization
-        };
-        if (opts.tileZoom) {
+            properties.tiled = true;
+            properties.tileGrid = tileGrid;
             properties.maxReload = opts.maxReload;
         }
         return {
-            strategy: strategy,
-            properties: properties,
+            strategy,
+            properties,
             features: new Collection(),
             attributions: opts.attribution,
             logo: opts.logo,
-            useSpatialIndex: true, // Spatial index is required for tile loading strategy
+            useSpatialIndex: true,
             wrapX: opts.wrapX,
         };
     }
-    /**
-     * Completes collaborative-specific initialization after VectorSource setup
-     *
-     * This method handles:
-     * - Document URI configuration for the collaborative API
-     * - Projection validation
-     * - Feature filtering setup (to exclude deleted/destroyed features)
-     * - Event handler registration for feature lifecycle
-     * - Loading cached local edits from previous sessions
-     *
-     * @private
-     */
     _initCollabVectorSource() {
         const table = this._options.table || {};
         this.table = table;
-        // Derive document endpoint from WFS URL (e.g., for attachments)
-        table.docURI = table.wfs.replace(/\/gcms\/.*/, "/document/");
-        // Apply defaults for max features and tile size
+        if (table.wfs) {
+            table.docURI = table.wfs.replace(/\/gcms\/.*/, '/document/');
+        }
         this._options.maxFeatures = this._options.maxFeatures || COLLAB_VECTOR_DEFAULT_VALUES.MAX_FEATURES;
         this._options.tileSize = this._options.tileSize || COLLAB_VECTOR_DEFAULT_VALUES.TILE_SIZE;
-        // Validate that the spatial reference system is known to proj4
-        const srsName = table.columns[table.geometryName]?.crs ?? COLLAB_VECTOR_DEFAULT_VALUES.SRS_NAME;
-        if (!proj4.defs(srsName)) {
-            console.error(SOURCE_ERROR_CODES.COLLAB_UNKNOWN_PROJECTION, srsName);
+        this.localProperties.srsName = this._getTableCRS();
+        if (!proj4.defs(this.localProperties.srsName)) {
+            console.error(SOURCE_ERROR_CODES.COLLAB_UNKNOWN_PROJECTION, this.localProperties.srsName);
         }
-        // Configure filter to exclude logically deleted features from the layer
         this.localProperties.featureFilter = this._options.filter ?? {};
-        if (table.columns.detruit) {
+        if (table.columns?.detruit) {
             this.localProperties.featureFilter = { detruit: false };
         }
-        else if (table.columns.gcms_detruit) {
+        else if (table.columns?.gcms_detruit) {
             this.localProperties.featureFilter = { gcms_detruit: false };
         }
-        // Initialize collection of features to preserve during source refreshes
-        this.localProperties.preservedFeatures = this._options.preserved ?? new Collection();
-        // Wire up event handlers for feature lifecycle tracking
-        this._eventManager.on('addfeature', this.onAddFeature.bind(this));
-        this._eventManager.on('removefeature', this.onDeleteFeature.bind(this));
-        // Note: Feature property changes are handled via 'propertychange' event on the
-        // feature itself to avoid style changes triggering update tracking
-        // Load any cached local edits from disk
+        this.preservedFeatures = this._options.preserved ?? new Collection();
+        this.localProperties.preservedFeatures = this.preservedFeatures;
+        this.on('addfeature', (event) => {
+            if (event?.feature) {
+                this.onAddFeature(event.feature);
+            }
+        });
+        this.on('removefeature', (event) => {
+            if (event?.feature) {
+                this.onDeleteFeature(event.feature);
+            }
+        });
         this.loadChanges();
-        // TODO: Determine if custom loader is needed when no cache URL is provided
-        if (!this.localProperties.cacheUrl) {
-            // this.setLoader(this.loaderFn_);
-        }
+        this.setLoader(this.loaderFn.bind(this));
     }
     getTable() {
         return this.table;
     }
-    /**
-     * Handles feature addition events
-     *
-     * Called when a new feature is added to the source. This method:
-     * - Sets up geometry change listeners
-     * - Sets up property change listeners for tracking updates
-     * - Marks the feature for insertion if not currently loading
-     * - Ensures all table columns have default null values
-     * - Saves changes to cache
-     *
-     * @param feature - The feature being added
-     */
     onAddFeature(feature) {
-        // Set up geometry change listener to track geometric modifications
         const geometry = feature.getGeometry();
         if (geometry) {
             geometry.on('change', () => {
-                // Mark that geometry was updated
                 const updates = feature.updates || {};
                 updates.geometry = true;
                 feature.updates = updates;
-                // Dispatch property change event
                 feature.dispatchEvent({
                     type: 'propertychange',
                     target: feature
                 });
             });
         }
-        // Set up property change listener for attribute updates
         feature.on('propertychange', this.onUpdateFeature.bind(this, feature));
-        // Don't track changes while loading from server/cache
         if (this._isLoading)
             return;
-        // Mark feature as newly inserted
         feature.state = 'INSERT';
-        // Initialize all table columns with null if not present
         const columns = this.table?.columns || {};
-        const geometryName = this.table?.geometryName || 'geometry';
+        const geometryName = this._getGeometryColumnName();
         for (const columnName in columns) {
-            if (columnName !== geometryName) {
-                if (feature.get(columnName) === undefined) {
-                    feature.set(columnName, null, true); // true = silent (no event)
-                }
+            if (columnName !== geometryName && feature.get(columnName) === undefined) {
+                feature.set(columnName, null, true);
             }
         }
-        // Add to inserted features collection
         this.insertedFeatures.push(feature);
-        // Persist changes to cache
         this.writeChanges();
     }
-    /**
-     * Handles feature deletion events
-     *
-     * Called when a feature is removed from the source. This method:
-     * - Manages feature state transitions (INSERT -> removed, UPDATE -> DELETE)
-     * - Removes from insert/update collections if applicable
-     * - Adds to delete collection if feature existed on server
-     * - Saves changes to cache
-     *
-     * @param feature - The feature being deleted
-     */
     onDeleteFeature(feature) {
-        // Don't track changes while loading from server/cache
         if (this._isLoading)
             return;
         const featureState = feature.state;
-        // State transitions: INSERT->removed, UPDATE->DELETE, or default->DELETE
         if (featureState === 'INSERT') {
-            // Feature was only inserted locally, just remove it from inserts
             this.removeFeatureFromCollection(this.insertedFeatures, feature);
         }
         else {
-            // Feature exists on server or was updated
             if (featureState === 'UPDATE') {
-                // Remove from updates first
                 this.removeFeatureFromCollection(this.updatedFeatures, feature);
             }
-            // Track deletion for server synchronization
             this.deletedFeatures.push(feature);
         }
-        // Mark feature as deleted
         feature.state = 'DELETE';
-        // Persist changes to cache
         this.writeChanges();
     }
-    /**
-     * Helper method to remove a feature from a collection
-     *
-     * @param collection - The collection to remove from
-     * @param feature - The feature to remove
-     * @private
-     */
     removeFeatureFromCollection(collection, feature) {
         const features = collection.getArray();
         const index = features.indexOf(feature);
@@ -266,43 +169,28 @@ export default class CollabVectorSource extends VectorSource {
             collection.removeAt(index);
         }
     }
-    /**
-     * Writes local changes to cache file
-     *
-     * This method debounces multiple rapid changes to prevent excessive file writes.
-     * It collects all pending changes (inserts, updates, deletes) and persists them
-     * to the edition cache file.
-     *
-     * @param force - If true, writes immediately; if false, debounces the write
-     */
     writeChanges(force = false) {
-        // Debounce rapid changes: increment counter and schedule write after 100ms
         if (!force) {
             this._writeUpdateCounter++;
             setTimeout(() => {
                 this.writeChanges(true);
-            }, 100); // 100ms debounce
+            }, 100);
             return;
         }
-        // Decrement counter; only write if no more pending updates (counter reaches 0)
         this._writeUpdateCounter--;
         if (this._writeUpdateCounter > 0)
             return;
         this._writeUpdateCounter = 0;
-        // Get all pending changes to save
         const actions = this.getSaveActions(true);
-        // Check if we have a cache file configured
         const editionCacheFile = this.localProperties.editionCacheFile;
         if (!editionCacheFile)
             return;
-        // Save to cache storage if available
         if (this._cache) {
             this._saveEditionCache(editionCacheFile, actions).catch(error => {
                 console.error('ERROR: writeChanges on layer', error);
             });
         }
         else {
-            // Fallback to localStorage if no cache storage provided
             try {
                 localStorage.setItem(editionCacheFile, JSON.stringify(actions));
             }
@@ -311,12 +199,6 @@ export default class CollabVectorSource extends VectorSource {
             }
         }
     }
-    /**
-     * Collects all pending save actions (inserts, updates, deletes)
-     *
-     * @param includeGeometry - Whether to include geometry data in the actions
-     * @returns Object containing arrays of features to insert, update, and delete
-     */
     getSaveActions(includeGeometry = true) {
         const formatWKT = this.localProperties.formatWKT;
         return {
@@ -325,29 +207,18 @@ export default class CollabVectorSource extends VectorSource {
             delete: this.deletedFeatures.getArray().map(f => this.serializeFeature(f, formatWKT, false))
         };
     }
-    /**
-     * Serializes a feature to a plain object for storage
-     *
-     * @param feature - The feature to serialize
-     * @param formatWKT - WKT formatter for geometry
-     * @param includeGeometry - Whether to include geometry
-     * @returns Serialized feature object
-     * @private
-     */
     serializeFeature(feature, formatWKT, includeGeometry) {
         const properties = feature.getProperties();
         const serialized = {
             id: feature.getId(),
             properties: {}
         };
-        // Copy all non-geometry properties
-        const geometryName = this.table?.geometryName || 'geometry';
+        const geometryName = this._getGeometryColumnName();
         for (const key in properties) {
             if (key !== geometryName && key !== 'geometry') {
                 serialized.properties[key] = properties[key];
             }
         }
-        // Include geometry if requested
         if (includeGeometry) {
             const geometry = feature.getGeometry();
             if (geometry && formatWKT) {
@@ -356,18 +227,10 @@ export default class CollabVectorSource extends VectorSource {
         }
         return serialized;
     }
-    /**
-     * Loads cached local changes from previous sessions
-     *
-     * Reads the edition cache file (stored in editionCacheFile property) and
-     * restores any pending local edits that haven't been synchronized yet.
-     * This allows offline work to persist across app restarts.
-     */
     loadChanges() {
         const editionCacheFile = this.localProperties.editionCacheFile;
         if (!editionCacheFile)
             return;
-        // Load from cache storage if available
         if (this._cache) {
             this._loadEditionCache(editionCacheFile)
                 .then(actions => {
@@ -380,7 +243,6 @@ export default class CollabVectorSource extends VectorSource {
             });
         }
         else {
-            // Fallback to localStorage if no cache storage provided
             try {
                 const cached = localStorage.getItem(editionCacheFile);
                 if (cached) {
@@ -393,15 +255,8 @@ export default class CollabVectorSource extends VectorSource {
             }
         }
     }
-    /**
-     * Restores cached actions (inserts, updates, deletes) to their respective collections
-     *
-     * @param actions - Object containing insert, update, and delete arrays
-     * @private
-     */
     _restoreActions(actions) {
         const formatWKT = this.localProperties.formatWKT;
-        // Restore inserted features
         if (actions.insert && Array.isArray(actions.insert)) {
             actions.insert.forEach((serialized) => {
                 const feature = this.deserializeFeature(serialized, formatWKT);
@@ -411,7 +266,6 @@ export default class CollabVectorSource extends VectorSource {
                 }
             });
         }
-        // Restore updated features
         if (actions.update && Array.isArray(actions.update)) {
             actions.update.forEach((serialized) => {
                 const feature = this.deserializeFeature(serialized, formatWKT);
@@ -421,7 +275,6 @@ export default class CollabVectorSource extends VectorSource {
                 }
             });
         }
-        // Restore deleted features
         if (actions.delete && Array.isArray(actions.delete)) {
             actions.delete.forEach((serialized) => {
                 const feature = this.deserializeFeature(serialized, formatWKT);
@@ -432,25 +285,15 @@ export default class CollabVectorSource extends VectorSource {
             });
         }
     }
-    /**
-     * Deserializes a feature from a plain object
-     *
-     * @param serialized - The serialized feature object
-     * @param formatWKT - WKT formatter for geometry
-     * @returns Deserialized Feature or null if invalid
-     * @private
-     */
     deserializeFeature(serialized, formatWKT) {
         try {
             const feature = new Feature();
-            if (serialized.id) {
+            if (serialized.id !== undefined && serialized.id !== null) {
                 feature.setId(serialized.id);
             }
-            // Restore properties
             if (serialized.properties) {
                 feature.setProperties(serialized.properties);
             }
-            // Restore geometry
             if (serialized.geometry && formatWKT) {
                 const geometry = formatWKT.readGeometry(serialized.geometry);
                 feature.setGeometry(geometry);
@@ -462,38 +305,18 @@ export default class CollabVectorSource extends VectorSource {
             return null;
         }
     }
-    /**
-     * Handles feature update events
-     *
-     * Called when a feature's properties are changed. Tracks the feature
-     * for differential synchronization.
-     *
-     * @param feature - The feature being updated
-     * @private
-     */
     onUpdateFeature(feature) {
-        // Don't track changes while loading from server/cache
         if (this._isLoading)
             return;
         const featureState = feature.state;
-        // If feature is newly inserted, don't add to updates (already in inserts)
         if (featureState === 'INSERT')
             return;
-        // If not already tracked as updated, add it
         if (featureState !== 'UPDATE') {
             feature.state = 'UPDATE';
             this.updatedFeatures.push(feature);
         }
-        // Persist changes to cache
         this.writeChanges();
     }
-    /**
-     * Saves edition cache to storage using ICacheStorage metadata operations
-     *
-     * @param cacheKey - The cache key (editionCacheFile)
-     * @param actions - The pending actions to save
-     * @private
-     */
     async _saveEditionCache(cacheKey, actions) {
         if (!this._cache)
             return;
@@ -505,18 +328,11 @@ export default class CollabVectorSource extends VectorSource {
             modified: new Date(),
             size: JSON.stringify(actions).length,
             extra: {
-                actions: actions
+                actions
             }
         };
         await this._cache.saveMetadata(metadata.id, metadata);
     }
-    /**
-     * Loads edition cache from storage using ICacheStorage metadata operations
-     *
-     * @param cacheKey - The cache key (editionCacheFile)
-     * @returns The cached actions or null if not found
-     * @private
-     */
     async _loadEditionCache(cacheKey) {
         if (!this._cache)
             return null;
@@ -532,28 +348,370 @@ export default class CollabVectorSource extends VectorSource {
             return null;
         }
     }
-    /**
-     * Sets the loading state
-     *
-     * @param isLoading - Whether the source is currently loading features
-     */
     setLoading(isLoading) {
         this._isLoading = isLoading;
     }
-    /**
-     * Custom loader function for fetching features
-     *
-     * Invoked by OpenLayers when features need to be loaded.
-     *
-     * @todo Implement feature loading from collaborative API or cache
-     */
-    loaderFn() {
-        console.log('loaderFn');
-        // TODO: Implement loader that:
-        // 1. Fetches features from collaborative API or cache
-        // 2. Sets _isLoading to true during load
-        // 3. Adds features to source
-        // 4. Sets _isLoading to false when complete
+    reload() {
+        this._isLoading = true;
+        this.clear(true);
+        this._isLoading = false;
+        this.dispatchEvent({ type: 'reload', maxreload: this.localProperties.maxReload });
+        this.refresh();
+    }
+    loaderFn(extent, resolution, projection, success, failure) {
+        void this._loadFeatures(extent, resolution, projection, success, failure);
+    }
+    async _loadFeatures(extent, resolution, projection, success, failure) {
+        this._projectionCode = typeof projection === 'string'
+            ? projection
+            : (projection?.getCode?.() || 'EPSG:3857');
+        if (!proj4.defs(this.localProperties.srsName)) {
+            this.dispatchEvent({ type: 'loadend', status: 'error', error: SOURCE_ERROR_CODES.COLLAB_UNKNOWN_PROJECTION });
+            if (failure)
+                failure();
+            return;
+        }
+        if (this.localProperties.maxReload &&
+            this.localProperties.tiled &&
+            this._tileLoading === 1 &&
+            this.getFeatures().length > this.localProperties.maxReload) {
+            this.reload();
+        }
+        this.dispatchEvent({ type: 'loadstart', remains: ++this._tileLoading });
+        try {
+            let payload = [];
+            if (this.localProperties.cacheUrl && this.localProperties.online === false) {
+                payload = await this._loadFromOfflineCache(extent, resolution);
+            }
+            else if (this.localProperties.online !== false) {
+                payload = await this._loadFromOnline(extent);
+            }
+            const loadedCount = this._countPayloadFeatures(payload);
+            const loadedFeatures = this._readFeatures(payload, this._projectionCode);
+            const finalFeatures = [];
+            loadedFeatures.forEach((feature) => {
+                const keptFeature = this._findFeature(feature);
+                if (keptFeature) {
+                    finalFeatures.push(keptFeature);
+                }
+            });
+            const idProperty = this._getIdPropertyName();
+            this.insertedFeatures.getArray().forEach((feature) => {
+                if (feature.state !== 'INSERT')
+                    return;
+                if (this._containsFeature(finalFeatures, feature, idProperty))
+                    return;
+                finalFeatures.push(feature);
+            });
+            this._isLoading = true;
+            if (!this.localProperties.tiled) {
+                this.clear(true);
+            }
+            if (finalFeatures.length) {
+                this.addFeatures(finalFeatures);
+            }
+            this._isLoading = false;
+            if (this.localProperties.online !== false) {
+                await this._saveFeaturesToOfflineCache(extent, resolution, finalFeatures);
+            }
+            this.dispatchEvent({ type: 'loadend', remains: --this._tileLoading });
+            if (loadedCount >= (this._options.maxFeatures || COLLAB_VECTOR_DEFAULT_VALUES.MAX_FEATURES)) {
+                this.dispatchEvent({ type: 'overload' });
+            }
+            if (success)
+                success(finalFeatures);
+        }
+        catch (error) {
+            this._isLoading = false;
+            this.dispatchEvent({
+                type: 'loadend',
+                error: error?.message || String(error),
+                status: 'error',
+                remains: Math.max(0, --this._tileLoading)
+            });
+            if (failure)
+                failure();
+        }
+    }
+    async _loadFromOnline(extent) {
+        const parameters = this.getWFSParams(extent, this._projectionCode);
+        if (!this.table?.wfs) {
+            throw new Error('Table WFS URL is missing');
+        }
+        const response = await this._options.client.doRequest(this.table.wfs, 'get', null, parameters);
+        return response.data;
+    }
+    async _loadFromOfflineCache(extent, resolution) {
+        if (!this._cache || typeof this._cache.loadFeatures !== 'function') {
+            return [];
+        }
+        const keys = this._getOfflineCacheKeys(extent, resolution);
+        for (const key of keys) {
+            try {
+                const cachedFeatures = await this._cache.loadFeatures(key);
+                if (Array.isArray(cachedFeatures) && cachedFeatures.length) {
+                    return cachedFeatures;
+                }
+            }
+            catch {
+                // Try next key
+            }
+        }
+        return [];
+    }
+    async _saveFeaturesToOfflineCache(extent, resolution, features) {
+        if (!this._cache || typeof this._cache.saveFeatures !== 'function') {
+            return;
+        }
+        const keys = this._getOfflineCacheKeys(extent, resolution);
+        if (!keys.length)
+            return;
+        try {
+            await this._cache.saveFeatures(keys[0], features);
+        }
+        catch {
+            // Offline cache is best effort
+        }
+    }
+    _getOfflineCacheKeys(extent, resolution) {
+        const baseKey = `${this.table.database}:${this.table.name}`;
+        const tileGrid = this.localProperties.tileGrid;
+        if (!tileGrid) {
+            return [baseKey];
+        }
+        const tileCoord = tileGrid.getTileCoordForCoordAndResolution(getCenter(extent), resolution);
+        return [`${baseKey}:${tileCoord.join('-')}`, baseKey];
+    }
+    getWFSParams(extent, projectionCode) {
+        const bboxExtent = transformExtent(extent, projectionCode, this.localProperties.srsName);
+        const outputFormat = this._options.outputFormat || 'JSON';
+        return {
+            service: 'WFS',
+            request: 'GetFeature',
+            outputFormat,
+            typeName: this.table.name,
+            bbox: bboxExtent.join(','),
+            filter: JSON.stringify(this.localProperties.featureFilter || {}),
+            maxFeatures: this._options.maxFeatures || COLLAB_VECTOR_DEFAULT_VALUES.MAX_FEATURES,
+            version: '1.1.0'
+        };
+    }
+    _countPayloadFeatures(payload) {
+        if (Array.isArray(payload)) {
+            return payload.length;
+        }
+        if (!payload || typeof payload !== 'object') {
+            return 0;
+        }
+        const objectPayload = payload;
+        if (objectPayload.type === 'FeatureCollection' && Array.isArray(objectPayload.features)) {
+            return objectPayload.features.length;
+        }
+        if (Array.isArray(objectPayload.features))
+            return objectPayload.features.length;
+        if (Array.isArray(objectPayload.data))
+            return objectPayload.data.length;
+        if (Array.isArray(objectPayload.rows))
+            return objectPayload.rows.length;
+        if (Array.isArray(objectPayload.items))
+            return objectPayload.items.length;
+        return 0;
+    }
+    _readFeatures(data, projectionCode) {
+        if (!data) {
+            return [];
+        }
+        if (Array.isArray(data) && data.every((item) => item instanceof Feature)) {
+            return data;
+        }
+        let payload = data;
+        if (typeof payload === 'string') {
+            try {
+                payload = JSON.parse(payload);
+            }
+            catch {
+                return [];
+            }
+        }
+        if (this._isGeoJSONPayload(payload)) {
+            return new GeoJSON().readFeatures(payload, {
+                dataProjection: this.localProperties.srsName,
+                featureProjection: projectionCode,
+            });
+        }
+        const items = this._extractItemsFromPayload(payload);
+        if (!items.length) {
+            return [];
+        }
+        const features = [];
+        const geometryName = this._getGeometryColumnName();
+        for (const item of items) {
+            const geometryValue = item[geometryName] ?? item.geometry;
+            if (!geometryValue)
+                continue;
+            const feature = this.createFeatureFromGeom(geometryValue, projectionCode);
+            if (!feature)
+                continue;
+            const properties = { ...item };
+            delete properties[geometryName];
+            delete properties.geometry;
+            feature.setProperties(properties, true);
+            features.push(feature);
+        }
+        return features;
+    }
+    createFeatureFromGeom(geom, projectionCode) {
+        if (!geom) {
+            return null;
+        }
+        if (typeof geom === 'object' && geom !== null && 'type' in geom) {
+            try {
+                const geometry = new GeoJSON().readGeometry(geom, {
+                    dataProjection: this.localProperties.srsName,
+                    featureProjection: projectionCode
+                });
+                return new Feature({ geometry });
+            }
+            catch {
+                return null;
+            }
+        }
+        if (typeof geom === 'string') {
+            const formatWKT = this.localProperties.formatWKT;
+            const cleanedWKT = geom.replace(/([-+]?(\d*[.])?\d+) ([-+]?(\d*[.])?\d+) ([-+]?(\d*[.])?\d+)/g, '$1 $3');
+            try {
+                return formatWKT.readFeature(cleanedWKT, {
+                    dataProjection: this.localProperties.srsName,
+                    featureProjection: projectionCode
+                });
+            }
+            catch {
+                return null;
+            }
+        }
+        return null;
+    }
+    _isGeoJSONPayload(payload) {
+        if (!payload || typeof payload !== 'object') {
+            return false;
+        }
+        const objectPayload = payload;
+        return objectPayload.type === 'FeatureCollection' || objectPayload.type === 'Feature';
+    }
+    _extractItemsFromPayload(payload) {
+        if (Array.isArray(payload)) {
+            return payload;
+        }
+        if (!payload || typeof payload !== 'object') {
+            return [];
+        }
+        const objectPayload = payload;
+        if (Array.isArray(objectPayload.data)) {
+            return objectPayload.data;
+        }
+        if (Array.isArray(objectPayload.rows)) {
+            return objectPayload.rows;
+        }
+        if (Array.isArray(objectPayload.items)) {
+            return objectPayload.items;
+        }
+        if (Array.isArray(objectPayload.features)) {
+            return objectPayload.features;
+        }
+        return [];
+    }
+    _findFeature(feature) {
+        const idProperty = this._getIdPropertyName();
+        const featureIdValue = this._getFeatureIdentifier(feature, idProperty);
+        if (this.localProperties.tiled && this._featureExistsInSource(feature, idProperty, featureIdValue)) {
+            return null;
+        }
+        if (this._findFeatureInCollection(this.deletedFeatures, idProperty, featureIdValue)) {
+            return null;
+        }
+        const updatedFeature = this._findFeatureInCollection(this.updatedFeatures, idProperty, featureIdValue);
+        if (updatedFeature) {
+            return updatedFeature;
+        }
+        const differentialFeature = this._findFeatureInCollection(this.differentialFeatures, idProperty, featureIdValue);
+        if (differentialFeature) {
+            if (differentialFeature.get('detruit') || differentialFeature.get('gcms_detruit')) {
+                return null;
+            }
+            return differentialFeature;
+        }
+        const preservedFeature = this._findFeatureInCollection(this.preservedFeatures, idProperty, featureIdValue);
+        if (preservedFeature) {
+            return preservedFeature;
+        }
+        return feature;
+    }
+    _featureExistsInSource(feature, idProperty, featureIdValue) {
+        if (featureIdValue !== undefined && featureIdValue !== null) {
+            return this.getFeatures().some((existing) => this._featureIdentifiersMatch(this._getFeatureIdentifier(existing, idProperty), featureIdValue));
+        }
+        const geometry = feature.getGeometry();
+        if (!geometry) {
+            return false;
+        }
+        const extent = geometry.getExtent();
+        const nearbyFeatures = this.getFeaturesInExtent([
+            extent[0] - 0.1,
+            extent[1] - 0.1,
+            extent[2] + 0.1,
+            extent[3] + 0.1
+        ]);
+        return nearbyFeatures.length > 0;
+    }
+    _findFeatureInCollection(collection, idProperty, featureIdValue) {
+        const features = collection.getArray();
+        if (featureIdValue === undefined || featureIdValue === null) {
+            return null;
+        }
+        for (const feature of features) {
+            const idValue = this._getFeatureIdentifier(feature, idProperty);
+            if (this._featureIdentifiersMatch(idValue, featureIdValue)) {
+                return feature;
+            }
+        }
+        return null;
+    }
+    _containsFeature(features, candidate, idProperty) {
+        const candidateId = this._getFeatureIdentifier(candidate, idProperty);
+        if (candidateId !== undefined && candidateId !== null) {
+            return features.some((feature) => this._featureIdentifiersMatch(this._getFeatureIdentifier(feature, idProperty), candidateId));
+        }
+        return features.includes(candidate);
+    }
+    _getFeatureIdentifier(feature, idProperty) {
+        const propertyId = feature.get(idProperty);
+        if (propertyId !== undefined && propertyId !== null) {
+            return propertyId;
+        }
+        const featureId = feature.getId();
+        if (featureId !== undefined && featureId !== null) {
+            return featureId;
+        }
+        return undefined;
+    }
+    _featureIdentifiersMatch(left, right) {
+        if (left === undefined || left === null || right === undefined || right === null) {
+            return false;
+        }
+        return String(left) === String(right);
+    }
+    _getIdPropertyName() {
+        const tableAny = this.table;
+        return tableAny.idName || tableAny.id_name || 'id';
+    }
+    _getGeometryColumnName() {
+        const tableAny = this.table;
+        return tableAny.geometryName || tableAny.geometry_name || 'geometry';
+    }
+    _getTableCRS() {
+        const geometryName = this._getGeometryColumnName();
+        const column = this.table?.columns?.[geometryName];
+        return column?.crs || COLLAB_VECTOR_DEFAULT_VALUES.SRS_NAME;
     }
 }
 //# sourceMappingURL=CollabVectorSource.js.map

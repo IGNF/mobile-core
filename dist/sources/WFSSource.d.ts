@@ -2,68 +2,67 @@
  * OpenLayers source for WFS (Web Feature Service) layers
  * @migrated from: ol/source/WFS.js of the CordovApp module
  */
-import VectorSource from "ol/source/Vector";
-import { WFSSourceOptions } from "./types";
-import { Projection } from "ol/proj";
+import VectorSource from 'ol/source/Vector';
+import { WFSSourceOptions } from './types';
+import { Projection } from 'ol/proj';
 export default class WFSSource extends VectorSource {
     localProperties: Record<string, any>;
     requestProperties: Record<string, any>;
     private _tileLoading;
+    private _done;
     constructor(options: WFSSourceOptions, cache?: any);
     /**
-     * TODO: add and implement the cache attribute *IF NEEDED* (see ol/source/WFS.js)
-     * @param options
-     * @param cache
-     * @returns
+     * Compute VectorSource options from WFS options
      */
     private static _computeWFSSourceOptions;
     /**
      * Completes WFS-specific initialization after VectorSource setup
-     *
-     * This method handles:
-     * - Proxy configuration
-     * - Authentication
-     * - Feature filtering
-     * - Request properties
-     *
-     * @param options
-     * @private
      */
     private _initWFSSource;
-    setAuthentication(username: string, password: string): void;
+    private _configureLoader;
+    private _loaderFn;
+    private _loadFromCache;
+    private _loadFromService;
+    private _tryLoadWithTypeNames;
+    private _fetchWfsPayload;
+    private _getAuthHeaders;
+    /**
+     * Read WFS response and return features to add
+     */
+    private _readWFSResponse;
+    private _parseFeaturesFromPayload;
+    private _buildCurrentGeoservice;
+    private _buildWfsGetFeatureUrl;
+    private _serializeFeatureFilter;
+    private _toCqlLiteral;
+    private _getWfsRequestVariants;
+    private _hasFilterParams;
+    private _projectionToCode;
+    private _isGeoJSONFormat;
+    private _isLikelyJsonPayload;
+    private _looksLikeGeoJSONPayload;
+    private _getWfsExceptionMessage;
+    private _parseLayerSpec;
+    private _resolveInitialTypeNames;
+    private _getTypeNamesFromGeoserviceUrl;
+    private _getQueryParamCaseInsensitive;
+    private _extractUnknownFeatureTypeName;
+    private _resolveUnknownTypeNames;
+    private _buildWfsGetCapabilitiesUrl;
+    private _parseWfsFeatureTypeNamesFromCapabilities;
+    private _selectFallbackTypeNames;
+    setAuthentication(username?: string, password?: string): void;
     getCachePath(): string;
     /**
-     * Load features from cache
-     *
-     * This method handles:
-     * - Loading cache locally
-     * - Loading cache from server if local cache fetch failed
-     * - Loading cache with obsolete flag if local cache fetch failed and the error is 'obsolete'
-     * - Handling error if local cache fetch failed and the error is not 'obsolete'
-     *
-     * @param extent0: extent in projection
-     * @param resolution: resolution
-     * @param projection: projection
+     * Load features from cache (or service as fallback)
      */
     loadFromCache(extent0: number[], resolution: number, projection: Projection): Promise<void>;
     /**
-     * Read WFS response and add features to the source
-     *
-     * @param response: response from WFS
-     * @param projection: projection
-     */
-    private _readWFSResponse;
-    /**
      * Handle WFS load error
-     *
-     * @param status: status of the load
-     * @param error: error object
      */
     private _handleWFSLoadError;
     /**
      * Get the file cache name
-     *
-     * @returns the file cache name
      */
     getFileCacheName(): string;
 }

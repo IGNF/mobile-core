@@ -1,17 +1,17 @@
-import { ApiClient } from "collaboratif-client-api";
-import { Collection, Feature } from "ol";
-import { Geoservice, Table } from "../collaborative/types";
-import { ReportStatus } from "../report/types";
+import { ApiClient } from 'collaboratif-client-api';
+import { Collection, Feature } from 'ol';
+import { Geoservice, Table } from '../collaborative/types';
+import { ReportStatus } from '../report/types';
 
-import { LoadingStrategy } from "ol/source/Vector";
+import { LoadingStrategy } from 'ol/source/Vector';
 
 export interface SourceOptions {
   maxReload?: number;
   tileSize?: number;
   wrapX?: boolean;
   attribution?: string;
-  filter?: Record<string, any>; // redefine type maybe
-  strategy: LoadingStrategy; // redefine type maybe
+  filter?: Record<string, any>;
+  strategy?: LoadingStrategy;
   tileZoom?: number;
   maxFeatures?: number;
 }
@@ -39,12 +39,10 @@ export interface WFSSourceOptions extends SourceOptions {
   password?: string;
   once?: boolean;
   minZoom?: number;
-  proxy: string;
-  cache?: string; // Cache directory path
+  proxy?: string;
+  cache?: string;
   srs?: string;
-  table?: Table; // Not sure about this one, see once implemented
-  // authentication?: (callback: (username: string, password: string) => void) => void;
-  // getCapabilities?: boolean; // Fetch capabilities
+  table?: Table;
 }
 
 /**
