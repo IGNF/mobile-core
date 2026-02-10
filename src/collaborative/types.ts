@@ -53,6 +53,10 @@ export interface CommunityLayer {
   title: string;
   visible?: boolean;
   opacity?: number;
+  geoservice?: Geoservice;
+	table?: Table;
+	database?: number;
+	extent?: string[];
 }
 
 /**
