@@ -94,9 +94,9 @@ export class WFSLayer extends VectorLayer {
     url.searchParams.append('request', 'GetCapabilities');
 
     const headers: HeadersInit = {};
-    if (options.username && options.password) {
-      const credentials = btoa(`${options.username}:${options.password}`);
-      headers['Authorization'] = `Basic ${credentials}`;
+    const authorizationHeader = this.getAuthorizationHeader(options);
+    if (authorizationHeader) {
+      headers['Authorization'] = authorizationHeader;
     }
 
     const controller = new AbortController();
@@ -139,6 +139,21 @@ export class WFSLayer extends VectorLayer {
     }
   }
 
+  private getAuthorizationHeader(options: WFSLayerOptions): string | undefined {
+    const accessToken = options.accessToken?.trim();
+    if (accessToken) {
+      const tokenType = options.tokenType?.trim() || 'Bearer';
+      return `${tokenType} ${accessToken}`;
+    }
+
+    if (options.username && options.password) {
+      const credentials = btoa(`${options.username}:${options.password}`);
+      return `Basic ${credentials}`;
+    }
+
+    return undefined;
+  }
+
   /**
    * Handle errors from getCapabilities request
    */
@@ -149,7 +164,14 @@ export class WFSLayer extends VectorLayer {
     options: WFSLayerOptions,
     authenticationFn?: (layer: any, callback: (login: string, pwd: string) => void) => void
   ): void {
-    if (((status === 0 && !options.username) || status === 401 || status === 500) && typeof authenticationFn === 'function') {
+    const hasCredentials = Boolean(options.username && options.password);
+    const hasToken = Boolean(options.accessToken?.trim());
+
+    if (
+      !hasToken &&
+      ((status === 0 && !hasCredentials) || status === 401 || status === 500) &&
+      typeof authenticationFn === 'function'
+    ) {
       authenticationFn(this, (login: string, pwd: string) => {
         if (login) {
           options.username = login;

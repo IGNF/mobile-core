@@ -51,7 +51,7 @@ export default class WFSSource extends VectorSource {
     private _buildWfsGetCapabilitiesUrl;
     private _parseWfsFeatureTypeNamesFromCapabilities;
     private _selectFallbackTypeNames;
-    setAuthentication(username?: string, password?: string): void;
+    setAuthentication(username?: string, password?: string, accessToken?: string, tokenType?: string): void;
     getCachePath(): string;
     /**
      * Load features from cache (or service as fallback)

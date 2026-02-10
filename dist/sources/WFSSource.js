@@ -10,7 +10,7 @@ import GeoJSON from 'ol/format/GeoJSON';
 import WFS from 'ol/format/WFS';
 import PathUtils from '../utils/PathUtils';
 const pathUtils = new PathUtils();
-import { WFS_DEFAULT_VALUES } from './DefaultSourceValues';
+import { DEFAULT_VECTOR_PROJECTION_CODE, WFS_DEFAULT_VALUES } from './DefaultSourceValues';
 import { transformExtent } from 'ol/proj';
 import GML3 from 'ol/format/GML3';
 import GML2 from 'ol/format/GML2';
@@ -99,7 +99,7 @@ export default class WFSSource extends VectorSource {
         this.set('id', geoservice.input_mask?.id ?? -1);
         this.set('maxFeatures', opts.maxFeatures);
         this.set('format', geoservice.format || 'GeoJSON');
-        this.setAuthentication(opts.username, opts.password);
+        this.setAuthentication(opts.username, opts.password, opts.accessToken, opts.tokenType);
         this._configureLoader();
     }
     _configureLoader() {
@@ -248,8 +248,11 @@ export default class WFSSource extends VectorSource {
         const headers = {
             'cache-control': 'no-cache'
         };
-        const { username, password } = this.requestProperties;
-        if (username && password) {
+        const { authorization, username, password } = this.requestProperties;
+        if (authorization) {
+            headers.Authorization = String(authorization);
+        }
+        else if (username && password) {
             headers.Authorization = `Basic ${btoa(`${username}:${password}`)}`;
         }
         return headers;
@@ -561,7 +564,7 @@ export default class WFSSource extends VectorSource {
         if (projection && typeof projection.getCode === 'function') {
             return projection.getCode();
         }
-        return 'EPSG:3857';
+        return DEFAULT_VECTOR_PROJECTION_CODE;
     }
     _isGeoJSONFormat() {
         return String(this.get('format') || '').toLowerCase().includes('json');
@@ -732,7 +735,16 @@ export default class WFSSource extends VectorSource {
         const preferred = prefixedCandidates.find((candidate) => candidate.toLowerCase().endsWith(':epci'));
         return preferred || prefixedCandidates[0];
     }
-    setAuthentication(username, password) {
+    setAuthentication(username, password, accessToken, tokenType = 'Bearer') {
+        const trimmedAccessToken = accessToken?.trim();
+        if (trimmedAccessToken) {
+            const normalizedTokenType = tokenType?.trim() || 'Bearer';
+            this.requestProperties.authorization = `${normalizedTokenType} ${trimmedAccessToken}`;
+            delete this.requestProperties.username;
+            delete this.requestProperties.password;
+            return;
+        }
+        delete this.requestProperties.authorization;
         if (!username || !password) {
             delete this.requestProperties.username;
             delete this.requestProperties.password;

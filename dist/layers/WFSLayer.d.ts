@@ -15,6 +15,7 @@ export declare class WFSLayer extends VectorLayer {
      */
     private static _computeWFSLayerOptions;
     getCapabilities(options: WFSLayerOptions): Promise<void>;
+    private getAuthorizationHeader;
     /**
      * Handle errors from getCapabilities request
      */

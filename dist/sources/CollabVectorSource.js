@@ -3,7 +3,7 @@
  * @migrated from ol/source/CollabVector.js of the CordovApp module
  */
 import { ProjectionUtils } from '../utils/ProjectionUtils';
-import { COLLAB_VECTOR_DEFAULT_VALUES } from './DefaultSourceValues';
+import { COLLAB_VECTOR_DEFAULT_VALUES, DEFAULT_VECTOR_PROJECTION_CODE } from './DefaultSourceValues';
 import VectorSource from 'ol/source/Vector';
 import { tile, bbox } from 'ol/loadingstrategy';
 import { createXYZ } from 'ol/tilegrid';
@@ -25,7 +25,7 @@ export default class CollabVectorSource extends VectorSource {
         this._isLoading = false;
         this._writeUpdateCounter = 0;
         this._tileLoading = 0;
-        this._projectionCode = 'EPSG:3857';
+        this._projectionCode = DEFAULT_VECTOR_PROJECTION_CODE;
         this.localProperties = {};
         /** Features that should persist across source reloads (e.g., currently edited features) */
         this.preservedFeatures = new Collection();
@@ -364,7 +364,7 @@ export default class CollabVectorSource extends VectorSource {
     async _loadFeatures(extent, resolution, projection, success, failure) {
         this._projectionCode = typeof projection === 'string'
             ? projection
-            : (projection?.getCode?.() || 'EPSG:3857');
+            : (projection?.getCode?.() || DEFAULT_VECTOR_PROJECTION_CODE);
         if (!proj4.defs(this.localProperties.srsName)) {
             this.dispatchEvent({ type: 'loadend', status: 'error', error: SOURCE_ERROR_CODES.COLLAB_UNKNOWN_PROJECTION });
             if (failure)

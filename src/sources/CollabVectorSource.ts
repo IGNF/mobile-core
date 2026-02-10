@@ -5,7 +5,7 @@
 
 import { ProjectionUtils } from '../utils/ProjectionUtils';
 
-import { COLLAB_VECTOR_DEFAULT_VALUES } from './DefaultSourceValues';
+import { COLLAB_VECTOR_DEFAULT_VALUES, DEFAULT_VECTOR_PROJECTION_CODE } from './DefaultSourceValues';
 
 import VectorSource from 'ol/source/Vector';
 import { tile, bbox } from 'ol/loadingstrategy';
@@ -33,7 +33,7 @@ export default class CollabVectorSource extends VectorSource {
   private _writeUpdateCounter = 0;
   private _cache?: any; // ICacheStorage - avoiding circular dependency
   private _tileLoading = 0;
-  private _projectionCode = 'EPSG:3857';
+  private _projectionCode = DEFAULT_VECTOR_PROJECTION_CODE;
 
   public table!: Table;
   public localProperties: Record<string, any> = {};
@@ -451,7 +451,7 @@ export default class CollabVectorSource extends VectorSource {
   ): Promise<void> {
     this._projectionCode = typeof projection === 'string'
       ? projection
-      : (projection?.getCode?.() || 'EPSG:3857');
+      : (projection?.getCode?.() || DEFAULT_VECTOR_PROJECTION_CODE);
 
     if (!proj4.defs(this.localProperties.srsName)) {
       this.dispatchEvent({ type: 'loadend', status: 'error', error: SOURCE_ERROR_CODES.COLLAB_UNKNOWN_PROJECTION } as any);

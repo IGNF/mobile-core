@@ -33,6 +33,8 @@ export interface WFSSourceOptions extends SourceOptions {
     geoservice: Geoservice;
     username?: string;
     password?: string;
+    accessToken?: string;
+    tokenType?: string;
     once?: boolean;
     minZoom?: number;
     proxy?: string;

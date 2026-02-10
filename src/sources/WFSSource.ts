@@ -14,7 +14,7 @@ import PathUtils from '../utils/PathUtils';
 const pathUtils = new PathUtils();
 
 import { WFSSourceOptions } from './types';
-import { WFS_DEFAULT_VALUES } from './DefaultSourceValues';
+import { DEFAULT_VECTOR_PROJECTION_CODE, WFS_DEFAULT_VALUES } from './DefaultSourceValues';
 import { Projection, transformExtent } from 'ol/proj';
 import GML3 from 'ol/format/GML3';
 import GML2 from 'ol/format/GML2';
@@ -141,7 +141,7 @@ export default class WFSSource extends VectorSource {
     this.set('maxFeatures', opts.maxFeatures);
     this.set('format', geoservice.format || 'GeoJSON');
 
-    this.setAuthentication(opts.username, opts.password);
+    this.setAuthentication(opts.username, opts.password, opts.accessToken, opts.tokenType);
     this._configureLoader();
   }
 
@@ -357,8 +357,11 @@ export default class WFSSource extends VectorSource {
       'cache-control': 'no-cache'
     };
 
-    const { username, password } = this.requestProperties;
-    if (username && password) {
+    const { authorization, username, password } = this.requestProperties;
+
+    if (authorization) {
+      headers.Authorization = String(authorization);
+    } else if (username && password) {
       headers.Authorization = `Basic ${btoa(`${username}:${password}`)}`;
     }
 
@@ -744,7 +747,7 @@ export default class WFSSource extends VectorSource {
       return projection.getCode();
     }
 
-    return 'EPSG:3857';
+    return DEFAULT_VECTOR_PROJECTION_CODE;
   }
 
   private _isGeoJSONFormat(): boolean {
@@ -962,7 +965,18 @@ export default class WFSSource extends VectorSource {
     return preferred || prefixedCandidates[0];
   }
 
-  public setAuthentication(username?: string, password?: string): void {
+  public setAuthentication(username?: string, password?: string, accessToken?: string, tokenType: string = 'Bearer'): void {
+    const trimmedAccessToken = accessToken?.trim();
+    if (trimmedAccessToken) {
+      const normalizedTokenType = tokenType?.trim() || 'Bearer';
+      this.requestProperties.authorization = `${normalizedTokenType} ${trimmedAccessToken}`;
+      delete this.requestProperties.username;
+      delete this.requestProperties.password;
+      return;
+    }
+
+    delete this.requestProperties.authorization;
+
     if (!username || !password) {
       delete this.requestProperties.username;
       delete this.requestProperties.password;

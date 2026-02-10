@@ -19,6 +19,8 @@ export interface WFSLayerOptions {
     geoservice: Geoservice;
     username?: string;
     password?: string;
+    accessToken?: string;
+    tokenType?: string;
     cache?: string;
     visibility?: boolean;
     opacity?: number;

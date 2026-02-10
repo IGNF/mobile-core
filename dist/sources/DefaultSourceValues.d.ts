@@ -9,4 +9,5 @@ export declare const WFS_DEFAULT_VALUES: {
     MIN_ZOOM_INCREASE: number;
     SRS_NAME: string;
 };
+export declare const DEFAULT_VECTOR_PROJECTION_CODE = "EPSG:3857";
 //# sourceMappingURL=DefaultSourceValues.d.ts.map
