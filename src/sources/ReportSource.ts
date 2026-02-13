@@ -158,8 +158,10 @@ export default class ReportSource {
    */
   async loadReports(extent: Extent, page: number = 1, loadClosedReports?: boolean): Promise<Report[]> {
     try {
-      const user: User = (await this._apiClient.getUser()).data;
-      const activeCommunity = user.communities.find((community: Community) => community.active === true)?.id;
+      const userResponse = await this._apiClient.getUser();
+      const user = userResponse?.data as Partial<User> | undefined;
+      const communities = Array.isArray(user?.communities) ? user.communities : [];
+      const activeCommunity = communities.find((community: Community) => community.active === true)?.id;
 
       // Use instance setting if not explicitly provided
       const shouldLoadClosed = loadClosedReports ?? this._loadClosed;
@@ -169,12 +171,20 @@ export default class ReportSource {
         this._communityId = activeCommunity;
       }
 
-      let params = {
+      const targetCommunityId = this._communityId ?? activeCommunity;
+      const params: {
+        box: string;
+        limit: number;
+        communities?: number[];
+        page: number;
+      } = {
         box: extent.join(','),
         limit: 100,
-        communities: [activeCommunity],
         page: page
       };
+      if (typeof targetCommunityId === 'number') {
+        params.communities = [targetCommunityId];
+      }
 
       let reportStatus = Object.values(ReportStatus);
       if (!shouldLoadClosed) {

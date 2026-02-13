@@ -23195,27 +23195,28 @@ class Bm {
   async loadReports(t, e = 1, i) {
     var n;
     try {
-      const o = (n = (await this._apiClient.getUser()).data.communities.find((f) => f.active === !0)) == null ? void 0 : n.id, a = i ?? this._loadClosed;
-      !this._communityId && o && (this._communityId = o);
-      let l = {
+      const s = await this._apiClient.getUser(), o = s == null ? void 0 : s.data, l = (n = (Array.isArray(o == null ? void 0 : o.communities) ? o.communities : []).find((_) => _.active === !0)) == null ? void 0 : n.id, c = i ?? this._loadClosed;
+      !this._communityId && l && (this._communityId = l);
+      const h = this._communityId ?? l, u = {
         box: t.join(","),
         limit: 100,
-        communities: [o],
         page: e
-      }, c = Object.values(qe);
-      if (!a) {
-        const f = Object.values(Ul);
-        c = c.filter((g) => !f.includes(g));
+      };
+      typeof h == "number" && (u.communities = [h]);
+      let d = Object.values(qe);
+      if (!c) {
+        const _ = Object.values(Ul);
+        d = d.filter((p) => !_.includes(p));
       }
-      const h = await this._apiClient.getReports(l);
-      let u = h.headers["content-range"].split("/"), d = u[0].split("-");
-      if (h.status == 200 || h.status == 206 && d[1] === u[1]) {
-        const f = h.data;
-        return await this.saveToCache(f), f;
-      } else if (h.status == 206) {
+      const f = await this._apiClient.getReports(u);
+      let g = f.headers["content-range"].split("/"), m = g[0].split("-");
+      if (f.status == 200 || f.status == 206 && m[1] === g[1]) {
+        const _ = f.data;
+        return await this.saveToCache(_), _;
+      } else if (f.status == 206) {
         e = e + 1;
-        const g = (await this.loadReports(t, e, a)).concat(h.data);
-        return await this.saveToCache(g), g;
+        const p = (await this.loadReports(t, e, c)).concat(f.data);
+        return await this.saveToCache(p), p;
       } else
         return console.warn("Failed to load reports from server, loading from cache"), await this.loadFromCache();
     } catch (s) {

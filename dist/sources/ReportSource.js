@@ -131,20 +131,25 @@ export default class ReportSource {
      */
     async loadReports(extent, page = 1, loadClosedReports) {
         try {
-            const user = (await this._apiClient.getUser()).data;
-            const activeCommunity = user.communities.find((community) => community.active === true)?.id;
+            const userResponse = await this._apiClient.getUser();
+            const user = userResponse?.data;
+            const communities = Array.isArray(user?.communities) ? user.communities : [];
+            const activeCommunity = communities.find((community) => community.active === true)?.id;
             // Use instance setting if not explicitly provided
             const shouldLoadClosed = loadClosedReports ?? this._loadClosed;
             // Update community ID if not set
             if (!this._communityId && activeCommunity) {
                 this._communityId = activeCommunity;
             }
-            let params = {
+            const targetCommunityId = this._communityId ?? activeCommunity;
+            const params = {
                 box: extent.join(','),
                 limit: 100,
-                communities: [activeCommunity],
                 page: page
             };
+            if (typeof targetCommunityId === 'number') {
+                params.communities = [targetCommunityId];
+            }
             let reportStatus = Object.values(ReportStatus);
             if (!shouldLoadClosed) {
                 const closedStatus = Object.values(ClosedReportStatus);
