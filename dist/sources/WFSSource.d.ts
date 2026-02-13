@@ -22,6 +22,7 @@ export default class WFSSource extends VectorSource {
     private _configureLoader;
     private _loaderFn;
     private _loadFromCache;
+    private _saveFeaturesToFeatureCache;
     private _loadFromService;
     private _tryLoadWithTypeNames;
     private _fetchWfsPayload;
@@ -32,6 +33,9 @@ export default class WFSSource extends VectorSource {
     private _readWFSResponse;
     private _parseFeaturesFromPayload;
     private _buildCurrentGeoservice;
+    private _isFeatureArray;
+    private _buildFeatureCacheKey;
+    private _normalizeCacheNumber;
     private _buildWfsGetFeatureUrl;
     private _serializeFeatureFilter;
     private _toCqlLiteral;

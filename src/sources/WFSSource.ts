@@ -54,6 +54,18 @@ interface WfsTryResult {
   error?: Error;
 }
 
+interface LegacyCacheParameters {
+  tileCoord: number[] | null;
+  extent: number[];
+  resolution: number;
+  obsolete?: boolean;
+}
+
+interface FeatureCacheStorage {
+  loadFeatures(layerId: string): Promise<Feature[]>;
+  saveFeatures(layerId: string, features: Feature[]): Promise<void>;
+}
+
 export default class WFSSource extends VectorSource {
   public localProperties: Record<string, any> = {};
   public requestProperties: Record<string, any> = {};
@@ -103,6 +115,9 @@ export default class WFSSource extends VectorSource {
     }
     if (cache && cache.saveCache) {
       computedLocalProperties.saveCache = cache.saveCache;
+    }
+    if (cache && cache.loadFeatures && cache.saveFeatures) {
+      computedLocalProperties.featureCache = cache as FeatureCacheStorage;
     }
 
     return {
@@ -176,19 +191,24 @@ export default class WFSSource extends VectorSource {
 
     try {
       let payload: unknown | undefined;
+      let payloadLoadedFromService = false;
 
-      if (this.localProperties.loadCache) {
-        payload = await this._loadFromCache(requestExtent, resolution, tileCoord);
-      }
+      payload = await this._loadFromCache(requestExtent, resolution, tileCoord);
 
       if (payload === undefined) {
         payload = await this._loadFromService(requestExtent, requestCrs);
+        payloadLoadedFromService = true;
         if (this.localProperties.saveCache) {
           await Promise.resolve(this.localProperties.saveCache(payload, requestExtent, resolution, tileCoord));
         }
       }
 
       const features = this._readWFSResponse(payload, requestCrs, projectionCode);
+
+      if (payloadLoadedFromService) {
+        await this._saveFeaturesToFeatureCache(requestExtent, resolution, tileCoord, features);
+      }
+
       if (features.length) {
         this.addFeatures(features);
       }
@@ -207,30 +227,69 @@ export default class WFSSource extends VectorSource {
     resolution: number,
     tileCoord: number[] | null
   ): Promise<unknown | undefined> {
-    if (!this.localProperties.loadCache) {
-      return undefined;
-    }
-
-    const cacheParameters = {
+    const cacheParameters: LegacyCacheParameters = {
       tileCoord,
       extent: requestExtent,
       resolution,
     };
 
-    try {
-      return await this.localProperties.loadCache(cacheParameters);
-    } catch (cacheError: any) {
-      if (cacheError === 'obsolete') {
-        try {
-          return await this.localProperties.loadCache({
-            ...cacheParameters,
-            obsolete: true,
-          });
-        } catch {
-          return undefined;
+    if (this.localProperties.loadCache) {
+      try {
+        const payload = await this.localProperties.loadCache(cacheParameters);
+        if (payload !== undefined) {
+          return payload;
+        }
+      } catch (cacheError: any) {
+        if (cacheError === 'obsolete') {
+          try {
+            const payload = await this.localProperties.loadCache({
+              ...cacheParameters,
+              obsolete: true,
+            });
+            if (payload !== undefined) {
+              return payload;
+            }
+          } catch {
+            // Fallback to feature cache below
+          }
         }
       }
+    }
+
+    const featureCache = this.localProperties.featureCache as FeatureCacheStorage | undefined;
+    if (!featureCache) {
       return undefined;
+    }
+
+    const featureCacheKey = this._buildFeatureCacheKey(requestExtent, resolution, tileCoord);
+    try {
+      const cachedFeatures = await featureCache.loadFeatures(featureCacheKey);
+      if (Array.isArray(cachedFeatures) && cachedFeatures.length > 0) {
+        return cachedFeatures;
+      }
+    } catch {
+      // Feature cache is best effort
+    }
+
+    return undefined;
+  }
+
+  private async _saveFeaturesToFeatureCache(
+    requestExtent: number[],
+    resolution: number,
+    tileCoord: number[] | null,
+    features: Feature[]
+  ): Promise<void> {
+    const featureCache = this.localProperties.featureCache as FeatureCacheStorage | undefined;
+    if (!featureCache || features.length === 0) {
+      return;
+    }
+
+    const featureCacheKey = this._buildFeatureCacheKey(requestExtent, resolution, tileCoord);
+    try {
+      await featureCache.saveFeatures(featureCacheKey, features);
+    } catch {
+      // Feature cache is best effort
     }
   }
 
@@ -372,6 +431,10 @@ export default class WFSSource extends VectorSource {
    * Read WFS response and return features to add
    */
   private _readWFSResponse(response: unknown, requestCrs: string, projectionCode: string): Feature[] {
+    if (this._isFeatureArray(response)) {
+      return response;
+    }
+
     const loadedFeatures = this._parseFeaturesFromPayload(response, requestCrs, projectionCode);
     if (!loadedFeatures.length) {
       return [];
@@ -512,6 +575,33 @@ export default class WFSSource extends VectorSource {
       version: String(this.get('version') || '2.0.0'),
       format: String(this.get('format') || '')
     };
+  }
+
+  private _isFeatureArray(payload: unknown): payload is Feature[] {
+    return Array.isArray(payload) && payload.every((item) => item instanceof Feature);
+  }
+
+  private _buildFeatureCacheKey(
+    requestExtent: number[],
+    resolution: number,
+    tileCoord: number[] | null
+  ): string {
+    const cachePath = String(this.get('cache') || this.get('typename') || 'wfs');
+    const sanitizedPath = cachePath.replace(/[^a-zA-Z0-9._-]+/g, '_');
+
+    if (tileCoord && tileCoord.length > 0) {
+      return `wfs:${sanitizedPath}:tile:${tileCoord.join('-')}`;
+    }
+
+    const normalizedExtent = requestExtent
+      .map((value) => this._normalizeCacheNumber(value))
+      .join('_');
+    const normalizedResolution = this._normalizeCacheNumber(resolution);
+    return `wfs:${sanitizedPath}:bbox:${normalizedExtent}:res:${normalizedResolution}`;
+  }
+
+  private _normalizeCacheNumber(value: number): string {
+    return Number.isFinite(value) ? value.toFixed(2) : '0';
   }
 
   private _buildWfsGetFeatureUrl(

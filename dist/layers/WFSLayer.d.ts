@@ -9,7 +9,7 @@ import { WFSSourceOptions } from '../sources/types';
 export declare class WFSLayer extends VectorLayer {
     private cache?;
     private layerOptions?;
-    constructor(options?: WFSLayerOptions, cache?: string);
+    constructor(options?: WFSLayerOptions, cache?: any);
     /**
      * Compute the options to pass to the super constructor of VectorLayer
      */

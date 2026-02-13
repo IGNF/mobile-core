@@ -19,10 +19,10 @@ const pathUtils = new PathUtils();
 
 export class WFSLayer extends VectorLayer {
 
-  private cache?: string;
+  private cache?: any;
   private layerOptions?: WFSLayerOptions;
 
-  constructor(options?: WFSLayerOptions, cache?: string) {
+  constructor(options?: WFSLayerOptions, cache?: any) {
     options = options || {} as WFSLayerOptions;
     if (!options.geoservice) {
       options.geoservice = {} as any;

@@ -2,7 +2,7 @@
  * OpenLayers source for WFS (Web Feature Service) layers
  * @migrated from: ol/source/WFS.js of the CordovApp module
  */
-import { Collection } from 'ol';
+import { Collection, Feature } from 'ol';
 import VectorSource from 'ol/source/Vector';
 import { bbox, tile } from 'ol/loadingstrategy';
 import { createXYZ } from 'ol/tilegrid';
@@ -69,6 +69,9 @@ export default class WFSSource extends VectorSource {
         if (cache && cache.saveCache) {
             computedLocalProperties.saveCache = cache.saveCache;
         }
+        if (cache && cache.loadFeatures && cache.saveFeatures) {
+            computedLocalProperties.featureCache = cache;
+        }
         return {
             computedLocalProperties,
             strategy,
@@ -123,16 +126,19 @@ export default class WFSSource extends VectorSource {
         this.dispatchEvent({ type: 'loadstart', remains: ++this._tileLoading });
         try {
             let payload;
-            if (this.localProperties.loadCache) {
-                payload = await this._loadFromCache(requestExtent, resolution, tileCoord);
-            }
+            let payloadLoadedFromService = false;
+            payload = await this._loadFromCache(requestExtent, resolution, tileCoord);
             if (payload === undefined) {
                 payload = await this._loadFromService(requestExtent, requestCrs);
+                payloadLoadedFromService = true;
                 if (this.localProperties.saveCache) {
                     await Promise.resolve(this.localProperties.saveCache(payload, requestExtent, resolution, tileCoord));
                 }
             }
             const features = this._readWFSResponse(payload, requestCrs, projectionCode);
+            if (payloadLoadedFromService) {
+                await this._saveFeaturesToFeatureCache(requestExtent, resolution, tileCoord, features);
+            }
             if (features.length) {
                 this.addFeatures(features);
             }
@@ -148,30 +154,62 @@ export default class WFSSource extends VectorSource {
         }
     }
     async _loadFromCache(requestExtent, resolution, tileCoord) {
-        if (!this.localProperties.loadCache) {
-            return undefined;
-        }
         const cacheParameters = {
             tileCoord,
             extent: requestExtent,
             resolution,
         };
-        try {
-            return await this.localProperties.loadCache(cacheParameters);
-        }
-        catch (cacheError) {
-            if (cacheError === 'obsolete') {
-                try {
-                    return await this.localProperties.loadCache({
-                        ...cacheParameters,
-                        obsolete: true,
-                    });
-                }
-                catch {
-                    return undefined;
+        if (this.localProperties.loadCache) {
+            try {
+                const payload = await this.localProperties.loadCache(cacheParameters);
+                if (payload !== undefined) {
+                    return payload;
                 }
             }
+            catch (cacheError) {
+                if (cacheError === 'obsolete') {
+                    try {
+                        const payload = await this.localProperties.loadCache({
+                            ...cacheParameters,
+                            obsolete: true,
+                        });
+                        if (payload !== undefined) {
+                            return payload;
+                        }
+                    }
+                    catch {
+                        // Fallback to feature cache below
+                    }
+                }
+            }
+        }
+        const featureCache = this.localProperties.featureCache;
+        if (!featureCache) {
             return undefined;
+        }
+        const featureCacheKey = this._buildFeatureCacheKey(requestExtent, resolution, tileCoord);
+        try {
+            const cachedFeatures = await featureCache.loadFeatures(featureCacheKey);
+            if (Array.isArray(cachedFeatures) && cachedFeatures.length > 0) {
+                return cachedFeatures;
+            }
+        }
+        catch {
+            // Feature cache is best effort
+        }
+        return undefined;
+    }
+    async _saveFeaturesToFeatureCache(requestExtent, resolution, tileCoord, features) {
+        const featureCache = this.localProperties.featureCache;
+        if (!featureCache || features.length === 0) {
+            return;
+        }
+        const featureCacheKey = this._buildFeatureCacheKey(requestExtent, resolution, tileCoord);
+        try {
+            await featureCache.saveFeatures(featureCacheKey, features);
+        }
+        catch {
+            // Feature cache is best effort
         }
     }
     async _loadFromService(requestExtent, requestCrs) {
@@ -261,6 +299,9 @@ export default class WFSSource extends VectorSource {
      * Read WFS response and return features to add
      */
     _readWFSResponse(response, requestCrs, projectionCode) {
+        if (this._isFeatureArray(response)) {
+            return response;
+        }
         const loadedFeatures = this._parseFeaturesFromPayload(response, requestCrs, projectionCode);
         if (!loadedFeatures.length) {
             return [];
@@ -374,6 +415,24 @@ export default class WFSSource extends VectorSource {
             version: String(this.get('version') || '2.0.0'),
             format: String(this.get('format') || '')
         };
+    }
+    _isFeatureArray(payload) {
+        return Array.isArray(payload) && payload.every((item) => item instanceof Feature);
+    }
+    _buildFeatureCacheKey(requestExtent, resolution, tileCoord) {
+        const cachePath = String(this.get('cache') || this.get('typename') || 'wfs');
+        const sanitizedPath = cachePath.replace(/[^a-zA-Z0-9._-]+/g, '_');
+        if (tileCoord && tileCoord.length > 0) {
+            return `wfs:${sanitizedPath}:tile:${tileCoord.join('-')}`;
+        }
+        const normalizedExtent = requestExtent
+            .map((value) => this._normalizeCacheNumber(value))
+            .join('_');
+        const normalizedResolution = this._normalizeCacheNumber(resolution);
+        return `wfs:${sanitizedPath}:bbox:${normalizedExtent}:res:${normalizedResolution}`;
+    }
+    _normalizeCacheNumber(value) {
+        return Number.isFinite(value) ? value.toFixed(2) : '0';
     }
     _buildWfsGetFeatureUrl(geoservice, typeNames, layerExtraParams, requestCrs, requestExtent, options) {
         const originalUrl = new URL(geoservice.url);
