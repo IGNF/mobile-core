@@ -21,6 +21,7 @@ export interface WFSLayerOptions {
     password?: string;
     accessToken?: string;
     tokenType?: string;
+    useCacheWhenOnline?: boolean;
     cache?: string;
     visibility?: boolean;
     opacity?: number;

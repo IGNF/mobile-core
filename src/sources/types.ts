@@ -25,6 +25,7 @@ export interface CollabVectorSourceOptions extends SourceOptions {
   cacheUrl?: string;
   cache?: any; // ICacheStorage - avoiding circular dependency
   online?: boolean;
+  useCacheWhenOnline?: boolean;
   outputFormat?: 'CSV' | 'JSON';
   preserved?: Collection<Feature>;
   logo?: string;
@@ -39,6 +40,7 @@ export interface WFSSourceOptions extends SourceOptions {
   password?: string;
   accessToken?: string;
   tokenType?: string;
+  useCacheWhenOnline?: boolean;
   once?: boolean;
   minZoom?: number;
   proxy?: string;

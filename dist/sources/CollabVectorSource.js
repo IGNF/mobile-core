@@ -54,6 +54,7 @@ export default class CollabVectorSource extends VectorSource {
         let strategy = opts.strategy || bbox;
         const properties = {
             online: opts.online ?? true,
+            useCacheWhenOnline: opts.useCacheWhenOnline === true,
             cacheUrl: opts.cacheUrl,
             editionCacheFile: pathUtils.sanitizeFileName(`${table.database}-${table.name}-editions.txt`),
             formatWKT: new WKT(),
@@ -380,10 +381,13 @@ export default class CollabVectorSource extends VectorSource {
         this.dispatchEvent({ type: 'loadstart', remains: ++this._tileLoading });
         try {
             let payload = [];
-            if (this.localProperties.cacheUrl && this.localProperties.online === false) {
+            const isOnline = this.localProperties.online !== false;
+            const canReadCache = Boolean(this.localProperties.cacheUrl);
+            const useCacheWhenOnline = this.localProperties.useCacheWhenOnline === true;
+            if (canReadCache && (!isOnline || useCacheWhenOnline)) {
                 payload = await this._loadFromOfflineCache(extent, resolution);
             }
-            else if (this.localProperties.online !== false) {
+            if (this._countPayloadFeatures(payload) === 0 && isOnline) {
                 payload = await this._loadFromOnline(extent);
             }
             const loadedCount = this._countPayloadFeatures(payload);
@@ -411,7 +415,7 @@ export default class CollabVectorSource extends VectorSource {
                 this.addFeatures(finalFeatures);
             }
             this._isLoading = false;
-            if (this.localProperties.online !== false) {
+            if (isOnline) {
                 await this._saveFeaturesToOfflineCache(extent, resolution, finalFeatures);
             }
             this.dispatchEvent({ type: 'loadend', remains: --this._tileLoading });

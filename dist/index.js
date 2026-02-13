@@ -3,7 +3,7 @@ var _c = (r, t, e) => t in r ? mc(r, t, { enumerable: !0, configurable: !0, writ
 var oa = (r, t, e) => _c(r, typeof t != "symbol" ? t + "" : t, e);
 import ot from "proj4";
 import { Collection as We, Feature as yn, View as Ml } from "ol";
-class bn {
+class On {
   constructor() {
     this.listeners = {};
   }
@@ -90,15 +90,15 @@ function ha(r, t) {
 function kt(r, t, e) {
   return r + e * (t - r);
 }
-function On(r, t) {
+function bn(r, t) {
   const e = Math.pow(10, t);
   return Math.round(r * e) / e;
 }
 function Zn(r, t) {
-  return Math.floor(On(r, t));
+  return Math.floor(bn(r, t));
 }
 function Vn(r, t) {
-  return Math.ceil(On(r, t));
+  return Math.ceil(bn(r, t));
 }
 function vs(r, t, e) {
   if (r >= t && r < e)
@@ -155,7 +155,7 @@ function Fl(r) {
     return Fl(i);
   t.clearRect(0, 0, 1, 1), t.fillRect(0, 0, 1, 1);
   const n = Array.from(t.getImageData(0, 0, 1, 1).data);
-  return n[3] = On(n[3] / 255, 3), n;
+  return n[3] = bn(n[3] / 255, 3), n;
 }
 function Qt(r) {
   return typeof r == "string" ? r : eo(r);
@@ -325,7 +325,7 @@ function gi(r, t) {
       return !1;
   return !0;
 }
-function bc(r, t, e) {
+function Oc(r, t, e) {
   const i = t || ze;
   return r.every(function(n, s) {
     if (s === 0)
@@ -495,7 +495,7 @@ function ua(r, t, e, i) {
 function Se(r) {
   r && r.target && (r.target.removeEventListener(r.type, r.listener), Nr(r));
 }
-function Oc(r, t) {
+function bc(r, t) {
   return new Promise((e, i) => {
     function n() {
       o(), e(r);
@@ -514,7 +514,7 @@ function Nc(r, t) {
     (e, i) => r.decode().then(() => e(r)).catch(
       (n) => r.complete && r.width ? e(r) : i(n)
     )
-  ) : Oc(r);
+  ) : bc(r);
 }
 class kc {
   constructor() {
@@ -600,7 +600,7 @@ function us(r, t, e) {
 }
 const he = new kc();
 let sn = null;
-class bl extends Ll {
+class Ol extends Ll {
   /**
    * @param {HTMLImageElement|HTMLCanvasElement|ImageBitmap|null} image Image.
    * @param {string|undefined} src Src.
@@ -744,7 +744,7 @@ class bl extends Ll {
 }
 function no(r, t, e, i, n, s) {
   let o = t === void 0 ? void 0 : he.get(t, e, n);
-  return o || (o = new bl(
+  return o || (o = new Ol(
     r,
     r && "src" in r ? r.src || void 0 : t,
     e,
@@ -791,7 +791,7 @@ function Dc(r) {
     !0
   ), he.getPattern(t, void 0, r.color);
 }
-const Ol = {
+const bl = {
   /**
    * Triggered when a property is changed.
    * @event module:ol/Object.ObjectEvent#propertychange
@@ -897,7 +897,7 @@ function Gc(r) {
       r
     );
 }
-function O() {
+function b() {
   throw new Error("Unimplemented abstract method.");
 }
 let Uc = 0;
@@ -966,7 +966,7 @@ class Ae extends Nn {
    */
   notify(t, e) {
     let i;
-    i = `change:${t}`, this.hasListener(i) && this.dispatchEvent(new da(i, t, e)), i = Ol.PROPERTYCHANGE, this.hasListener(i) && this.dispatchEvent(new da(i, t, e));
+    i = `change:${t}`, this.hasListener(i) && this.dispatchEvent(new da(i, t, e)), i = bl.PROPERTYCHANGE, this.hasListener(i) && this.dispatchEvent(new da(i, t, e));
   }
   /**
    * @param {string} key Key name.
@@ -1072,7 +1072,7 @@ const Wc = new RegExp(
   return isNaN(Number(e.weight)) && e.weight in As && (e.weight = As[e.weight]), e.families = e.family.split(/,\s?/).map((i) => i.trim().replace(/^['"]|['"]$/g, "")), e;
 }, Nl = "10px sans-serif", At = "#000", Bi = "round", xe = [], Re = 0, Xi = "round", xn = 10, Rn = "#000", In = "center", yr = "middle", ti = [0, 0, 0, 0], Tn = 1, on = new Ae();
 let an = null, ga;
-const bs = {}, Yc = /* @__PURE__ */ new Set([
+const Os = {}, Yc = /* @__PURE__ */ new Set([
   "serif",
   "sans-serif",
   "monospace",
@@ -1118,7 +1118,7 @@ const Xc = /* @__PURE__ */ function() {
     for (let l = a.length - 1; l >= 0; --l) {
       const c = a[l];
       let h = o[c];
-      h < 100 && (await i(c) ? (Nr(bs), on.set(c, 100)) : (h += 10, on.set(c, h, !0), h < 100 && (s = !1)));
+      h < 100 && (await i(c) ? (Nr(Os), on.set(c, 100)) : (h += 10, on.set(c, h, !0), h < 100 && (s = !1)));
     }
     t = void 0, s || (t = setTimeout(n, 100));
   }
@@ -1140,14 +1140,14 @@ const Xc = /* @__PURE__ */ function() {
 }(), zc = /* @__PURE__ */ function() {
   let r;
   return function(t) {
-    let e = bs[t];
+    let e = Os[t];
     if (e == null) {
       if (Js) {
         const i = Ls(t), n = kl(t, "Žg");
         e = (isNaN(Number(i.lineHeight)) ? 1.2 : Number(i.lineHeight)) * (n.actualBoundingBoxAscent + n.actualBoundingBoxDescent);
       } else
         r || (r = document.createElement("div"), r.innerHTML = "M", r.style.minHeight = "0", r.style.maxHeight = "none", r.style.height = "auto", r.style.padding = "0", r.style.border = "none", r.style.position = "absolute", r.style.display = "block", r.style.left = "-99999px"), r.style.font = t, document.body.appendChild(r), e = r.offsetHeight, document.body.removeChild(r);
-      bs[t] = e;
+      Os[t] = e;
     }
     return e;
   };
@@ -1308,7 +1308,7 @@ class kr {
    * @return {Array<number>} Anchor.
    */
   getAnchor() {
-    return O();
+    return b();
   }
   /**
    * Get the image element for the symbolizer.
@@ -1317,14 +1317,14 @@ class kr {
    * @return {import('../DataTile.js').ImageLike} Image element.
    */
   getImage(t) {
-    return O();
+    return b();
   }
   /**
    * @abstract
    * @return {import('../DataTile.js').ImageLike} Image element.
    */
   getHitDetectionImage() {
-    return O();
+    return b();
   }
   /**
    * Get the image pixel ratio.
@@ -1339,14 +1339,14 @@ class kr {
    * @return {import("../ImageState.js").default} Image state.
    */
   getImageState() {
-    return O();
+    return b();
   }
   /**
    * @abstract
    * @return {import("../size.js").Size} Image size.
    */
   getImageSize() {
-    return O();
+    return b();
   }
   /**
    * Get the origin of the symbolizer.
@@ -1354,7 +1354,7 @@ class kr {
    * @return {Array<number>} Origin.
    */
   getOrigin() {
-    return O();
+    return b();
   }
   /**
    * Get the size of the symbolizer (in pixels).
@@ -1362,7 +1362,7 @@ class kr {
    * @return {import("../size.js").Size} Size.
    */
   getSize() {
-    return O();
+    return b();
   }
   /**
    * Set the displacement.
@@ -1414,21 +1414,21 @@ class kr {
    * @param {function(import("../events/Event.js").default): void} listener Listener function.
    */
   listenImageChange(t) {
-    O();
+    b();
   }
   /**
    * Load not yet loaded URI.
    * @abstract
    */
   load() {
-    O();
+    b();
   }
   /**
    * @abstract
    * @param {function(import("../events/Event.js").default): void} listener Listener function.
    */
   unlistenImageChange(t) {
-    O();
+    b();
   }
   /**
    * @return {Promise<void>} `false` or Promise that resolves when the style is ready to use.
@@ -1540,7 +1540,7 @@ class Pe extends kr {
         i,
         null,
         null,
-        new bl(n, void 0, null, Y.LOADED, null)
+        new Ol(n, void 0, null, Y.LOADED, null)
       );
     }
     return n;
@@ -3053,7 +3053,7 @@ function _i(r, t, e) {
   let i, n;
   return t < r[0] ? i = r[0] - t : r[2] < t ? i = t - r[2] : i = 0, e < r[1] ? n = r[1] - e : r[3] < e ? n = e - r[3] : n = 0, i * i + n * n;
 }
-function Os(r, t) {
+function bs(r, t) {
   return so(r, t[0], t[1]);
 }
 function cn(r, t) {
@@ -3670,9 +3670,9 @@ function Au(r) {
     inverse: Ra(Iu, t)
   } : null;
 }
-const Lu = [Au], bu = [vu];
+const Lu = [Au], Ou = [vu];
 let Ds = !0;
-function Ou(r) {
+function bu(r) {
   Ds = !1;
 }
 function uo(r, t) {
@@ -3696,7 +3696,7 @@ function rt(r) {
   const t = gr(r);
   if (t)
     return t;
-  for (const e of bu) {
+  for (const e of Ou) {
     const i = e(r);
     if (i)
       return i;
@@ -4076,7 +4076,7 @@ class Dn extends sh {
     const i = this.getBufferedMaxExtent(), n = this.tmpCoordinate_, s = this.coordinates;
     let o = s.length;
     for (let a = 0, l = t.length; a < l; a += e)
-      n[0] = t[a], n[1] = t[a + 1], Os(i, n) && (s[o++] = n[0], s[o++] = n[1]);
+      n[0] = t[a], n[1] = t[a + 1], bs(i, n) && (s[o++] = n[0], s[o++] = n[1]);
     return o;
   }
   /**
@@ -4457,7 +4457,7 @@ class Yu extends Dn {
    * @override
    */
   drawPoint(t, e, i) {
-    if (!this.image_ || this.maxExtent && !Os(this.maxExtent, t.getFlatCoordinates()))
+    if (!this.image_ || this.maxExtent && !bs(this.maxExtent, t.getFlatCoordinates()))
       return;
     this.beginGeometry(t, e, i);
     const n = t.getFlatCoordinates(), s = t.getStride(), o = this.coordinates.length, a = this.appendFlatPointCoordinates(n, s);
@@ -4514,7 +4514,7 @@ class Yu extends Dn {
     this.beginGeometry(t, e, i);
     const n = t.getFlatCoordinates(), s = [];
     for (let l = 0, c = n.length; l < c; l += t.getStride())
-      (!this.maxExtent || Os(this.maxExtent, n.slice(l, l + 2))) && s.push(
+      (!this.maxExtent || bs(this.maxExtent, n.slice(l, l + 2))) && s.push(
         n[l],
         n[l + 1]
       );
@@ -5584,7 +5584,7 @@ class ah {
     this.offset_ = this.instructions_.length, this.zIndex = 0;
   }
 }
-const Si = Me(), Oe = [], pe = [], ye = [], Ne = [];
+const Si = Me(), be = [], pe = [], ye = [], Ne = [];
 function va(r) {
   return r[3].declutterBox;
 }
@@ -5711,7 +5711,7 @@ class ad {
     a *= d[0], l *= d[1];
     let p = i - a, y = n - l;
     const S = s + c > t ? t - c : s, C = o + h > e ? e - h : o, R = g[3] + S * d[0] + g[1], I = g[0] + C * d[1] + g[2], F = p - g[3], P = y - g[0];
-    (m || u !== 0) && (Oe[0] = F, Ne[0] = F, Oe[1] = P, pe[1] = P, pe[0] = F + R, ye[0] = pe[0], ye[1] = P + I, Ne[1] = ye[1]);
+    (m || u !== 0) && (be[0] = F, Ne[0] = F, be[1] = P, pe[1] = P, pe[0] = F + R, ye[0] = pe[0], ye[1] = P + I, Ne[1] = ye[1]);
     let M;
     return u !== 0 ? (M = di(
       Ie(),
@@ -5722,11 +5722,11 @@ class ad {
       u,
       -i,
       -n
-    ), Nt(M, Oe), Nt(M, pe), Nt(M, ye), Nt(M, Ne), ne(
-      Math.min(Oe[0], pe[0], ye[0], Ne[0]),
-      Math.min(Oe[1], pe[1], ye[1], Ne[1]),
-      Math.max(Oe[0], pe[0], ye[0], Ne[0]),
-      Math.max(Oe[1], pe[1], ye[1], Ne[1]),
+    ), Nt(M, be), Nt(M, pe), Nt(M, ye), Nt(M, Ne), ne(
+      Math.min(be[0], pe[0], ye[0], Ne[0]),
+      Math.min(be[1], pe[1], ye[1], Ne[1]),
+      Math.max(be[0], pe[0], ye[0], Ne[0]),
+      Math.max(be[1], pe[1], ye[1], Ne[1]),
       Si
     )) : ne(
       Math.min(F, F + R),
@@ -5767,7 +5767,7 @@ class ad {
     const l = !!(o || a), c = n.declutterBox, h = a ? a[2] * n.scale[0] / 2 : 0;
     return c.minX - h <= e[0] && c.maxX + h >= 0 && c.minY - h <= e[1] && c.maxY + h >= 0 && (l && this.replayTextBackground_(
       t,
-      Oe,
+      be,
       pe,
       ye,
       Ne,
@@ -6538,7 +6538,7 @@ class yo extends Ae {
    * @return {!Geometry} Clone.
    */
   clone() {
-    return O();
+    return b();
   }
   /**
    * @abstract
@@ -6549,7 +6549,7 @@ class yo extends Ae {
    * @return {number} Minimum squared distance.
    */
   closestPointXY(t, e, i, n) {
-    return O();
+    return b();
   }
   /**
    * @param {number} x X.
@@ -6587,7 +6587,7 @@ class yo extends Ae {
    * @return {import("../extent.js").Extent} extent Extent.
    */
   computeExtent(t) {
-    return O();
+    return b();
   }
   /**
    * Get the extent of the geometry.
@@ -6611,7 +6611,7 @@ class yo extends Ae {
    * @api
    */
   rotate(t, e) {
-    O();
+    b();
   }
   /**
    * Scale the geometry (with an optional origin).  This modifies the geometry
@@ -6624,7 +6624,7 @@ class yo extends Ae {
    * @api
    */
   scale(t, e, i) {
-    O();
+    b();
   }
   /**
    * Create a simplified version of this geometry.  For linestrings, this uses
@@ -6647,7 +6647,7 @@ class yo extends Ae {
    * @return {Geometry} Simplified geometry.
    */
   getSimplifiedGeometry(t) {
-    return O();
+    return b();
   }
   /**
    * Get the type of this geometry.
@@ -6655,7 +6655,7 @@ class yo extends Ae {
    * @return {Type} Geometry type.
    */
   getType() {
-    return O();
+    return b();
   }
   /**
    * Apply a transform function to the coordinates of the geometry.
@@ -6667,7 +6667,7 @@ class yo extends Ae {
    * Called with a flat array of geometry coordinates.
    */
   applyTransform(t) {
-    O();
+    b();
   }
   /**
    * Test if the geometry and the passed extent intersect.
@@ -6676,7 +6676,7 @@ class yo extends Ae {
    * @return {boolean} `true` if the geometry and the extent intersect.
    */
   intersectsExtent(t) {
-    return O();
+    return b();
   }
   /**
    * Translate the geometry.  This modifies the geometry coordinates in place.  If
@@ -6687,7 +6687,7 @@ class yo extends Ae {
    * @api
    */
   translate(t, e) {
-    O();
+    b();
   }
   /**
    * Transform each coordinate of the geometry from one coordinate reference
@@ -6754,7 +6754,7 @@ class Le extends yo {
    * @return {Array<*> | null} Coordinates.
    */
   getCoordinates() {
-    return O();
+    return b();
   }
   /**
    * Return the first coordinate of the geometry.
@@ -6827,7 +6827,7 @@ class Le extends yo {
    * @param {import("./Geometry.js").GeometryLayout} [layout] Layout.
    */
   setCoordinates(t, e) {
-    O();
+    b();
   }
   /**
    * @param {import("./Geometry.js").GeometryLayout|undefined} layout Layout.
@@ -6979,7 +6979,7 @@ class fd extends sh {
    * @param {import("../../proj.js").TransformFunction} [userTransform] Transform from user to view projection.
    */
   constructor(t, e, i, n, s, o, a) {
-    super(), this.context_ = t, this.pixelRatio_ = e, this.extent_ = i, this.transform_ = n, this.transformRotation_ = n ? On(Math.atan2(n[1], n[0]), 10) : 0, this.viewRotation_ = s, this.squaredTolerance_ = o, this.userTransform_ = a, this.contextFillState_ = null, this.contextStrokeState_ = null, this.contextTextState_ = null, this.fillState_ = null, this.strokeState_ = null, this.image_ = null, this.imageAnchorX_ = 0, this.imageAnchorY_ = 0, this.imageHeight_ = 0, this.imageOpacity_ = 0, this.imageOriginX_ = 0, this.imageOriginY_ = 0, this.imageRotateWithView_ = !1, this.imageRotation_ = 0, this.imageScale_ = [0, 0], this.imageWidth_ = 0, this.text_ = "", this.textOffsetX_ = 0, this.textOffsetY_ = 0, this.textRotateWithView_ = !1, this.textRotation_ = 0, this.textScale_ = [0, 0], this.textFillState_ = null, this.textStrokeState_ = null, this.textState_ = null, this.pixelCoordinates_ = [], this.tmpLocalTransform_ = Ie();
+    super(), this.context_ = t, this.pixelRatio_ = e, this.extent_ = i, this.transform_ = n, this.transformRotation_ = n ? bn(Math.atan2(n[1], n[0]), 10) : 0, this.viewRotation_ = s, this.squaredTolerance_ = o, this.userTransform_ = a, this.contextFillState_ = null, this.contextStrokeState_ = null, this.contextTextState_ = null, this.fillState_ = null, this.strokeState_ = null, this.image_ = null, this.imageAnchorX_ = 0, this.imageAnchorY_ = 0, this.imageHeight_ = 0, this.imageOpacity_ = 0, this.imageOriginX_ = 0, this.imageOriginY_ = 0, this.imageRotateWithView_ = !1, this.imageRotation_ = 0, this.imageScale_ = [0, 0], this.imageWidth_ = 0, this.text_ = "", this.textOffsetX_ = 0, this.textOffsetY_ = 0, this.textRotateWithView_ = !1, this.textRotation_ = 0, this.textScale_ = [0, 0], this.textFillState_ = null, this.textStrokeState_ = null, this.textState_ = null, this.pixelCoordinates_ = [], this.tmpLocalTransform_ = Ie();
   }
   /**
    * @param {Array<number>} flatCoordinates Flat coordinates.
@@ -7667,7 +7667,7 @@ const _d = 0.5, hh = {
 function pd(r, t) {
   return parseInt(nt(r), 10) - parseInt(nt(t), 10);
 }
-function ba(r, t) {
+function Oa(r, t) {
   const e = ch(r, t);
   return e * e;
 }
@@ -7686,7 +7686,7 @@ function yd(r, t, e, i, n) {
     l.setTextStyle(a), l.drawText(t, i);
   }
 }
-function Oa(r, t, e, i, n, s, o, a) {
+function ba(r, t, e, i, n, s, o, a) {
   const l = [], c = e.getImage();
   if (c) {
     let d = !0;
@@ -7881,7 +7881,7 @@ class Fd extends Nn {
    * an array of features.
    */
   getFeatures(t) {
-    return O();
+    return b();
   }
   /**
    * @param {import("../pixel.js").Pixel} pixel Pixel.
@@ -7897,7 +7897,7 @@ class Fd extends Nn {
    * @return {boolean} Layer is ready to be rendered.
    */
   prepareFrame(t) {
-    return O();
+    return b();
   }
   /**
    * Render the layer.
@@ -7907,7 +7907,7 @@ class Fd extends Nn {
    * @return {HTMLElement} The rendered element.
    */
   renderFrame(t, e) {
-    return O();
+    return b();
   }
   /**
    * @abstract
@@ -8325,7 +8325,7 @@ class Ld extends Ad {
           l,
           s,
           o,
-          ba(s, this.renderedPixelRatio_)
+          Oa(s, this.renderedPixelRatio_)
         );
       }
       e(
@@ -8443,7 +8443,7 @@ class Ld extends Ad {
     let I;
     for (let B = 0, ft = S.length; B < ft; ++B)
       i.loadFeatures(S[B], u, h);
-    const F = ba(u, d);
+    const F = Oa(u, d);
     let P = !0;
     const M = (
       /**
@@ -8498,7 +8498,7 @@ class Ld extends Ad {
     let l = !1;
     if (Array.isArray(i))
       for (let c = 0, h = i.length; c < h; ++c)
-        l = Oa(
+        l = ba(
           n,
           t,
           i[c],
@@ -8509,7 +8509,7 @@ class Ld extends Ad {
           a
         ) || l;
     else
-      l = Oa(
+      l = ba(
         n,
         t,
         i,
@@ -8522,7 +8522,7 @@ class Ld extends Ad {
     return l;
   }
 }
-function dh(r, t, e = 0, i = r.length - 1, n = bd) {
+function dh(r, t, e = 0, i = r.length - 1, n = Od) {
   for (; i > e; ) {
     if (i - e > 600) {
       const l = i - e + 1, c = t - e + 1, h = Math.log(l), u = 0.5 * Math.exp(2 * h / 3), d = 0.5 * Math.sqrt(h * u * (l - u) / l) * (c - l / 2 < 0 ? -1 : 1), f = Math.max(e, Math.floor(t - c * u / l + d)), g = Math.min(i, Math.floor(t + (l - c) * u / l + d));
@@ -8541,7 +8541,7 @@ function hn(r, t, e) {
   const i = r[t];
   r[t] = r[e], r[e] = i;
 }
-function bd(r, t) {
+function Od(r, t) {
   return r < t ? -1 : r > t ? 1 : 0;
 }
 let fh = class {
@@ -8615,7 +8615,7 @@ let fh = class {
     let a, l, c;
     for (; i || s.length; ) {
       if (i || (i = s.pop(), l = s[s.length - 1], a = o.pop(), c = !0), i.leaf) {
-        const h = Od(t, i.children, e);
+        const h = bd(t, i.children, e);
         if (h !== -1)
           return i.children.splice(h, 1), s.push(i), this._condense(s), this;
       }
@@ -8726,7 +8726,7 @@ let fh = class {
       t[e].children.length === 0 ? e > 0 ? (i = t[e - 1].children, i.splice(i.indexOf(t[e]), 1)) : this.clear() : xi(t[e], this.toBBox);
   }
 };
-function Od(r, t, e) {
+function bd(r, t, e) {
   if (!e) return t.indexOf(r);
   for (let i = 0; i < t.length; i++)
     if (e(r, t[i])) return i;
@@ -9427,7 +9427,7 @@ function _h() {
     geometryType: ""
   };
 }
-function be(r, t, e) {
+function Oe(r, t, e) {
   const i = xt(r, t, e);
   return re(i);
 }
@@ -9815,7 +9815,7 @@ function Wa(r) {
 function df(r, t) {
   const e = r.length, i = new Array(e);
   for (let n = 0; n < e; ++n) {
-    const s = r[n], o = "filter" in s ? be(s.filter, Mt, t) : cf;
+    const s = r[n], o = "filter" in s ? Oe(s.filter, Mt, t) : cf;
     let a;
     if (Array.isArray(s.style)) {
       const l = s.style.length;
@@ -9843,7 +9843,7 @@ function df(r, t) {
   };
 }
 function Ws(r, t) {
-  const e = Fn(r, "", t), i = vn(r, "", t), n = ff(r, t), s = gf(r, t), o = bt(r, "z-index", t);
+  const e = Fn(r, "", t), i = vn(r, "", t), n = ff(r, t), s = gf(r, t), o = Ot(r, "z-index", t);
   if (!e && !i && !n && !s && !ci(r))
     throw new Error(
       "No fill, stroke, point, or text symbolizer properties in style: " + JSON.stringify(r)
@@ -9892,7 +9892,7 @@ function Fn(r, t, e) {
   };
 }
 function vn(r, t, e) {
-  const i = bt(
+  const i = Ot(
     r,
     t + "stroke-width",
     e
@@ -9915,11 +9915,11 @@ function vn(r, t, e) {
     r,
     t + "stroke-line-dash",
     e
-  ), l = bt(
+  ), l = Ot(
     r,
     t + "stroke-line-dash-offset",
     e
-  ), c = bt(
+  ), c = Ot(
     r,
     t + "stroke-miter-limit",
     e
@@ -9958,15 +9958,15 @@ function ff(r, t) {
     r,
     e + "background-",
     t
-  ), l = Ee(r, e + "font", t), c = bt(
+  ), l = Ee(r, e + "font", t), c = Ot(
     r,
     e + "max-angle",
     t
-  ), h = bt(
+  ), h = Ot(
     r,
     e + "offset-x",
     t
-  ), u = bt(
+  ), u = Ot(
     r,
     e + "offset-y",
     t
@@ -9978,11 +9978,11 @@ function ff(r, t) {
     r,
     e + "placement",
     t
-  ), g = bt(r, e + "repeat", t), m = zr(r, e + "scale", t), _ = Ui(
+  ), g = Ot(r, e + "repeat", t), m = zr(r, e + "scale", t), _ = Ui(
     r,
     e + "rotate-with-view",
     t
-  ), p = bt(
+  ), p = Ot(
     r,
     e + "rotation",
     t
@@ -10046,7 +10046,7 @@ function mf(r, t) {
     r,
     e + "anchor",
     t
-  ), o = zr(r, e + "scale", t), a = bt(
+  ), o = zr(r, e + "scale", t), a = Ot(
     r,
     e + "opacity",
     t
@@ -10054,7 +10054,7 @@ function mf(r, t) {
     r,
     e + "displacement",
     t
-  ), c = bt(
+  ), c = Ot(
     r,
     e + "rotation",
     t
@@ -10094,7 +10094,7 @@ function _f(r, t) {
     r,
     e + "displacement",
     t
-  ), u = bt(
+  ), u = Ot(
     r,
     e + "rotation",
     t
@@ -10117,11 +10117,11 @@ function _f(r, t) {
   };
 }
 function pf(r, t) {
-  const e = "circle-", i = Fn(r, e, t), n = vn(r, e, t), s = bt(r, e + "radius", t), o = zr(r, e + "scale", t), a = Ir(
+  const e = "circle-", i = Fn(r, e, t), n = vn(r, e, t), s = Ot(r, e + "radius", t), o = zr(r, e + "scale", t), a = Ir(
     r,
     e + "displacement",
     t
-  ), l = bt(
+  ), l = Ot(
     r,
     e + "rotation",
     t
@@ -10141,10 +10141,10 @@ function pf(r, t) {
     return s && u.setRadius(s(d)), i && u.setFill(i(d)), n && u.setStroke(n(d)), a && u.setDisplacement(a(d)), l && u.setRotation(l(d)), c && u.setRotateWithView(c(d)), o && u.setScale(o(d)), u;
   };
 }
-function bt(r, t, e) {
+function Ot(r, t, e) {
   if (!(t in r))
     return;
-  const i = be(r[t], j, e);
+  const i = Oe(r[t], j, e);
   return function(n) {
     return Ys(i(n), t);
   };
@@ -10152,7 +10152,7 @@ function bt(r, t, e) {
 function Ee(r, t, e) {
   if (!(t in r))
     return null;
-  const i = be(r[t], Lt, e);
+  const i = Oe(r[t], Lt, e);
   return function(n) {
     return yh(i(n), t);
   };
@@ -10187,7 +10187,7 @@ function yf(r, t, e) {
 function Ui(r, t, e) {
   if (!(t in r))
     return null;
-  const i = be(r[t], Mt, e);
+  const i = Oe(r[t], Mt, e);
   return function(n) {
     const s = i(n);
     if (typeof s != "boolean")
@@ -10198,7 +10198,7 @@ function Ui(r, t, e) {
 function Eo(r, t, e) {
   if (!(t in r))
     return null;
-  const i = be(r[t], ee, e);
+  const i = Oe(r[t], ee, e);
   return function(n) {
     return wh(i(n), t);
   };
@@ -10206,7 +10206,7 @@ function Eo(r, t, e) {
 function ph(r, t, e) {
   if (!(t in r))
     return null;
-  const i = be(r[t], fi, e);
+  const i = Oe(r[t], fi, e);
   return function(n) {
     return Gn(i(n), t);
   };
@@ -10214,7 +10214,7 @@ function ph(r, t, e) {
 function Ir(r, t, e) {
   if (!(t in r))
     return null;
-  const i = be(r[t], fi, e);
+  const i = Oe(r[t], fi, e);
   return function(n) {
     const s = Gn(i(n), t);
     if (s.length !== 2)
@@ -10225,7 +10225,7 @@ function Ir(r, t, e) {
 function Ya(r, t, e) {
   if (!(t in r))
     return null;
-  const i = be(r[t], fi, e);
+  const i = Oe(r[t], fi, e);
   return function(n) {
     return Eh(i(n), t);
   };
@@ -10233,7 +10233,7 @@ function Ya(r, t, e) {
 function zr(r, t, e) {
   if (!(t in r))
     return null;
-  const i = be(
+  const i = Oe(
     r[t],
     fi | j,
     e
@@ -10929,7 +10929,7 @@ function jr(r, t, e, i, n, s) {
     }
   ) : !1;
 }
-function bf(r, t, e, i, n) {
+function Of(r, t, e, i, n) {
   for (let s = 0, o = e.length; s < o; ++s) {
     if (jr(r, t, e[s], i, n))
       return !0;
@@ -10990,7 +10990,7 @@ function Mh(r, t, e, i, n) {
       return !1;
   return !0;
 }
-function Of(r, t, e, i, n) {
+function bf(r, t, e, i, n) {
   for (let s = 0, o = e.length; s < o; ++s) {
     const a = e[s];
     if (Mh(r, t, a, i, n))
@@ -11518,7 +11518,7 @@ class Ka extends Ae {
    * @param {ViewOptions} [options] View options.
    */
   constructor(t) {
-    super(), this.on, this.once, this.un, t = Object.assign({}, t), this.hints_ = [0, 0], this.animations_ = [], this.updateAnimationKey_, this.projection_ = fo(t.projection, "EPSG:3857"), this.viewportSize_ = [100, 100], this.targetCenter_ = null, this.targetResolution_, this.targetRotation_, this.nextCenter_ = null, this.nextResolution_, this.nextRotation_, this.cancelAnchor_ = void 0, t.projection && Ou(), t.center && (t.center = lt(t.center, this.projection_)), t.extent && (t.extent = ii(t.extent, this.projection_)), this.applyOptions_(t);
+    super(), this.on, this.once, this.un, t = Object.assign({}, t), this.hints_ = [0, 0], this.animations_ = [], this.updateAnimationKey_, this.projection_ = fo(t.projection, "EPSG:3857"), this.viewportSize_ = [100, 100], this.targetCenter_ = null, this.targetResolution_, this.targetRotation_, this.nextCenter_ = null, this.nextResolution_, this.nextRotation_, this.cancelAnchor_ = void 0, t.projection && bu(), t.center && (t.center = lt(t.center, this.projection_)), t.extent && (t.extent = ii(t.extent, this.projection_)), this.applyOptions_(t);
   }
   /**
    * Set up the view with the given options.
@@ -12716,7 +12716,7 @@ class jf extends Ae {
    * @return {Array<import("./Layer.js").default>} Array of layers.
    */
   getLayersArray(t) {
-    return O();
+    return b();
   }
   /**
    * @abstract
@@ -12725,7 +12725,7 @@ class jf extends Ae {
    * @return {Array<import("./Layer.js").State>} List of layer states.
    */
   getLayerStatesArray(t) {
-    return O();
+    return b();
   }
   /**
    * Return the {@link module:ol/extent~Extent extent} of the layer or `undefined` if it
@@ -12809,7 +12809,7 @@ class jf extends Ae {
    * @return {import("../source/Source.js").State} Source state.
    */
   getSourceState() {
-    return O();
+    return b();
   }
   /**
    * Return the value of this layer's `visible` property. To find out whether the layer
@@ -14374,7 +14374,7 @@ class je extends yo {
 function Cs(r) {
   return r.map((t) => t.clone());
 }
-class Ot extends Le {
+class bt extends Le {
   /**
    * @param {Array<import("../coordinate.js").Coordinate>|Array<number>} coordinates Coordinates.
    *     For internal use, flat coordinates in combination with `layout` are also accepted.
@@ -14406,7 +14406,7 @@ class Ot extends Le {
    * @override
    */
   clone() {
-    const t = new Ot(
+    const t = new bt(
       this.flatCoordinates.slice(),
       this.layout
     );
@@ -14560,7 +14560,7 @@ class Ot extends Le {
       t,
       e,
       0
-    ), new Ot(e, "XY");
+    ), new bt(e, "XY");
   }
   /**
    * Get the type of this geometry.
@@ -14750,7 +14750,7 @@ class se extends Le {
    * @api
    */
   getLineString(t) {
-    return t < 0 || this.ends_.length <= t ? null : new Ot(
+    return t < 0 || this.ends_.length <= t ? null : new bt(
       this.flatCoordinates.slice(
         t === 0 ? 0 : this.ends_[t - 1],
         this.ends_[t]
@@ -14767,7 +14767,7 @@ class se extends Le {
     const t = this.flatCoordinates, e = this.ends_, i = this.layout, n = [];
     let s = 0;
     for (let o = 0, a = e.length; o < a; ++o) {
-      const l = e[o], c = new Ot(
+      const l = e[o], c = new bt(
         t.slice(s, l),
         i
       );
@@ -14847,7 +14847,7 @@ class se extends Le {
    * @override
    */
   intersectsExtent(t) {
-    return bf(
+    return Of(
       this.flatCoordinates,
       0,
       this.ends_,
@@ -15318,7 +15318,7 @@ class ve extends Le {
    * @override
    */
   intersectsExtent(t) {
-    return Of(
+    return bf(
       this.getOrientedFlatCoordinates(),
       0,
       this.endss_,
@@ -16008,7 +16008,7 @@ class Wn extends ng {
       ue(e, Rt.CHANGE, this.handleFeatureChange_, this),
       ue(
         e,
-        Ol.PROPERTYCHANGE,
+        bl.PROPERTYCHANGE,
         this.handleFeatureChange_,
         this
       )
@@ -16580,7 +16580,7 @@ class Wn extends ng {
 }
 class Ym {
   constructor(t, e, i = {}) {
-    this.storage = t, this.layerGroup = e, this.options = i, this.CACHE_PREFIX = "raster:cache:", this.ORDER_KEY = "raster:cache:order", this.LAYER_NAME = "GEOGRAPHICALGRIDSYSTEMS.MAPS", this._eventManager = new bn(), this.extentManager = new su(t), this.silentErrors = i.silentErrors ?? !1, this.currentErrors = /* @__PURE__ */ new Set(), this.extentLayer = new $i({
+    this.storage = t, this.layerGroup = e, this.options = i, this.CACHE_PREFIX = "raster:cache:", this.ORDER_KEY = "raster:cache:order", this.LAYER_NAME = "GEOGRAPHICALGRIDSYSTEMS.MAPS", this._eventManager = new On(), this.extentManager = new su(t), this.silentErrors = i.silentErrors ?? !1, this.currentErrors = /* @__PURE__ */ new Set(), this.extentLayer = new $i({
       source: new Wn(),
       properties: {
         name: "Emprises",
@@ -16907,7 +16907,7 @@ const Ii = {
   MIN_ZOOM_INCREASE: 2,
   SRS_NAME: "EPSG:4326"
 }, Zs = "EPSG:3857";
-class bh {
+class Oh {
   /**
    * @param {number} minX Minimum X.
    * @param {number} maxX Maximum X.
@@ -16979,7 +16979,7 @@ class bh {
   }
 }
 function Ti(r, t, e, i, n) {
-  return n !== void 0 ? (n.minX = r, n.maxX = t, n.minY = e, n.maxY = i, n) : new bh(r, t, e, i);
+  return n !== void 0 ? (n.minX = r, n.maxX = t, n.minY = e, n.maxY = i, n) : new Oh(r, t, e, i);
 }
 function el(r, t, e, i) {
   return i !== void 0 ? (i[0] = r, i[1] = t, i[2] = e, i) : [r, t, e];
@@ -16991,7 +16991,7 @@ class og {
    */
   constructor(t) {
     this.minZoom = t.minZoom !== void 0 ? t.minZoom : 0, this.resolutions_ = t.resolutions, at(
-      bc(
+      Oc(
         this.resolutions_,
         /**
          * @param {number} a First resolution
@@ -17027,7 +17027,7 @@ class og {
       !this.tileSize_ && this.tileSizes_ || this.tileSize_ && !this.tileSizes_,
       "Either `tileSize` or `tileSizes` must be configured, never both"
     ), this.extent_ = i !== void 0 ? i : null, this.fullTileRanges_ = null, this.tmpSize_ = [0, 0], this.tmpExtent_ = [0, 0, 0, 0], t.sizes !== void 0 ? this.fullTileRanges_ = t.sizes.map((n, s) => {
-      const o = new bh(
+      const o = new Oh(
         Math.min(0, n[0]),
         Math.max(n[0] - 1, -1),
         Math.min(0, n[1]),
@@ -17370,7 +17370,7 @@ class og {
     this.fullTileRanges_ = i;
   }
 }
-function Oh(r) {
+function bh(r) {
   const t = r || {}, e = t.extent || rt("EPSG:3857").getExtent(), i = {
     extent: e,
     minZoom: t.minZoom,
@@ -17439,7 +17439,7 @@ class Lo {
    * @return {Type} The format type.
    */
   getType() {
-    return O();
+    return b();
   }
   /**
    * Read a single feature from a source.
@@ -17450,7 +17450,7 @@ class Lo {
    * @return {FeatureType|Array<FeatureType>} Feature.
    */
   readFeature(t, e) {
-    return O();
+    return b();
   }
   /**
    * Read all features from a source.
@@ -17461,7 +17461,7 @@ class Lo {
    * @return {Array<FeatureType>} Features.
    */
   readFeatures(t, e) {
-    return O();
+    return b();
   }
   /**
    * Read a single geometry from a source.
@@ -17472,7 +17472,7 @@ class Lo {
    * @return {import("../geom/Geometry.js").default} Geometry.
    */
   readGeometry(t, e) {
-    return O();
+    return b();
   }
   /**
    * Read the projection from a source.
@@ -17482,7 +17482,7 @@ class Lo {
    * @return {import("../proj/Projection.js").default|undefined} Projection.
    */
   readProjection(t) {
-    return O();
+    return b();
   }
   /**
    * Encode a feature in this format.
@@ -17493,7 +17493,7 @@ class Lo {
    * @return {string|ArrayBuffer} Result.
    */
   writeFeature(t, e) {
-    return O();
+    return b();
   }
   /**
    * Encode an array of features in this format.
@@ -17504,7 +17504,7 @@ class Lo {
    * @return {string|ArrayBuffer} Result.
    */
   writeFeatures(t, e) {
-    return O();
+    return b();
   }
   /**
    * Write a single geometry in this format.
@@ -17515,7 +17515,7 @@ class Lo {
    * @return {string|ArrayBuffer} Result.
    */
   writeGeometry(t, e) {
-    return O();
+    return b();
   }
 }
 function $e(r, t, e) {
@@ -17543,13 +17543,13 @@ function $e(r, t, e) {
   }
   return s;
 }
-function bo(r, t) {
+function Oo(r, t) {
   const e = t ? rt(t.featureProjection) : null, i = t ? rt(t.dataProjection) : null;
   return e && i && !nh(e, i) ? go(r, i, e) : r;
 }
 const lg = {
   Point: Gt,
-  LineString: Ot,
+  LineString: bt,
   Polygon: qt,
   MultiPoint: wi,
   MultiLineString: se,
@@ -17582,12 +17582,12 @@ function Nh(r, t) {
     t
   );
 }
-function Oo(r, t) {
+function bo(r, t) {
   if (!r)
     return null;
   if (Array.isArray(r)) {
     const i = r.map(
-      (n) => Oo(n, t)
+      (n) => bo(n, t)
     );
     return new je(i);
   }
@@ -17632,7 +17632,7 @@ class cg extends Lo {
    * @return {import("../Feature.js").default} Feature.
    */
   readFeatureFromText(t, e) {
-    return O();
+    return b();
   }
   /**
    * Read the features from the source.
@@ -17657,7 +17657,7 @@ class cg extends Lo {
    * @return {Array<import("../Feature.js").default>} Features.
    */
   readFeaturesFromText(t, e) {
-    return O();
+    return b();
   }
   /**
    * Read the geometry from the source.
@@ -17682,7 +17682,7 @@ class cg extends Lo {
    * @return {import("../geom/Geometry.js").default} Geometry.
    */
   readGeometryFromText(t, e) {
-    return O();
+    return b();
   }
   /**
    * Read the projection from the source.
@@ -17723,7 +17723,7 @@ class cg extends Lo {
    * @return {string} Text.
    */
   writeFeatureText(t, e) {
-    return O();
+    return b();
   }
   /**
    * Encode an array of features as string.
@@ -17745,7 +17745,7 @@ class cg extends Lo {
    * @return {string} Text.
    */
   writeFeaturesText(t, e) {
-    return O();
+    return b();
   }
   /**
    * Write a single geometry.
@@ -17767,7 +17767,7 @@ class cg extends Lo {
    * @return {string} Text.
    */
   writeGeometryText(t, e) {
-    return O();
+    return b();
   }
 }
 function ir(r) {
@@ -17775,7 +17775,7 @@ function ir(r) {
 }
 const ug = {
   POINT: Gt,
-  LINESTRING: Ot,
+  LINESTRING: bt,
   POLYGON: qt,
   MULTIPOINT: wi,
   MULTILINESTRING: se,
@@ -18387,7 +18387,7 @@ class Sg extends Lo {
    * @return {FeatureType|Array<FeatureType>} Feature.
    */
   readFeatureFromObject(t, e) {
-    return O();
+    return b();
   }
   /**
    * @abstract
@@ -18397,7 +18397,7 @@ class Sg extends Lo {
    * @return {Array<FeatureType>} Features.
    */
   readFeaturesFromObject(t, e) {
-    return O();
+    return b();
   }
   /**
    * Read a geometry.
@@ -18422,7 +18422,7 @@ class Sg extends Lo {
    * @return {import("../geom/Geometry.js").default} Geometry.
    */
   readGeometryFromObject(t, e) {
-    return O();
+    return b();
   }
   /**
    * Read the projection.
@@ -18442,7 +18442,7 @@ class Sg extends Lo {
    * @return {import("../proj/Projection.js").default} Projection.
    */
   readProjectionFromObject(t) {
-    return O();
+    return b();
   }
   /**
    * Encode a feature as string.
@@ -18463,7 +18463,7 @@ class Sg extends Lo {
    * @return {Object} Object.
    */
   writeFeatureObject(t, e) {
-    return O();
+    return b();
   }
   /**
    * Encode an array of features as string.
@@ -18484,7 +18484,7 @@ class Sg extends Lo {
    * @return {Object} Object.
    */
   writeFeaturesObject(t, e) {
-    return O();
+    return b();
   }
   /**
    * Encode a geometry as string.
@@ -18505,7 +18505,7 @@ class Sg extends Lo {
    * @return {Object} Object.
    */
   writeGeometryObject(t, e) {
-    return O();
+    return b();
   }
 }
 function nr(r) {
@@ -18559,7 +18559,7 @@ class An extends Sg {
         )
       );
     const s = new Ct();
-    return this.geometryName_ ? s.setGeometryName(this.geometryName_) : this.extractGeometryName_ && i.geometry_name && s.setGeometryName(i.geometry_name), s.setGeometry(Oo(n, e)), "id" in i && s.setId(i.id), i.properties && s.setProperties(i.properties, !0), /** @type {FeatureType|Array<FeatureType>} */
+    return this.geometryName_ ? s.setGeometryName(this.geometryName_) : this.extractGeometryName_ && i.geometry_name && s.setGeometryName(i.geometry_name), s.setGeometry(bo(n, e)), "id" in i && s.setId(i.id), i.properties && s.setProperties(i.properties, !0), /** @type {FeatureType|Array<FeatureType>} */
     s;
   }
   /**
@@ -18743,7 +18743,7 @@ function ko(r, t) {
 }
 function xg(r, t) {
   const e = ko(r);
-  return Oo(e, t);
+  return bo(e, t);
 }
 function Rg(r, t) {
   return r.geometries.map(
@@ -18846,14 +18846,14 @@ function Vs(r, t) {
       break;
     }
     case "MultiPoint": {
-      i = Og(
+      i = bg(
         /** @type {import("../geom/MultiPoint.js").default} */
         r
       );
       break;
     }
     case "MultiLineString": {
-      i = bg(
+      i = Og(
         /** @type {import("../geom/MultiLineString.js").default} */
         r
       );
@@ -18901,13 +18901,13 @@ function Lg(r, t) {
     coordinates: r.getCoordinates()
   };
 }
-function bg(r, t) {
+function Og(r, t) {
   return {
     type: "MultiLineString",
     coordinates: r.getCoordinates()
   };
 }
-function Og(r, t) {
+function bg(r, t) {
   return {
     type: "MultiPoint",
     coordinates: r.getCoordinates()
@@ -18970,6 +18970,7 @@ class Go extends Wn {
     let n = e.strategy || vh;
     const s = {
       online: e.online ?? !0,
+      useCacheWhenOnline: e.useCacheWhenOnline === !0,
       cacheUrl: e.cacheUrl,
       editionCacheFile: Gg.sanitizeFileName(`${i.database}-${i.name}-editions.txt`),
       formatWKT: new Fr(),
@@ -18978,7 +18979,7 @@ class Go extends Wn {
       maxReload: void 0
     };
     if (e.tileZoom) {
-      const o = Oh({
+      const o = bh({
         tileSize: e.tileSize || Ii.TILE_SIZE,
         minZoom: e.tileZoom,
         maxZoom: e.tileZoom
@@ -19168,16 +19169,17 @@ class Go extends Wn {
     this.localProperties.maxReload && this.localProperties.tiled && this._tileLoading === 1 && this.getFeatures().length > this.localProperties.maxReload && this.reload(), this.dispatchEvent({ type: "loadstart", remains: ++this._tileLoading });
     try {
       let a = [];
-      this.localProperties.cacheUrl && this.localProperties.online === !1 ? a = await this._loadFromOfflineCache(t, e) : this.localProperties.online !== !1 && (a = await this._loadFromOnline(t));
-      const l = this._countPayloadFeatures(a), c = this._readFeatures(a, this._projectionCode), h = [];
-      c.forEach((d) => {
-        const f = this._findFeature(d);
-        f && h.push(f);
+      const l = this.localProperties.online !== !1, c = !!this.localProperties.cacheUrl, h = this.localProperties.useCacheWhenOnline === !0;
+      c && (!l || h) && (a = await this._loadFromOfflineCache(t, e)), this._countPayloadFeatures(a) === 0 && l && (a = await this._loadFromOnline(t));
+      const u = this._countPayloadFeatures(a), d = this._readFeatures(a, this._projectionCode), f = [];
+      d.forEach((m) => {
+        const _ = this._findFeature(m);
+        _ && f.push(_);
       });
-      const u = this._getIdPropertyName();
-      this.insertedFeatures.getArray().forEach((d) => {
-        d.state === "INSERT" && (this._containsFeature(h, d, u) || h.push(d));
-      }), this._isLoading = !0, this.localProperties.tiled || this.clear(!0), h.length && this.addFeatures(h), this._isLoading = !1, this.localProperties.online !== !1 && await this._saveFeaturesToOfflineCache(t, e, h), this.dispatchEvent({ type: "loadend", remains: --this._tileLoading }), l >= (this._options.maxFeatures || Ii.MAX_FEATURES) && this.dispatchEvent({ type: "overload" }), n && n(h);
+      const g = this._getIdPropertyName();
+      this.insertedFeatures.getArray().forEach((m) => {
+        m.state === "INSERT" && (this._containsFeature(f, m, g) || f.push(m));
+      }), this._isLoading = !0, this.localProperties.tiled || this.clear(!0), f.length && this.addFeatures(f), this._isLoading = !1, l && await this._saveFeaturesToOfflineCache(t, e, f), this.dispatchEvent({ type: "loadend", remains: --this._tileLoading }), u >= (this._options.maxFeatures || Ii.MAX_FEATURES) && this.dispatchEvent({ type: "overload" }), n && n(f);
     } catch (a) {
       this._isLoading = !1, this.dispatchEvent({
         type: "loadend",
@@ -19404,13 +19406,13 @@ function Bh(r, t, e) {
   }
   return e;
 }
-function bi(r) {
+function Oi(r) {
   return "documentElement" in r;
 }
 function Ug(r, t, e) {
   return r.getAttributeNS(t, e) || "";
 }
-function Oi(r) {
+function bi(r) {
   return new DOMParser().parseFromString(r, "application/xml");
 }
 function Xh(r, t) {
@@ -19446,7 +19448,7 @@ function k(r, t) {
     }
   );
 }
-function b(r, t) {
+function O(r, t) {
   return (
     /**
      * @param {Node} node Node.
@@ -19580,10 +19582,10 @@ class Zh extends Lo {
     if (!t)
       return null;
     if (typeof t == "string") {
-      const i = Oi(t);
+      const i = bi(t);
       return this.readFeatureFromDocument(i, e);
     }
-    return bi(t) ? this.readFeatureFromDocument(
+    return Oi(t) ? this.readFeatureFromDocument(
       /** @type {Document} */
       t,
       e
@@ -19623,10 +19625,10 @@ class Zh extends Lo {
     if (!t)
       return [];
     if (typeof t == "string") {
-      const i = Oi(t);
+      const i = bi(t);
       return this.readFeaturesFromDocument(i, e);
     }
-    return bi(t) ? this.readFeaturesFromDocument(
+    return Oi(t) ? this.readFeaturesFromDocument(
       /** @type {Document} */
       t,
       e
@@ -19663,7 +19665,7 @@ class Zh extends Lo {
    * @return {Array<import("../Feature.js").default>} Features.
    */
   readFeaturesFromNode(t, e) {
-    return O();
+    return b();
   }
   /**
    * Read a single geometry from a source.
@@ -19677,10 +19679,10 @@ class Zh extends Lo {
     if (!t)
       return null;
     if (typeof t == "string") {
-      const i = Oi(t);
+      const i = bi(t);
       return this.readGeometryFromDocument(i, e);
     }
-    return bi(t) ? this.readGeometryFromDocument(
+    return Oi(t) ? this.readGeometryFromDocument(
       /** @type {Document} */
       t,
       e
@@ -19720,10 +19722,10 @@ class Zh extends Lo {
     if (!t)
       return null;
     if (typeof t == "string") {
-      const e = Oi(t);
+      const e = bi(t);
       return this.readProjectionFromDocument(e);
     }
-    return bi(t) ? this.readProjectionFromDocument(
+    return Oi(t) ? this.readProjectionFromDocument(
       /** @type {Document} */
       t
     ) : this.readProjectionFromNode(
@@ -19818,7 +19820,7 @@ class v extends Zh {
   constructor(t) {
     super(), t = t || {}, this.featureType = t.featureType, this.featureNS = t.featureNS, this.srsName = t.srsName, this.schemaLocation = "", this.FEATURE_COLLECTION_PARSERS = {}, this.FEATURE_COLLECTION_PARSERS[this.namespace] = {
       featureMember: k(this.readFeaturesInternal),
-      featureMembers: b(this.readFeaturesInternal)
+      featureMembers: O(this.readFeaturesInternal)
     }, this.supportedMediaTypes = ["application/gml+xml"];
   }
   /**
@@ -19874,7 +19876,7 @@ class v extends Zh {
       for (const d in a) {
         const f = {};
         for (let g = 0, m = u.length; g < m; ++g)
-          (u[g].includes(":") ? u[g].split(":")[0] : c) === d && (f[u[g].split(":").pop()] = i == "featureMembers" ? k(this.readFeatureElement, this) : b(this.readFeatureElement, this));
+          (u[g].includes(":") ? u[g].split(":")[0] : c) === d && (f[u[g].split(":").pop()] = i == "featureMembers" ? k(this.readFeatureElement, this) : O(this.readFeatureElement, this));
         h[a[d]] = f;
       }
       i == "featureMember" || i == "member" ? n = it(void 0, h, t, e) : n = it([], h, t, e);
@@ -19912,7 +19914,7 @@ class v extends Zh {
       /** @type {import("../extent.js").Extent} */
       this.readGeometryOrExtent(t, e)
     );
-    return n ? bo(n, i) : void 0;
+    return n ? Oo(n, i) : void 0;
   }
   /**
    * @param {Element} node Node.
@@ -20054,7 +20056,7 @@ class v extends Zh {
   readLineString(t, e) {
     const i = this.readFlatCoordinatesFromNode(t, e);
     if (i)
-      return new Ot(i, "XYZ");
+      return new bt(i, "XYZ");
   }
   /**
    * @param {Element} node Node.
@@ -20203,7 +20205,7 @@ v.prototype.POLYGONMEMBER_PARSERS = {
 };
 v.prototype.RING_PARSERS = {
   "http://www.opengis.net/gml": {
-    LinearRing: b(v.prototype.readFlatLinearRing)
+    LinearRing: O(v.prototype.readFlatLinearRing)
   }
 };
 function Mi(r) {
@@ -20421,7 +20423,7 @@ class W extends v {
     ), s = Object.assign({}, n);
     s.node = t;
     let o;
-    Array.isArray(e) ? o = bo(
+    Array.isArray(e) ? o = Oo(
       /** @type {import("../extent.js").Extent} */
       e,
       n
@@ -20663,7 +20665,7 @@ class W extends v {
 }
 W.prototype.GEOMETRY_FLAT_COORDINATES_PARSERS = {
   "http://www.opengis.net/gml": {
-    coordinates: b(W.prototype.readFlatCoordinates)
+    coordinates: O(W.prototype.readFlatCoordinates)
   }
 };
 W.prototype.FLAT_LINEAR_RINGS_PARSERS = {
@@ -20679,14 +20681,14 @@ W.prototype.BOX_PARSERS_ = {
 };
 W.prototype.GEOMETRY_PARSERS = {
   "http://www.opengis.net/gml": {
-    Point: b(v.prototype.readPoint),
-    MultiPoint: b(v.prototype.readMultiPoint),
-    LineString: b(v.prototype.readLineString),
-    MultiLineString: b(v.prototype.readMultiLineString),
-    LinearRing: b(v.prototype.readLinearRing),
-    Polygon: b(v.prototype.readPolygon),
-    MultiPolygon: b(v.prototype.readMultiPolygon),
-    Box: b(W.prototype.readBox)
+    Point: O(v.prototype.readPoint),
+    MultiPoint: O(v.prototype.readMultiPoint),
+    LineString: O(v.prototype.readLineString),
+    MultiLineString: O(v.prototype.readMultiLineString),
+    LinearRing: O(v.prototype.readLinearRing),
+    Polygon: O(v.prototype.readPolygon),
+    MultiPolygon: O(v.prototype.readMultiPolygon),
+    Box: O(W.prototype.readBox)
   }
 };
 W.prototype.GEOMETRY_SERIALIZERS = {
@@ -20944,7 +20946,7 @@ class x extends v {
       this
     );
     if (i)
-      return new Ot(i, "XYZ");
+      return new bt(i, "XYZ");
   }
   /**
    * @param {Element} node Node.
@@ -21274,7 +21276,7 @@ class x extends v {
     ), s = Object.assign({}, n);
     s.node = t;
     let o;
-    Array.isArray(e) ? o = bo(
+    Array.isArray(e) ? o = Oo(
       /** @type {import("../extent.js").Extent} */
       e,
       n
@@ -21441,9 +21443,9 @@ class x extends v {
 }
 x.prototype.GEOMETRY_FLAT_COORDINATES_PARSERS = {
   "http://www.opengis.net/gml": {
-    pos: b(x.prototype.readFlatPos),
-    posList: b(x.prototype.readFlatPosList),
-    coordinates: b(W.prototype.readFlatCoordinates)
+    pos: O(x.prototype.readFlatPos),
+    posList: O(x.prototype.readFlatPosList),
+    coordinates: O(W.prototype.readFlatCoordinates)
   }
 };
 x.prototype.FLAT_LINEAR_RINGS_PARSERS = {
@@ -21454,18 +21456,18 @@ x.prototype.FLAT_LINEAR_RINGS_PARSERS = {
 };
 x.prototype.GEOMETRY_PARSERS = {
   "http://www.opengis.net/gml": {
-    Point: b(v.prototype.readPoint),
-    MultiPoint: b(v.prototype.readMultiPoint),
-    LineString: b(v.prototype.readLineString),
-    MultiLineString: b(v.prototype.readMultiLineString),
-    LinearRing: b(v.prototype.readLinearRing),
-    Polygon: b(v.prototype.readPolygon),
-    MultiPolygon: b(v.prototype.readMultiPolygon),
-    Surface: b(x.prototype.readSurface),
-    MultiSurface: b(x.prototype.readMultiSurface),
-    Curve: b(x.prototype.readCurve),
-    MultiCurve: b(x.prototype.readMultiCurve),
-    Envelope: b(x.prototype.readEnvelope)
+    Point: O(v.prototype.readPoint),
+    MultiPoint: O(v.prototype.readMultiPoint),
+    LineString: O(v.prototype.readLineString),
+    MultiLineString: O(v.prototype.readMultiLineString),
+    LinearRing: O(v.prototype.readLinearRing),
+    Polygon: O(v.prototype.readPolygon),
+    MultiPolygon: O(v.prototype.readMultiPolygon),
+    Surface: O(x.prototype.readSurface),
+    MultiSurface: O(x.prototype.readMultiSurface),
+    Curve: O(x.prototype.readCurve),
+    MultiCurve: O(x.prototype.readMultiCurve),
+    Envelope: O(x.prototype.readEnvelope)
   }
 };
 x.prototype.MULTICURVE_PARSERS = {
@@ -21494,12 +21496,12 @@ x.prototype.SURFACEMEMBER_PARSERS = {
 };
 x.prototype.SURFACE_PARSERS = {
   "http://www.opengis.net/gml": {
-    patches: b(x.prototype.readPatch)
+    patches: O(x.prototype.readPatch)
   }
 };
 x.prototype.CURVE_PARSERS = {
   "http://www.opengis.net/gml": {
-    segments: b(x.prototype.readSegment)
+    segments: O(x.prototype.readSegment)
   }
 };
 x.prototype.ENVELOPE_PARSERS = {
@@ -21510,7 +21512,7 @@ x.prototype.ENVELOPE_PARSERS = {
 };
 x.prototype.PATCHES_PARSERS = {
   "http://www.opengis.net/gml": {
-    PolygonPatch: b(x.prototype.readPolygonPatch)
+    PolygonPatch: O(x.prototype.readPolygonPatch)
   }
 };
 x.prototype.SEGMENTS_PARSERS = {
@@ -21522,8 +21524,8 @@ x.prototype.SEGMENTS_PARSERS = {
 };
 v.prototype.RING_PARSERS = {
   "http://www.opengis.net/gml": {
-    LinearRing: b(v.prototype.readFlatLinearRing),
-    Ring: b(x.prototype.readFlatCurveRing)
+    LinearRing: O(v.prototype.readFlatLinearRing),
+    Ring: O(x.prototype.readFlatCurveRing)
   }
 };
 x.prototype.writeFeatures;
@@ -21610,9 +21612,9 @@ class H extends x {
 H.prototype.namespace = "http://www.opengis.net/gml/3.2";
 H.prototype.GEOMETRY_FLAT_COORDINATES_PARSERS = {
   "http://www.opengis.net/gml/3.2": {
-    pos: b(x.prototype.readFlatPos),
-    posList: b(x.prototype.readFlatPosList),
-    coordinates: b(W.prototype.readFlatCoordinates)
+    pos: O(x.prototype.readFlatPos),
+    posList: O(x.prototype.readFlatPosList),
+    coordinates: O(W.prototype.readFlatCoordinates)
   }
 };
 H.prototype.FLAT_LINEAR_RINGS_PARSERS = {
@@ -21623,18 +21625,18 @@ H.prototype.FLAT_LINEAR_RINGS_PARSERS = {
 };
 H.prototype.GEOMETRY_PARSERS = {
   "http://www.opengis.net/gml/3.2": {
-    Point: b(v.prototype.readPoint),
-    MultiPoint: b(v.prototype.readMultiPoint),
-    LineString: b(v.prototype.readLineString),
-    MultiLineString: b(v.prototype.readMultiLineString),
-    LinearRing: b(v.prototype.readLinearRing),
-    Polygon: b(v.prototype.readPolygon),
-    MultiPolygon: b(v.prototype.readMultiPolygon),
-    Surface: b(H.prototype.readSurface),
-    MultiSurface: b(x.prototype.readMultiSurface),
-    Curve: b(H.prototype.readCurve),
-    MultiCurve: b(x.prototype.readMultiCurve),
-    Envelope: b(H.prototype.readEnvelope)
+    Point: O(v.prototype.readPoint),
+    MultiPoint: O(v.prototype.readMultiPoint),
+    LineString: O(v.prototype.readLineString),
+    MultiLineString: O(v.prototype.readMultiLineString),
+    LinearRing: O(v.prototype.readLinearRing),
+    Polygon: O(v.prototype.readPolygon),
+    MultiPolygon: O(v.prototype.readMultiPolygon),
+    Surface: O(H.prototype.readSurface),
+    MultiSurface: O(x.prototype.readMultiSurface),
+    Curve: O(H.prototype.readCurve),
+    MultiCurve: O(x.prototype.readMultiCurve),
+    Envelope: O(H.prototype.readEnvelope)
   }
 };
 H.prototype.MULTICURVE_PARSERS = {
@@ -21663,12 +21665,12 @@ H.prototype.SURFACEMEMBER_PARSERS = {
 };
 H.prototype.SURFACE_PARSERS = {
   "http://www.opengis.net/gml/3.2": {
-    patches: b(x.prototype.readPatch)
+    patches: O(x.prototype.readPatch)
   }
 };
 H.prototype.CURVE_PARSERS = {
   "http://www.opengis.net/gml/3.2": {
-    segments: b(x.prototype.readSegment)
+    segments: O(x.prototype.readSegment)
   }
 };
 H.prototype.ENVELOPE_PARSERS = {
@@ -21679,7 +21681,7 @@ H.prototype.ENVELOPE_PARSERS = {
 };
 H.prototype.PATCHES_PARSERS = {
   "http://www.opengis.net/gml/3.2": {
-    PolygonPatch: b(x.prototype.readPolygonPatch)
+    PolygonPatch: O(x.prototype.readPolygonPatch)
   }
 };
 H.prototype.SEGMENTS_PARSERS = {
@@ -21728,8 +21730,8 @@ H.prototype.POLYGONMEMBER_PARSERS = {
 };
 H.prototype.RING_PARSERS = {
   "http://www.opengis.net/gml/3.2": {
-    LinearRing: b(v.prototype.readFlatLinearRing),
-    Ring: b(H.prototype.readFlatCurveRing)
+    LinearRing: O(v.prototype.readFlatLinearRing),
+    Ring: O(H.prototype.readFlatCurveRing)
   }
 };
 H.prototype.RING_SERIALIZERS = {
@@ -21980,10 +21982,10 @@ class rl extends Zh {
   readTransactionResponse(t) {
     if (t) {
       if (typeof t == "string") {
-        const e = Oi(t);
+        const e = bi(t);
         return this.readTransactionResponseFromDocument(e);
       }
-      return bi(t) ? this.readTransactionResponseFromDocument(
+      return Oi(t) ? this.readTransactionResponseFromDocument(
         /** @type {Document} */
         t
       ) : this.readTransactionResponseFromNode(
@@ -22003,10 +22005,10 @@ class rl extends Zh {
   readFeatureCollectionMetadata(t) {
     if (t) {
       if (typeof t == "string") {
-        const e = Oi(t);
+        const e = bi(t);
         return this.readFeatureCollectionMetadataFromDocument(e);
       }
-      return bi(t) ? this.readFeatureCollectionMetadataFromDocument(
+      return Oi(t) ? this.readFeatureCollectionMetadataFromDocument(
         /** @type {Document} */
         t
       ) : this.readFeatureCollectionMetadataFromNode(
@@ -22571,14 +22573,14 @@ class Lr extends Wn {
     };
     let s = i.strategy;
     if (!s && i.tileZoom) {
-      const o = i.tileZoom ?? i.minZoom ?? er.MIN_ZOOM_INCREASE, a = Oh({
+      const o = i.tileZoom ?? i.minZoom ?? er.MIN_ZOOM_INCREASE, a = bh({
         tileSize: i.tileSize || er.TILE_SIZE,
         minZoom: o,
         maxZoom: o
       });
       s = Ah(a), n.tileGrid = a, n.table = i.table, n.tiled = !0, n.maxReload = i.maxReload;
     } else s || (s = vh);
-    return e && e.loadCache && (n.loadCache = e.loadCache), e && e.saveCache && (n.saveCache = e.saveCache), e && e.loadFeatures && e.saveFeatures && (n.featureCache = e), {
+    return e && e.loadCache && (n.loadCache = e.loadCache), e && e.saveCache && (n.saveCache = e.saveCache), e && e.loadFeatures && e.saveFeatures && (n.featureCache = e), n.useCacheWhenOnline = i.useCacheWhenOnline !== !1, {
       computedLocalProperties: n,
       strategy: s,
       features: new We(),
@@ -22614,9 +22616,9 @@ class Lr extends Wn {
     this.dispatchEvent({ type: "loadstart", remains: ++this._tileLoading });
     try {
       let h, u = !1;
-      h = await this._loadFromCache(l, e, c), h === void 0 && (h = await this._loadFromService(l, a), u = !0, this.localProperties.saveCache && await Promise.resolve(this.localProperties.saveCache(h, l, e, c)));
-      const d = this._readWFSResponse(h, a, o);
-      u && await this._saveFeaturesToFeatureCache(l, e, c, d), d.length && this.addFeatures(d), this.dispatchEvent({ type: "loadend", remains: --this._tileLoading }), n && n(d);
+      this.localProperties.useCacheWhenOnline !== !1 && (h = await this._loadFromCache(l, e, c)), h === void 0 && (h = await this._loadFromService(l, a), u = !0, this.localProperties.saveCache && await Promise.resolve(this.localProperties.saveCache(h, l, e, c)));
+      const f = this._readWFSResponse(h, a, o);
+      u && await this._saveFeaturesToFeatureCache(l, e, c, f), f.length && this.addFeatures(f), this.dispatchEvent({ type: "loadend", remains: --this._tileLoading }), n && n(f);
     } catch (h) {
       const u = (h == null ? void 0 : h.name) === "AbortError" ? "abort" : "error";
       this._handleWFSLoadError(u, h), s && s();
@@ -22772,7 +22774,7 @@ class Lr extends Wn {
       if (!u)
         continue;
       const d = u.getExtent();
-      if (d[0] >= 360 || d[0] <= -360 || d[2] >= 360 || d[2] <= -360)
+      if (!Number.isFinite(d[0]) || !Number.isFinite(d[1]) || !Number.isFinite(d[2]) || !Number.isFinite(d[3]))
         continue;
       if (o) {
         const g = h.get(o);
@@ -23109,7 +23111,7 @@ class Lr extends Wn {
 }
 class Bm {
   constructor(t) {
-    this._cluster = [], this._apiClient = t.client, this._eventManager = new bn(), this._cluster = [], this._cache = t.cache, this._communityId = t.communityId, this._loadClosed = t.loadClosed ?? !1;
+    this._cluster = [], this._apiClient = t.client, this._eventManager = new On(), this._cluster = [], this._cache = t.cache, this._communityId = t.communityId, this._loadClosed = t.loadClosed ?? !1;
   }
   /**
    *
@@ -25090,7 +25092,7 @@ class Zo {
         }, C = s.get(f.attribute);
         if (C === p || C === y) {
           const R = s.getGeometry();
-          if (R && (R instanceof Ot || R instanceof se)) {
+          if (R && (R instanceof bt || R instanceof se)) {
             const I = S(C, R);
             return (_ = n.getText()) == null || _.setRotation(I), [c, n];
           }
@@ -25445,7 +25447,7 @@ class Hs extends $i {
 }
 class Zm {
   constructor(t) {
-    this.apiClient = t.apiClient, this.storage = t.storage, this._eventManager = new bn();
+    this.apiClient = t.apiClient, this.storage = t.storage, this._eventManager = new On();
   }
   /**
    * Event subscription methods
@@ -25692,7 +25694,7 @@ class jm {
       theme: "",
       themes: "",
       insee: ""
-    }, this._apiClient = t, this._storage = e, this._eventManager = new bn(), this.options = i;
+    }, this._apiClient = t, this._storage = e, this._eventManager = new On(), this.options = i;
     const n = this._storage.loadParams("report");
     this.params = {
       ...this._defaultParams,
@@ -26006,7 +26008,7 @@ const wt = {
 }, Em = function(r) {
   const t = r.originalEvent;
   return t.altKey && !(t.metaKey || t.ctrlKey) && !t.shiftKey;
-}, br = hi, Cm = function(r) {
+}, Or = hi, Cm = function(r) {
   return r.type == wt.CLICK;
 }, qs = vl, Jh = function(r) {
   return r.type == wt.SINGLECLICK;
@@ -26022,7 +26024,7 @@ const wt = {
 }, xm = function(r) {
   const t = r.originalEvent;
   return "pointerId" in t && t.isPrimary && t.button === 0;
-}, Or = {
+}, br = {
   ACTIVE: "active"
 };
 class tc extends Ae {
@@ -26041,7 +26043,7 @@ class tc extends Ae {
   getActive() {
     return (
       /** @type {boolean} */
-      this.get(Or.ACTIVE)
+      this.get(br.ACTIVE)
     );
   }
   /**
@@ -26068,7 +26070,7 @@ class tc extends Ae {
    * @api
    */
   setActive(t) {
-    this.set(Or.ACTIVE, t);
+    this.set(br.ACTIVE, t);
   }
   /**
    * Remove the interaction from its current map and attach it to the new map.
@@ -26242,7 +26244,7 @@ function ur(r, t, e) {
   return a;
 }
 function ec(r, t, e) {
-  if (t instanceof Ot) {
+  if (t instanceof bt) {
     dr(r, t.getCoordinates(), !1, e);
     return;
   }
@@ -26344,7 +26346,7 @@ const Is = { along: 0, squaredDistance: 0 };
 function ic(r, t, e, i) {
   const n = e[0], s = e[1], o = i[0], a = i[1], l = o - n, c = a - s;
   let h = 0, u = n, d = s;
-  return (l !== 0 || c !== 0) && (h = ht(((r - n) * l + (t - s) * c) / (l * l + c * c), 0, 1), u += l * h, d += c * h), Is.along = h, Is.squaredDistance = On(Ce(r, t, u, d), 10), Is;
+  return (l !== 0 || c !== 0) && (h = ht(((r - n) * l + (t - s) * c) / (l * l + c * c), 0, 1), u += l * h, d += c * h), Is.along = h, Is.squaredDistance = bn(Ce(r, t, u, d), 10), Is;
 }
 function Di(r, t) {
   const e = r.length;
@@ -26384,7 +26386,7 @@ class Tm extends Vo {
         };
       else {
         let s;
-        n === "Point" ? s = Gt : n === "LineString" ? s = Ot : n === "Polygon" && (s = qt), i = (o, a, l) => (a ? n === "Polygon" ? o[0].length ? a.setCoordinates(
+        n === "Point" ? s = Gt : n === "LineString" ? s = bt : n === "Polygon" && (s = qt), i = (o, a, l) => (a ? n === "Polygon" ? o[0].length ? a.setCoordinates(
           [o[0].concat([o[0][0]])],
           this.geometryLayout_
         ) : a.setCoordinates([], this.geometryLayout_) : a.setCoordinates(o, this.geometryLayout_) : a = new s(o, this.geometryLayout_), a);
@@ -26397,7 +26399,7 @@ class Tm extends Vo {
       }),
       style: t.style ? t.style : Pm(),
       updateWhileInteracting: !0
-    }), this.geometryName_ = t.geometryName, this.condition_ = t.condition ? t.condition : Sm, this.freehandCondition_, t.freehand ? this.freehandCondition_ = br : this.freehandCondition_ = t.freehandCondition ? t.freehandCondition : Qh, this.traceCondition_, this.setTrace(t.trace || !1), this.traceState_ = { active: !1 }, this.traceSource_ = t.traceSource || t.source || null, this.addChangeListener(Or.ACTIVE, this.updateState_);
+    }), this.geometryName_ = t.geometryName, this.condition_ = t.condition ? t.condition : Sm, this.freehandCondition_, t.freehand ? this.freehandCondition_ = Or : this.freehandCondition_ = t.freehandCondition ? t.freehandCondition : Qh, this.traceCondition_, this.setTrace(t.trace || !1), this.traceState_ = { active: !1 }, this.traceSource_ = t.traceSource || t.source || null, this.addChangeListener(br.ACTIVE, this.updateState_);
   }
   /**
    * Toggle tracing mode or set a tracing condition.
@@ -26407,7 +26409,7 @@ class Tm extends Vo {
    */
   setTrace(t) {
     let e;
-    t ? t === !0 ? e = br : e = t : e = qs, this.traceCondition_ = e;
+    t ? t === !0 ? e = Or : e = t : e = qs, this.traceCondition_ = e;
   }
   /**
    * Remove the interaction from its current map and attach it to the new map.
@@ -26683,7 +26685,7 @@ class Tm extends Vo {
     i ? (i.setFlatCoordinates(
       e.getLayout(),
       e.getFlatCoordinates()
-    ), i.changed()) : (i = new Ot(
+    ), i.changed()) : (i = new bt(
       e.getFlatCoordinates(),
       e.getLayout()
     ), this.sketchLine_.setGeometry(i));
@@ -26697,7 +26699,7 @@ class Tm extends Vo {
     const e = this.getMap().getView().getProjection(), i = Rr(this.geometryLayout_);
     for (; t.length < i; )
       t.push(0);
-    this.finishCoordinate_ = t, this.mode_ === "Point" ? this.sketchCoords_ = t.slice() : this.mode_ === "Polygon" ? (this.sketchCoords_ = [[t.slice(), t.slice()]], this.sketchLineCoords_ = this.sketchCoords_[0]) : this.sketchCoords_ = [t.slice(), t.slice()], this.sketchLineCoords_ && (this.sketchLine_ = new Ct(new Ot(this.sketchLineCoords_)));
+    this.finishCoordinate_ = t, this.mode_ === "Point" ? this.sketchCoords_ = t.slice() : this.mode_ === "Polygon" ? (this.sketchCoords_ = [[t.slice(), t.slice()]], this.sketchLineCoords_ = this.sketchCoords_[0]) : this.sketchCoords_ = [t.slice(), t.slice()], this.sketchLineCoords_ && (this.sketchLine_ = new Ct(new bt(this.sketchLineCoords_)));
     const n = this.geometryFunction_(
       this.sketchCoords_,
       void 0,
@@ -26961,7 +26963,7 @@ class Fm extends Vo {
       t
     ), this.on, this.once, this.un, this.boundHandleFeatureChange_ = this.handleFeatureChange_.bind(this), this.condition_ = t.condition ? t.condition : xm, this.defaultDeleteCondition_ = function(i) {
       return Em(i) && Jh(i);
-    }, this.deleteCondition_ = t.deleteCondition ? t.deleteCondition : this.defaultDeleteCondition_, this.insertVertexCondition_ = t.insertVertexCondition ? t.insertVertexCondition : br, this.vertexFeature_ = null, this.vertexSegments_ = null, this.lastPixel_ = [0, 0], this.ignoreNextSingleClick_ = !1, this.featuresBeingModified_ = null, this.rBush_ = new zs(), this.pixelTolerance_ = t.pixelTolerance !== void 0 ? t.pixelTolerance : 10, this.snappedToVertex_ = !1, this.changingFeature_ = !1, this.dragSegments_ = [], this.overlay_ = new $i({
+    }, this.deleteCondition_ = t.deleteCondition ? t.deleteCondition : this.defaultDeleteCondition_, this.insertVertexCondition_ = t.insertVertexCondition ? t.insertVertexCondition : Or, this.vertexFeature_ = null, this.vertexSegments_ = null, this.lastPixel_ = [0, 0], this.ignoreNextSingleClick_ = !1, this.featuresBeingModified_ = null, this.rBush_ = new zs(), this.pixelTolerance_ = t.pixelTolerance !== void 0 ? t.pixelTolerance : 10, this.snappedToVertex_ = !1, this.changingFeature_ = !1, this.dragSegments_ = [], this.overlay_ = new $i({
       source: new Wn({
         useSpatialIndex: !1,
         wrapX: !!t.wrapX
@@ -27828,7 +27830,7 @@ const Lm = {
    */
   SELECT: "select"
 };
-class bm extends fe {
+class Om extends fe {
   /**
    * @param {SelectEventType} type The event type.
    * @param {Array<import("../Feature.js").default>} selected Selected features.
@@ -27846,7 +27848,7 @@ class jo extends tc {
    * @param {Options} [options] Options.
    */
   constructor(t) {
-    super(), this.on, this.once, this.un, t = t || {}, this.boundAddFeature_ = this.addFeature_.bind(this), this.boundRemoveFeature_ = this.removeFeature_.bind(this), this.condition_ = t.condition ? t.condition : Jh, this.addCondition_ = t.addCondition ? t.addCondition : qs, this.removeCondition_ = t.removeCondition ? t.removeCondition : qs, this.toggleCondition_ = t.toggleCondition ? t.toggleCondition : Qh, this.multi_ = t.multi ? t.multi : !1, this.filter_ = t.filter ? t.filter : hi, this.hitTolerance_ = t.hitTolerance ? t.hitTolerance : 0, this.style_ = t.style !== void 0 ? t.style : Om(), this.features_ = t.features || new oi();
+    super(), this.on, this.once, this.un, t = t || {}, this.boundAddFeature_ = this.addFeature_.bind(this), this.boundRemoveFeature_ = this.removeFeature_.bind(this), this.condition_ = t.condition ? t.condition : Jh, this.addCondition_ = t.addCondition ? t.addCondition : qs, this.removeCondition_ = t.removeCondition ? t.removeCondition : qs, this.toggleCondition_ = t.toggleCondition ? t.toggleCondition : Qh, this.multi_ = t.multi ? t.multi : !1, this.filter_ = t.filter ? t.filter : hi, this.hitTolerance_ = t.hitTolerance ? t.hitTolerance : 0, this.style_ = t.style !== void 0 ? t.style : bm(), this.features_ = t.features || new oi();
     let e;
     if (t.layers)
       if (typeof t.layers == "function")
@@ -28045,7 +28047,7 @@ class jo extends tc {
       a.extend(c);
     }
     return (c.length > 0 || l.length > 0) && this.dispatchEvent(
-      new bm(
+      new Om(
         Lm.SELECT,
         c,
         l,
@@ -28054,7 +28056,7 @@ class jo extends tc {
     ), !0;
   }
 }
-function Om() {
+function bm() {
   const r = ro();
   return It(r.Polygon, r.LineString), It(r.GeometryCollection, r.LineString), function(t) {
     return t.getGeometry() ? r[t.getGeometry().getType()] : null;
@@ -28113,8 +28115,8 @@ class Nm extends Vo {
       }
     else
       e = hi;
-    this.layerFilter_ = e, this.filter_ = t.filter && !this.features_ ? t.filter : hi, this.hitTolerance_ = t.hitTolerance ? t.hitTolerance : 0, this.condition_ = t.condition ? t.condition : br, this.lastFeature_ = null, this.addChangeListener(
-      Or.ACTIVE,
+    this.layerFilter_ = e, this.filter_ = t.filter && !this.features_ ? t.filter : hi, this.hitTolerance_ = t.hitTolerance ? t.hitTolerance : 0, this.condition_ = t.condition ? t.condition : Or, this.lastFeature_ = null, this.addChangeListener(
+      br.ACTIVE,
       this.handleActiveChanged_
     );
   }
@@ -28271,7 +28273,7 @@ class Km extends Ae {
    */
   constructor(t) {
     var e, i, n, s, o, a, l, c, h, u, d, f, g, m, _;
-    if (super(), this.currentMode = null, this.undoStack = [], this.drawInteraction = null, this.boundHandlers = new globalThis.Map(), this.eventManager = new bn(), !t.map)
+    if (super(), this.currentMode = null, this.undoStack = [], this.drawInteraction = null, this.boundHandlers = new globalThis.Map(), this.eventManager = new On(), !t.map)
       throw new Error("SketchManager requires a map instance");
     if (!t.source)
       throw new Error("SketchManager requires a vector source");

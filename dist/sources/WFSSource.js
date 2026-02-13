@@ -72,6 +72,7 @@ export default class WFSSource extends VectorSource {
         if (cache && cache.loadFeatures && cache.saveFeatures) {
             computedLocalProperties.featureCache = cache;
         }
+        computedLocalProperties.useCacheWhenOnline = opts.useCacheWhenOnline !== false;
         return {
             computedLocalProperties,
             strategy,
@@ -127,7 +128,10 @@ export default class WFSSource extends VectorSource {
         try {
             let payload;
             let payloadLoadedFromService = false;
-            payload = await this._loadFromCache(requestExtent, resolution, tileCoord);
+            const useCacheWhenOnline = this.localProperties.useCacheWhenOnline !== false;
+            if (useCacheWhenOnline) {
+                payload = await this._loadFromCache(requestExtent, resolution, tileCoord);
+            }
             if (payload === undefined) {
                 payload = await this._loadFromService(requestExtent, requestCrs);
                 payloadLoadedFromService = true;
@@ -333,8 +337,10 @@ export default class WFSSource extends VectorSource {
                 continue;
             }
             const geomExtent = geometry.getExtent();
-            if (geomExtent[0] >= 360 || geomExtent[0] <= -360 ||
-                geomExtent[2] >= 360 || geomExtent[2] <= -360) {
+            if (!Number.isFinite(geomExtent[0]) ||
+                !Number.isFinite(geomExtent[1]) ||
+                !Number.isFinite(geomExtent[2]) ||
+                !Number.isFinite(geomExtent[3])) {
                 continue;
             }
             if (idProperty) {

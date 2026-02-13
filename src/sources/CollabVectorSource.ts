@@ -83,6 +83,7 @@ export default class CollabVectorSource extends VectorSource {
 
     const properties: Record<string, any> = {
       online: opts.online ?? true,
+      useCacheWhenOnline: opts.useCacheWhenOnline === true,
       cacheUrl: opts.cacheUrl,
       editionCacheFile: pathUtils.sanitizeFileName(`${table.database}-${table.name}-editions.txt`),
       formatWKT: new WKT(),
@@ -472,10 +473,15 @@ export default class CollabVectorSource extends VectorSource {
 
     try {
       let payload: unknown = [];
+      const isOnline = this.localProperties.online !== false;
+      const canReadCache = Boolean(this.localProperties.cacheUrl);
+      const useCacheWhenOnline = this.localProperties.useCacheWhenOnline === true;
 
-      if (this.localProperties.cacheUrl && this.localProperties.online === false) {
+      if (canReadCache && (!isOnline || useCacheWhenOnline)) {
         payload = await this._loadFromOfflineCache(extent, resolution);
-      } else if (this.localProperties.online !== false) {
+      }
+
+      if (this._countPayloadFeatures(payload) === 0 && isOnline) {
         payload = await this._loadFromOnline(extent);
       }
 
@@ -506,7 +512,7 @@ export default class CollabVectorSource extends VectorSource {
       }
       this._isLoading = false;
 
-      if (this.localProperties.online !== false) {
+      if (isOnline) {
         await this._saveFeaturesToOfflineCache(extent, resolution, finalFeatures);
       }
 
