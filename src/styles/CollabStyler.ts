@@ -17,8 +17,270 @@ import { StyleRule } from "./MobileCoreStyle";
 import FontSymbol from "ol-ext/style/FontSymbol";
 import { LineString, MultiLineString } from "ol/geom";
 
-import { UserManager } from "../collaborative/UserManager";
 import { CollabStylePresets } from "./CollabStylePresets";
+
+type FeatureProperties = Record<string, unknown>;
+
+interface MongoLikeMatcher {
+  matches: (properties: FeatureProperties) => boolean;
+}
+
+interface StyleRuleWithMatcher extends Omit<StyleRule, 'condition'> {
+  condition?: StyleRule['condition'] | string;
+  mongo?: MongoLikeMatcher;
+  children?: StyleRuleWithMatcher[];
+}
+
+interface UserManagerLike {
+  apiClient?: {
+    getDocument?: (url: string) => Promise<unknown>;
+  };
+}
+
+function getValueByPath(source: FeatureProperties, path: string): unknown {
+  const keys = path.split('.');
+  let current: unknown = source;
+
+  for (const key of keys) {
+    if (!current || typeof current !== 'object') {
+      return undefined;
+    }
+    current = (current as FeatureProperties)[key];
+  }
+
+  return current;
+}
+
+function areValuesEqual(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    for (let index = 0; index < a.length; index++) {
+      if (!areValuesEqual(a[index], b[index])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return a === b;
+}
+
+function evaluateMongoOperator(
+  operator: string,
+  actualValue: unknown,
+  expectedValue: unknown,
+  allOperators: FeatureProperties
+): boolean {
+  switch (operator) {
+    case '$eq':
+      return areValuesEqual(actualValue, expectedValue);
+    case '$ne':
+      return !areValuesEqual(actualValue, expectedValue);
+    case '$gt':
+      return Number(actualValue) > Number(expectedValue);
+    case '$gte':
+      return Number(actualValue) >= Number(expectedValue);
+    case '$lt':
+      return Number(actualValue) < Number(expectedValue);
+    case '$lte':
+      return Number(actualValue) <= Number(expectedValue);
+    case '$in': {
+      if (!Array.isArray(expectedValue)) return false;
+      if (Array.isArray(actualValue)) {
+        return actualValue.some((value) =>
+          expectedValue.some((candidate) => areValuesEqual(value, candidate))
+        );
+      }
+      return expectedValue.some((candidate) => areValuesEqual(actualValue, candidate));
+    }
+    case '$nin': {
+      if (!Array.isArray(expectedValue)) return false;
+      if (Array.isArray(actualValue)) {
+        return actualValue.every(
+          (value) =>
+            !expectedValue.some((candidate) => areValuesEqual(value, candidate))
+        );
+      }
+      return !expectedValue.some((candidate) => areValuesEqual(actualValue, candidate));
+    }
+    case '$exists':
+      return expectedValue ? actualValue !== undefined : actualValue === undefined;
+    case '$regex': {
+      if (typeof actualValue !== 'string') return false;
+
+      const options =
+        typeof allOperators.$options === 'string' ? allOperators.$options : '';
+      const regex =
+        expectedValue instanceof RegExp
+          ? expectedValue
+          : new RegExp(String(expectedValue), options);
+      return regex.test(actualValue);
+    }
+    case '$options':
+      return true;
+    default:
+      return false;
+  }
+}
+
+function evaluateFieldCondition(actualValue: unknown, expectedCondition: unknown): boolean {
+  const conditionObject =
+    expectedCondition && typeof expectedCondition === 'object'
+      ? (expectedCondition as FeatureProperties)
+      : null;
+
+  if (!conditionObject) {
+    return areValuesEqual(actualValue, expectedCondition);
+  }
+
+  const operatorKeys = Object.keys(conditionObject).filter((key) => key.startsWith('$'));
+  if (operatorKeys.length === 0) {
+    return areValuesEqual(actualValue, expectedCondition);
+  }
+
+  for (const operatorKey of operatorKeys) {
+    if (
+      !evaluateMongoOperator(
+        operatorKey,
+        actualValue,
+        conditionObject[operatorKey],
+        conditionObject
+      )
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function evaluateMongoCondition(
+  condition: FeatureProperties,
+  properties: FeatureProperties
+): boolean {
+  for (const [key, value] of Object.entries(condition)) {
+    if (key === '$and') {
+      if (!Array.isArray(value)) return false;
+      if (
+        !value.every((item) => {
+          if (!item || typeof item !== 'object') return false;
+          return evaluateMongoCondition(item as FeatureProperties, properties);
+        })
+      ) {
+        return false;
+      }
+      continue;
+    }
+
+    if (key === '$or') {
+      if (!Array.isArray(value)) return false;
+      if (
+        !value.some((item) => {
+          if (!item || typeof item !== 'object') return false;
+          return evaluateMongoCondition(item as FeatureProperties, properties);
+        })
+      ) {
+        return false;
+      }
+      continue;
+    }
+
+    if (key === '$nor') {
+      if (!Array.isArray(value)) return false;
+      if (
+        value.some((item) => {
+          if (!item || typeof item !== 'object') return false;
+          return evaluateMongoCondition(item as FeatureProperties, properties);
+        })
+      ) {
+        return false;
+      }
+      continue;
+    }
+
+    if (key === '$not') {
+      if (!value || typeof value !== 'object') return false;
+      if (evaluateMongoCondition(value as FeatureProperties, properties)) {
+        return false;
+      }
+      continue;
+    }
+
+    const actualValue = getValueByPath(properties, key);
+    if (!evaluateFieldCondition(actualValue, value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function createMongoMatcher(condition: unknown): MongoLikeMatcher | undefined {
+  let normalizedCondition = condition;
+
+  if (typeof normalizedCondition === 'string') {
+    try {
+      normalizedCondition = JSON.parse(normalizedCondition);
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (!normalizedCondition || typeof normalizedCondition !== 'object') {
+    return undefined;
+  }
+
+  const conditionObject = normalizedCondition as FeatureProperties;
+  return {
+    matches: (properties: FeatureProperties) =>
+      evaluateMongoCondition(conditionObject, properties),
+  };
+}
+
+function ensureStyleMatcher(styleRule: StyleRuleWithMatcher): void {
+  if (styleRule.mongo?.matches) {
+    return;
+  }
+
+  const matcher = createMongoMatcher(styleRule.condition);
+  if (matcher) {
+    styleRule.mongo = matcher;
+  }
+}
+
+function getResponseContentType(headers: unknown): string {
+  if (!headers || typeof headers !== 'object') {
+    return 'image/png';
+  }
+
+  const record = headers as Record<string, unknown>;
+  const value = record['content-type'] ?? record['Content-Type'];
+  return typeof value === 'string' && value.length > 0 ? value : 'image/png';
+}
+
+function createObjectUrlFromResponse(response: unknown): string | null {
+  if (!response || typeof response !== 'object') {
+    return null;
+  }
+
+  const httpResponse = response as {
+    data?: unknown;
+    headers?: unknown;
+  };
+
+  if (httpResponse.data instanceof Blob) {
+    return URL.createObjectURL(httpResponse.data);
+  }
+
+  if (httpResponse.data instanceof ArrayBuffer) {
+    const blob = new Blob([httpResponse.data], {
+      type: getResponseContentType(httpResponse.headers),
+    });
+    return URL.createObjectURL(blob);
+  }
+
+  return null;
+}
 
 /**
  * NOTE:
@@ -55,13 +317,13 @@ export interface FeatureTypeConfig {
 
 export class CollabStyler {
 
-  private _userManager?: UserManager;
+  private _userManager?: UserManagerLike;
   private _symbolCache: Record<string, string> = {};
   private _cacheLoading: string[] = [];
   public defaultStyleFn: (feature: Feature, resolution: number) => Style | Style[];
   public presets: CollabStylePresets;
 
-  constructor(userManager?: UserManager) {
+  constructor(userManager?: UserManagerLike) {
     // UserManager is optional - only needed for symbol loading from API
     // If not provided, external graphic features will fall back to default styling
     this._userManager = userManager;
@@ -388,24 +650,17 @@ export class CollabStyler {
       }
 
       // Handle conditional styles with children (e.g., style roads differently based on speed limit)
-      let style = featureType.style;
+      let style = featureType.style as StyleRuleWithMatcher | undefined;
       if (featureType.style?.children) {
         const props = feature.getProperties();
         delete props.geometry;
 
         // Find the first matching child style based on feature property conditions
         for (let i = 0; i < featureType.style.children.length; i++) {
-          const child = featureType.style.children[i] as any;
+          const child = featureType.style.children[i] as StyleRuleWithMatcher;
 
-          // Note: The original code used mongo-parse package for MongoDB-style queries
-          // TODO: ask where does it come from, in CordovApp there is no "mongo-parse" package installed...
-          if (!(child.mongo && child.mongo.matches)) {
-            // TODO: Implement condition matching
-            // Would need to install and use mongo-parse: child.mongo = mongo.parse(child.condition)
-            // For now, skip child styles without proper condition matchers
-            continue;
-          }
-          if (child.mongo.matches(props)) {
+          ensureStyleMatcher(child);
+          if (child.mongo?.matches && child.mongo.matches(props as FeatureProperties)) {
             style = child;
             break;
           }
@@ -413,7 +668,7 @@ export class CollabStyler {
       }
 
       // Format the style with feature properties
-      const fstyle = this.formatFeatureStyle(style || {}, feature);
+      const fstyle = this.formatFeatureStyle((style || {}) as StyleRule, feature);
 
       // Handle symbol libraries
       if (style?.name) {
@@ -573,7 +828,8 @@ export class CollabStyler {
     if (this._cacheLoading.indexOf(cacheName) !== -1) return null;
 
     // Check if UserManager is available for API calls
-    if (!this._userManager || !this._userManager.apiClient) {
+    const getDocument = this._userManager?.apiClient?.getDocument;
+    if (typeof getDocument !== 'function') {
       console.warn("UserManager not initialized - cannot load symbol from API");
       return null;
     }
@@ -582,15 +838,25 @@ export class CollabStyler {
 
     this._cacheLoading.push(cacheName);
 
-    this._userManager.apiClient.getDocument(img).then((_response) => {
-      // here we're supposed to call Capacitor to save the document to the file system
-      // and update the symbol cache with the URL of the saved document in Capacitor
-      // solution could be to:
-      // - return the response
-      // - on the app side, call Capacitor to save the document to the file system
-      // - call another function here to update the symbol cache, that would as well call feature.changed();
-      feature.changed(); // used to be 'feature.layer.changed();', see if it's still valid
-    });
+    getDocument(img)
+      .then((response) => {
+        const objectUrl = createObjectUrlFromResponse(response);
+        if (!objectUrl) {
+          return;
+        }
+
+        this._symbolCache[cacheName] = objectUrl;
+        feature.changed();
+      })
+      .catch((error) => {
+        console.warn('Failed to load symbol from API', error);
+      })
+      .finally(() => {
+        const index = this._cacheLoading.indexOf(cacheName);
+        if (index !== -1) {
+          this._cacheLoading.splice(index, 1);
+        }
+      });
 
     return null;
   }

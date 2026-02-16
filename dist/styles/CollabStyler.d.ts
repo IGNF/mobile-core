@@ -11,8 +11,12 @@ import { Fill } from "ol/style";
 import { Stroke } from "ol/style";
 import FillPattern from "ol-ext/style/FillPattern";
 import { StyleRule } from "./MobileCoreStyle";
-import { UserManager } from "../collaborative/UserManager";
 import { CollabStylePresets } from "./CollabStylePresets";
+interface UserManagerLike {
+    apiClient?: {
+        getDocument?: (url: string) => Promise<unknown>;
+    };
+}
 /**
  * Symbol cache entry information
  */
@@ -40,7 +44,7 @@ export declare class CollabStyler {
     private _cacheLoading;
     defaultStyleFn: (feature: Feature, resolution: number) => Style | Style[];
     presets: CollabStylePresets;
-    constructor(userManager?: UserManager);
+    constructor(userManager?: UserManagerLike);
     /**
      * Format properties with feature context
      * @param format The format configuration
@@ -148,4 +152,5 @@ export declare class CollabStyler {
      */
     getGlyph(graphicName: string): string | null;
 }
+export {};
 //# sourceMappingURL=CollabStyler.d.ts.map

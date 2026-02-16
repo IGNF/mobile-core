@@ -19,6 +19,9 @@ export interface SourceOptions {
 export interface CollabVectorSourceOptions extends SourceOptions {
     table: Table;
     client: ApiClient;
+    userManager?: {
+        apiClient?: Pick<ApiClient, 'getDocument'>;
+    };
     cacheUrl?: string;
     cache?: any;
     online?: boolean;

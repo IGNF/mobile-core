@@ -55,6 +55,15 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
       client: sourceOptions.client || options.client,
     } as CollabVectorSourceOptions;
 
+    const sourceOptionsWithUserManager = completeSourceOptions as CollabVectorSourceOptions & {
+      userManager?: { apiClient?: unknown };
+    };
+    if (!sourceOptionsWithUserManager.userManager && sourceOptionsWithUserManager.client) {
+      sourceOptionsWithUserManager.userManager = {
+        apiClient: sourceOptionsWithUserManager.client,
+      };
+    }
+
     if (options.checkSourceOptions) {
       options.checkSourceOptions(this, completeSourceOptions, table);
     }

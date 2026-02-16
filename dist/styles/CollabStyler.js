@@ -6,6 +6,199 @@ import FillPattern from "ol-ext/style/FillPattern";
 import FontSymbol from "ol-ext/style/FontSymbol";
 import { LineString, MultiLineString } from "ol/geom";
 import { CollabStylePresets } from "./CollabStylePresets";
+function getValueByPath(source, path) {
+    const keys = path.split('.');
+    let current = source;
+    for (const key of keys) {
+        if (!current || typeof current !== 'object') {
+            return undefined;
+        }
+        current = current[key];
+    }
+    return current;
+}
+function areValuesEqual(a, b) {
+    if (Array.isArray(a) && Array.isArray(b)) {
+        if (a.length !== b.length)
+            return false;
+        for (let index = 0; index < a.length; index++) {
+            if (!areValuesEqual(a[index], b[index])) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return a === b;
+}
+function evaluateMongoOperator(operator, actualValue, expectedValue, allOperators) {
+    switch (operator) {
+        case '$eq':
+            return areValuesEqual(actualValue, expectedValue);
+        case '$ne':
+            return !areValuesEqual(actualValue, expectedValue);
+        case '$gt':
+            return Number(actualValue) > Number(expectedValue);
+        case '$gte':
+            return Number(actualValue) >= Number(expectedValue);
+        case '$lt':
+            return Number(actualValue) < Number(expectedValue);
+        case '$lte':
+            return Number(actualValue) <= Number(expectedValue);
+        case '$in': {
+            if (!Array.isArray(expectedValue))
+                return false;
+            if (Array.isArray(actualValue)) {
+                return actualValue.some((value) => expectedValue.some((candidate) => areValuesEqual(value, candidate)));
+            }
+            return expectedValue.some((candidate) => areValuesEqual(actualValue, candidate));
+        }
+        case '$nin': {
+            if (!Array.isArray(expectedValue))
+                return false;
+            if (Array.isArray(actualValue)) {
+                return actualValue.every((value) => !expectedValue.some((candidate) => areValuesEqual(value, candidate)));
+            }
+            return !expectedValue.some((candidate) => areValuesEqual(actualValue, candidate));
+        }
+        case '$exists':
+            return expectedValue ? actualValue !== undefined : actualValue === undefined;
+        case '$regex': {
+            if (typeof actualValue !== 'string')
+                return false;
+            const options = typeof allOperators.$options === 'string' ? allOperators.$options : '';
+            const regex = expectedValue instanceof RegExp
+                ? expectedValue
+                : new RegExp(String(expectedValue), options);
+            return regex.test(actualValue);
+        }
+        case '$options':
+            return true;
+        default:
+            return false;
+    }
+}
+function evaluateFieldCondition(actualValue, expectedCondition) {
+    const conditionObject = expectedCondition && typeof expectedCondition === 'object'
+        ? expectedCondition
+        : null;
+    if (!conditionObject) {
+        return areValuesEqual(actualValue, expectedCondition);
+    }
+    const operatorKeys = Object.keys(conditionObject).filter((key) => key.startsWith('$'));
+    if (operatorKeys.length === 0) {
+        return areValuesEqual(actualValue, expectedCondition);
+    }
+    for (const operatorKey of operatorKeys) {
+        if (!evaluateMongoOperator(operatorKey, actualValue, conditionObject[operatorKey], conditionObject)) {
+            return false;
+        }
+    }
+    return true;
+}
+function evaluateMongoCondition(condition, properties) {
+    for (const [key, value] of Object.entries(condition)) {
+        if (key === '$and') {
+            if (!Array.isArray(value))
+                return false;
+            if (!value.every((item) => {
+                if (!item || typeof item !== 'object')
+                    return false;
+                return evaluateMongoCondition(item, properties);
+            })) {
+                return false;
+            }
+            continue;
+        }
+        if (key === '$or') {
+            if (!Array.isArray(value))
+                return false;
+            if (!value.some((item) => {
+                if (!item || typeof item !== 'object')
+                    return false;
+                return evaluateMongoCondition(item, properties);
+            })) {
+                return false;
+            }
+            continue;
+        }
+        if (key === '$nor') {
+            if (!Array.isArray(value))
+                return false;
+            if (value.some((item) => {
+                if (!item || typeof item !== 'object')
+                    return false;
+                return evaluateMongoCondition(item, properties);
+            })) {
+                return false;
+            }
+            continue;
+        }
+        if (key === '$not') {
+            if (!value || typeof value !== 'object')
+                return false;
+            if (evaluateMongoCondition(value, properties)) {
+                return false;
+            }
+            continue;
+        }
+        const actualValue = getValueByPath(properties, key);
+        if (!evaluateFieldCondition(actualValue, value)) {
+            return false;
+        }
+    }
+    return true;
+}
+function createMongoMatcher(condition) {
+    let normalizedCondition = condition;
+    if (typeof normalizedCondition === 'string') {
+        try {
+            normalizedCondition = JSON.parse(normalizedCondition);
+        }
+        catch {
+            return undefined;
+        }
+    }
+    if (!normalizedCondition || typeof normalizedCondition !== 'object') {
+        return undefined;
+    }
+    const conditionObject = normalizedCondition;
+    return {
+        matches: (properties) => evaluateMongoCondition(conditionObject, properties),
+    };
+}
+function ensureStyleMatcher(styleRule) {
+    if (styleRule.mongo?.matches) {
+        return;
+    }
+    const matcher = createMongoMatcher(styleRule.condition);
+    if (matcher) {
+        styleRule.mongo = matcher;
+    }
+}
+function getResponseContentType(headers) {
+    if (!headers || typeof headers !== 'object') {
+        return 'image/png';
+    }
+    const record = headers;
+    const value = record['content-type'] ?? record['Content-Type'];
+    return typeof value === 'string' && value.length > 0 ? value : 'image/png';
+}
+function createObjectUrlFromResponse(response) {
+    if (!response || typeof response !== 'object') {
+        return null;
+    }
+    const httpResponse = response;
+    if (httpResponse.data instanceof Blob) {
+        return URL.createObjectURL(httpResponse.data);
+    }
+    if (httpResponse.data instanceof ArrayBuffer) {
+        const blob = new Blob([httpResponse.data], {
+            type: getResponseContentType(httpResponse.headers),
+        });
+        return URL.createObjectURL(blob);
+    }
+    return null;
+}
 /**
  * NOTE:
  * 2 functions may cause issues here due to their use of Cordova:
@@ -343,22 +536,15 @@ export class CollabStyler {
                 // Find the first matching child style based on feature property conditions
                 for (let i = 0; i < featureType.style.children.length; i++) {
                     const child = featureType.style.children[i];
-                    // Note: The original code used mongo-parse package for MongoDB-style queries
-                    // TODO: ask where does it come from, in CordovApp there is no "mongo-parse" package installed...
-                    if (!(child.mongo && child.mongo.matches)) {
-                        // TODO: Implement condition matching
-                        // Would need to install and use mongo-parse: child.mongo = mongo.parse(child.condition)
-                        // For now, skip child styles without proper condition matchers
-                        continue;
-                    }
-                    if (child.mongo.matches(props)) {
+                    ensureStyleMatcher(child);
+                    if (child.mongo?.matches && child.mongo.matches(props)) {
                         style = child;
                         break;
                     }
                 }
             }
             // Format the style with feature properties
-            const fstyle = this.formatFeatureStyle(style || {}, feature);
+            const fstyle = this.formatFeatureStyle((style || {}), feature);
             // Handle symbol libraries
             if (style?.name) {
                 const defaultIconSize = 16; // Default icon size
@@ -493,20 +679,30 @@ export class CollabStyler {
         if (this._cacheLoading.indexOf(cacheName) !== -1)
             return null;
         // Check if UserManager is available for API calls
-        if (!this._userManager || !this._userManager.apiClient) {
+        const getDocument = this._userManager?.apiClient?.getDocument;
+        if (typeof getDocument !== 'function') {
             console.warn("UserManager not initialized - cannot load symbol from API");
             return null;
         }
         const img = stylePictos[name] + '?width=' + width + '&height=' + height;
         this._cacheLoading.push(cacheName);
-        this._userManager.apiClient.getDocument(img).then((_response) => {
-            // here we're supposed to call Capacitor to save the document to the file system
-            // and update the symbol cache with the URL of the saved document in Capacitor
-            // solution could be to:
-            // - return the response
-            // - on the app side, call Capacitor to save the document to the file system
-            // - call another function here to update the symbol cache, that would as well call feature.changed();
-            feature.changed(); // used to be 'feature.layer.changed();', see if it's still valid
+        getDocument(img)
+            .then((response) => {
+            const objectUrl = createObjectUrlFromResponse(response);
+            if (!objectUrl) {
+                return;
+            }
+            this._symbolCache[cacheName] = objectUrl;
+            feature.changed();
+        })
+            .catch((error) => {
+            console.warn('Failed to load symbol from API', error);
+        })
+            .finally(() => {
+            const index = this._cacheLoading.indexOf(cacheName);
+            if (index !== -1) {
+                this._cacheLoading.splice(index, 1);
+            }
         });
         return null;
     }
