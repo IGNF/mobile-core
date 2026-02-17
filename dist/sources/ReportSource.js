@@ -7,6 +7,7 @@ import { Feature } from 'ol';
 import { BASE_RADIUS, ReportStatus, STATUS_STYLES, ClosedReportStatus } from '../report/types';
 import { Style } from 'ol/style';
 import WKT from 'ol/format/WKT';
+const REPORT_TRANSPORT_GEOMETRY_NAME = '__report_transport_geometry__';
 export default class ReportSource {
     constructor(options) {
         this._cluster = [];
@@ -53,6 +54,29 @@ export default class ReportSource {
         return `reports:${communityId}`;
     }
     /**
+     * Builds a transport feature that keeps report.geometry as WKT text.
+     * OpenLayers expects the feature geometry property to be an actual Geometry instance.
+     */
+    createTransportFeature(report) {
+        const feature = new Feature();
+        feature.setGeometryName(REPORT_TRANSPORT_GEOMETRY_NAME);
+        feature.setProperties(report);
+        return feature;
+    }
+    normalizeReportEntry(entry) {
+        if (entry instanceof Feature) {
+            const properties = entry.getProperties();
+            if (typeof properties.geometry !== 'string') {
+                throw new TypeError('Report feature must expose a WKT string in the "geometry" property');
+            }
+            return properties;
+        }
+        if (typeof entry.geometry !== 'string') {
+            throw new TypeError('Report must expose a WKT string in the "geometry" property');
+        }
+        return entry;
+    }
+    /**
      * Saves reports to cache
      * @param reports - Reports to cache
      */
@@ -60,13 +84,7 @@ export default class ReportSource {
         if (!this._cache)
             return;
         try {
-            // Convert reports to features for storage
-            // Store report data as properties since Report.geometry is a WKT string, not a Geometry object
-            const features = reports.map(report => {
-                const feature = new Feature();
-                feature.setProperties(report);
-                return feature;
-            });
+            const features = reports.map(report => this.createTransportFeature(report));
             const cacheKey = this.getCacheKey();
             await this._cache.saveFeatures(cacheKey, features);
         }
@@ -85,33 +103,31 @@ export default class ReportSource {
             const cacheKey = this.getCacheKey();
             const features = await this._cache.loadFeatures(cacheKey);
             // Convert features back to reports
-            return features.map((feature) => feature.getProperties());
+            return features.map((feature) => {
+                const properties = { ...feature.getProperties() };
+                delete properties[REPORT_TRANSPORT_GEOMETRY_NAME];
+                return properties;
+            });
         }
         catch (error) {
             console.error('Failed to load reports from cache:', error);
             return [];
         }
     }
-    /**
-     * Load features from a WKT string
-     *
-     * @param features - The features to load
-     * @param projection - The projection to use
-     * @returns The loaded features
-     */
-    async loadFeatures(features, projection) {
-        if (features.length === 0) {
+    async loadFeatures(entries, projection) {
+        if (entries.length === 0) {
             return [];
         }
         const loadedFeatures = [];
-        let format = new WKT();
+        const format = new WKT();
         // Convert WKT geometry strings to OpenLayers geometries and reproject to map projection
-        features.forEach(feature => {
-            const f = format.readFeature(feature.get('geometry'), {
+        entries.forEach(entry => {
+            const report = this.normalizeReportEntry(entry);
+            const f = format.readFeature(report.geometry, {
                 dataProjection: 'EPSG:4326',
                 featureProjection: projection
             });
-            f.setProperties({ report: feature });
+            f.setProperties({ report: this.createTransportFeature(report) });
             loadedFeatures.push(f);
         });
         // where is this implemented?

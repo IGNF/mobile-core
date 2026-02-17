@@ -18,6 +18,8 @@ import { Extent } from 'ol/extent';
 import WKT from 'ol/format/WKT';
 import Projection from 'ol/proj/Projection';
 
+const REPORT_TRANSPORT_GEOMETRY_NAME = '__report_transport_geometry__';
+
 export default class ReportSource {
 
   private _cluster: Style[] = [];
@@ -74,6 +76,32 @@ export default class ReportSource {
   }
 
   /**
+   * Builds a transport feature that keeps report.geometry as WKT text.
+   * OpenLayers expects the feature geometry property to be an actual Geometry instance.
+   */
+  private createTransportFeature(report: Report): Feature {
+    const feature = new Feature();
+    feature.setGeometryName(REPORT_TRANSPORT_GEOMETRY_NAME);
+    feature.setProperties(report);
+    return feature;
+  }
+
+  private normalizeReportEntry(entry: Feature | Report): Report {
+    if (entry instanceof Feature) {
+      const properties = entry.getProperties() as Report;
+      if (typeof properties.geometry !== 'string') {
+        throw new TypeError('Report feature must expose a WKT string in the "geometry" property');
+      }
+      return properties;
+    }
+
+    if (typeof entry.geometry !== 'string') {
+      throw new TypeError('Report must expose a WKT string in the "geometry" property');
+    }
+    return entry;
+  }
+
+  /**
    * Saves reports to cache
    * @param reports - Reports to cache
    */
@@ -81,13 +109,7 @@ export default class ReportSource {
     if (!this._cache) return;
 
     try {
-      // Convert reports to features for storage
-      // Store report data as properties since Report.geometry is a WKT string, not a Geometry object
-      const features = reports.map(report => {
-        const feature = new Feature();
-        feature.setProperties(report);
-        return feature;
-      });
+      const features = reports.map(report => this.createTransportFeature(report));
 
       const cacheKey = this.getCacheKey();
       await this._cache.saveFeatures(cacheKey, features);
@@ -108,7 +130,11 @@ export default class ReportSource {
       const features: Feature[] = await this._cache.loadFeatures(cacheKey);
       
       // Convert features back to reports
-      return features.map((feature: Feature) => feature.getProperties() as Report);
+      return features.map((feature: Feature) => {
+        const properties = { ...feature.getProperties() } as Record<string, unknown>;
+        delete properties[REPORT_TRANSPORT_GEOMETRY_NAME];
+        return properties as unknown as Report;
+      });
     } catch (error) {
       console.error('Failed to load reports from cache:', error);
       return [];
@@ -118,23 +144,28 @@ export default class ReportSource {
   /**
    * Load features from a WKT string
    *
-   * @param features - The features to load
+   * @param entries - The features or reports to load
    * @param projection - The projection to use
    * @returns The loaded features
    */
-  async loadFeatures(features: Feature[], projection: Projection): Promise<Feature[]> {
-    if(features.length === 0) {
+  async loadFeatures(features: Feature[], projection: Projection): Promise<Feature[]>;
+  async loadFeatures(reports: Report[], projection: Projection): Promise<Feature[]>;
+  async loadFeatures(entries: Array<Feature | Report>, projection: Projection): Promise<Feature[]> {
+    if(entries.length === 0) {
       return [];
     }
+
     const loadedFeatures: Feature[] = [];
-    let format = new WKT();
+    const format = new WKT();
+
     // Convert WKT geometry strings to OpenLayers geometries and reproject to map projection
-    features.forEach(feature => {
-      const f = format.readFeature(feature.get('geometry'), {
+    entries.forEach(entry => {
+      const report = this.normalizeReportEntry(entry);
+      const f = format.readFeature(report.geometry, {
         dataProjection: 'EPSG:4326',
         featureProjection: projection
       });
-      f.setProperties({ report: feature });
+      f.setProperties({ report: this.createTransportFeature(report) });
       loadedFeatures.push(f);
     });
 

@@ -28,6 +28,12 @@ export default class ReportSource {
      */
     private getCacheKey;
     /**
+     * Builds a transport feature that keeps report.geometry as WKT text.
+     * OpenLayers expects the feature geometry property to be an actual Geometry instance.
+     */
+    private createTransportFeature;
+    private normalizeReportEntry;
+    /**
      * Saves reports to cache
      * @param reports - Reports to cache
      */
@@ -40,11 +46,12 @@ export default class ReportSource {
     /**
      * Load features from a WKT string
      *
-     * @param features - The features to load
+     * @param entries - The features or reports to load
      * @param projection - The projection to use
      * @returns The loaded features
      */
     loadFeatures(features: Feature[], projection: Projection): Promise<Feature[]>;
+    loadFeatures(reports: Report[], projection: Projection): Promise<Feature[]>;
     /**
      * Load reports from the server
      *
