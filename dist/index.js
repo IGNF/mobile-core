@@ -25928,33 +25928,28 @@ class n_ {
    * @param file: File to upload
    */
   async uploadAttachements(t, e) {
-    var o;
-    if (!e.photos || !((o = e.photos) != null && o.length) || !e.photosToSend) return;
+    var s;
+    if (!e.photos || !((s = e.photos) != null && s.length) || !e.photosToSend) return;
     const i = (/* @__PURE__ */ new Date()).getTime();
     this.params.georems || (this.params.georems = {}), this.params.georems[i] || (this.params.georems[i] = {}), this.params.georems[i].photosToSend = !1, delete this.params.georems[i].error;
-    const n = e.photos, s = [];
-    for (const a in n)
-      s.push(this._storage.getBlob(n[a]));
-    this.emit("attachment:uploading", { reportId: t, progress: 0 }), Promise.all(s).then((a) => {
-      const l = {};
-      for (const c in a)
-        l["photo" + c] = a[c];
-      this._apiClient.addAttachments(t, l).then(() => {
-        setTimeout(() => {
-          this._storage.saveParam(this.params), this.emit("attachment:uploaded", { reportId: t, attachmentId: i });
-        }, 300);
-      }).catch(() => {
-        this.params.georems && this.params.georems[i] && (this.params.georems[i].photosToSend = !0, this.params.georems[i].error = "Echec d'envoi des images"), this._storage.saveParam(this.params), this.emit("report:error", {
-          error: new Error("Echec d'envoi des images"),
-          message: "Echec d'envoi des images"
-        });
-      });
-    }).catch((a) => {
-      this.params.georems && this.params.georems[i] && (this.params.georems[i].photosToSend = !0, this.params.georems[i].error = a), this._storage.saveParam(this.params), this.emit("report:error", {
+    const n = e.photos;
+    this.emit("attachment:uploading", { reportId: t, progress: 0 });
+    try {
+      const o = await Promise.all(
+        n.map((l) => this._storage.getBlob(l))
+        // this will be implemented on the consuming app
+      ), a = {};
+      o.forEach((l, c) => {
+        a[`photo${c}`] = l;
+      }), await this._apiClient.addAttachments(t, a), await this._storage.saveParam(this.params), this.emit("attachment:uploaded", { reportId: t, attachmentId: i });
+    } catch (o) {
+      this.params.georems && this.params.georems[i] && (this.params.georems[i].photosToSend = !0, this.params.georems[i].error = (o == null ? void 0 : o.message) || "Echec d'envoi des images"), await this._storage.saveParam(this.params);
+      const a = o instanceof Error ? o : new Error("Echec d'envoi des images");
+      throw this.emit("report:error", {
         error: a,
-        message: a.message || "Failed to upload attachments"
-      });
-    });
+        message: a.message || "Echec d'envoi des images"
+      }), a;
+    }
   }
   /**
    * Update a report locally

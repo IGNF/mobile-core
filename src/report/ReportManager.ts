@@ -196,49 +196,38 @@ export class ReportManager {
     this.params.georems[gremIndice].photosToSend = false;
     delete this.params.georems[gremIndice].error;
     const photos = report.photos;
-
-    const photoPromises = [];
-    for (const i in photos) {
-      photoPromises.push(this._storage.getBlob(photos[i])); //  this will be implemented on the consuming app
-    }
-    
     this.emit('attachment:uploading', { reportId, progress: 0 });
-    
-    Promise.all(photoPromises).then((blobs) => {
-      const post: any = {};
-      for (const i in blobs) {
-        post["photo" + i] = blobs[i];
-      }
-      this._apiClient.addAttachments(reportId, post).then(() => {
-        setTimeout(() => {
-          this._storage.saveParam(this.params);
-          this.emit('attachment:uploaded', { reportId, attachmentId: gremIndice });
-          // this.onUpdate(); // see what this does
-        }, 300)
-      }).catch(() => {
-        if (this.params.georems && this.params.georems[gremIndice]) {
-          this.params.georems[gremIndice].photosToSend = true;
-          this.params.georems[gremIndice].error = "Echec d'envoi des images";
-        }
-        this._storage.saveParam(this.params);
-        this.emit('report:error', { 
-          error: new Error("Echec d'envoi des images"), 
-          message: "Echec d'envoi des images" 
-        });
-        // this.onUpdate(); // see what this does
-      })
-    }).catch((error) => {
+
+    try {
+      const blobs = await Promise.all(
+        photos.map((photo) => this._storage.getBlob(photo)) // this will be implemented on the consuming app
+      );
+      const post: Record<string, Blob> = {};
+      blobs.forEach((blob, index) => {
+        post[`photo${index}`] = blob;
+      });
+
+      await this._apiClient.addAttachments(reportId, post);
+      await this._storage.saveParam(this.params);
+      this.emit('attachment:uploaded', { reportId, attachmentId: gremIndice });
+      // this.onUpdate(); // see what this does
+    } catch (error: any) {
       if (this.params.georems && this.params.georems[gremIndice]) {
         this.params.georems[gremIndice].photosToSend = true;
-        this.params.georems[gremIndice].error = error;
+        this.params.georems[gremIndice].error = error?.message || "Echec d'envoi des images";
       }
-      this._storage.saveParam(this.params);
-      this.emit('report:error', { 
-        error, 
-        message: error.message || 'Failed to upload attachments' 
+      await this._storage.saveParam(this.params);
+
+      const uploadError = error instanceof Error
+        ? error
+        : new Error("Echec d'envoi des images");
+      this.emit('report:error', {
+        error: uploadError,
+        message: uploadError.message || "Echec d'envoi des images"
       });
       // this.onUpdate(); // see what this does
-    });
+      throw uploadError;
+    }
   }
 
   /**
