@@ -339,20 +339,48 @@ export class ReportManager {
     * @param proj projection of the features, default `EPSG:3857`
     * @return the feature(s)
     */
-  sketch2feature(sketch: string | any, proj: Projection): Feature[] {
+  sketch2feature(sketch: string | any, proj?: Projection): Feature[] {
     if (typeof sketch === 'string') {
-      sketch = JSON.parse(sketch);
+      try {
+        sketch = JSON.parse(sketch);
+      } catch {
+        return [];
+      }
+    }
+
+    if (!sketch || !Array.isArray(sketch.objects)) {
+      return [];
     }
 
     const features: Feature[] = [];
     const format = new WKT();
     const objects = sketch.objects;
     for (const object of objects) {
+      if (!object || typeof object.geometry !== 'string' || object.geometry.length === 0) {
+        continue;
+      }
+
       const prop: any = object.attributes ? object.attributes : {};
-      prop.geometry = format.readGeometry(object.geometry);
-      prop.geometry.transform(DEFAULT_REPORT_VALUES.SKETCH2FEATURE.TRANSFORM_PROJECTION, proj || DEFAULT_REPORT_VALUES.SKETCH2FEATURE.TRANSFORM_PROJECTION_FALLBACK);
-      features.push(new Feature(prop));
+
+      try {
+        const geometry = format.readGeometry(object.geometry);
+        if (!geometry) {
+          continue;
+        }
+
+        geometry.transform(
+          DEFAULT_REPORT_VALUES.SKETCH2FEATURE.TRANSFORM_PROJECTION,
+          proj || DEFAULT_REPORT_VALUES.SKETCH2FEATURE.TRANSFORM_PROJECTION_FALLBACK
+        );
+
+        prop.geometry = geometry;
+        features.push(new Feature(prop));
+      } catch {
+        // Ignore malformed geometry entries and continue with valid objects.
+        continue;
+      }
     }
+
     return features;
   }
 

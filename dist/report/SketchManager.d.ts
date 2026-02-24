@@ -124,14 +124,16 @@ export declare class SketchManager extends BaseObject {
     private readonly layerFilter?;
     private readonly enableUndo;
     private readonly maxUndoStackSize;
+    private isActive;
     private currentMode;
     private undoStack;
     private drawInteraction;
     private modifyInteraction;
     private selectInteraction;
     private translateInteraction;
+    private modifyStartGeometries;
+    private translateStartGeometries;
     private boundHandlers;
-    private eventManager;
     /**
      * Creates a new SketchManager instance
      */
@@ -167,6 +169,10 @@ export declare class SketchManager extends BaseObject {
      * Useful for framework integrations (React, Vue, etc.)
      */
     triggerAction(action: SketchAction): void;
+    /**
+     * Helper to activate a mode from an InteractionMode value
+     */
+    setMode(mode: Exclude<InteractionMode, null>): void;
     /**
      * Deactivate all interactions
      */
@@ -228,6 +234,10 @@ export declare class SketchManager extends BaseObject {
      */
     clearSelection(): void;
     /**
+     * Get current source features
+     */
+    getFeatures(): Feature<Geometry>[];
+    /**
      * Notify external app of mode change
      */
     private notifyModeChange;
@@ -239,6 +249,8 @@ export declare class SketchManager extends BaseObject {
      * Clean up and remove all interactions
      */
     destroy(): void;
+    private ensureActive;
+    private emitEvent;
 }
 export default SketchManager;
 //# sourceMappingURL=SketchManager.d.ts.map

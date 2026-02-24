@@ -29,7 +29,7 @@ import Modify from 'ol/interaction/Modify';
 import Select from 'ol/interaction/Select';
 import Translate from 'ol/interaction/Translate';
 import { click } from 'ol/events/condition';
-import EventManager from '../utils/EventManager';
+import { getUid } from 'ol/util';
 /**
  * Framework-agnostic sketch tools for OpenLayers 10
  * Provides drawing, modification, selection, and deletion of vector features
@@ -40,13 +40,16 @@ export class SketchManager extends BaseObject {
      */
     constructor(options) {
         super();
+        this.isActive = false;
         this.currentMode = null;
         this.undoStack = [];
         // OpenLayers interactions
         this.drawInteraction = null;
+        // Track initial geometries to support modify/translate undo
+        this.modifyStartGeometries = new globalThis.Map();
+        this.translateStartGeometries = new globalThis.Map();
         // UI event handlers (stored for cleanup)
-        this.boundHandlers = new globalThis.Map();
-        this.eventManager = new EventManager();
+        this.boundHandlers = [];
         if (!options.map) {
             throw new Error('SketchManager requires a map instance');
         }
@@ -119,25 +122,55 @@ export class SketchManager extends BaseObject {
      * Notify callbacks and emit events when features are modified or moved
      */
     setupEventListeners() {
+        this.modifyInteraction.on('modifystart', (event) => {
+            event.features.forEach((feature) => {
+                const geometry = feature.getGeometry();
+                if (!geometry)
+                    return;
+                this.modifyStartGeometries.set(String(getUid(feature)), geometry.clone());
+            });
+        });
         // Modify end event (vertex/shape editing)
         this.modifyInteraction.on('modifyend', (event) => {
             const features = event.features.getArray();
             features.forEach((feature) => {
+                const featureUid = String(getUid(feature));
+                const previousGeometry = this.modifyStartGeometries.get(featureUid);
+                if (this.enableUndo && previousGeometry) {
+                    this.addToUndoStack({
+                        type: 'modify',
+                        feature,
+                        previousGeometry,
+                    });
+                }
+                this.modifyStartGeometries.delete(featureUid);
                 this.callbacks.onFeatureModified(feature);
-                this.eventManager.emit('featuremodified', {
-                    type: 'featuremodified',
-                    feature,
-                });
+                this.emitEvent('featuremodified', { feature });
+            });
+        });
+        this.translateInteraction.on('translatestart', (event) => {
+            event.features.forEach((feature) => {
+                const geometry = feature.getGeometry();
+                if (!geometry)
+                    return;
+                this.translateStartGeometries.set(String(getUid(feature)), geometry.clone());
             });
         });
         // Translate end event (drag to move)
         this.translateInteraction.on('translateend', (event) => {
             event.features.forEach((feature) => {
+                const featureUid = String(getUid(feature));
+                const previousGeometry = this.translateStartGeometries.get(featureUid);
+                if (this.enableUndo && previousGeometry) {
+                    this.addToUndoStack({
+                        type: 'modify',
+                        feature,
+                        previousGeometry,
+                    });
+                }
+                this.translateStartGeometries.delete(featureUid);
                 this.callbacks.onFeatureModified(feature);
-                this.eventManager.emit('featuremodified', {
-                    type: 'featuremodified',
-                    feature,
-                });
+                this.emitEvent('featuremodified', { feature });
             });
         });
     }
@@ -171,23 +204,21 @@ export class SketchManager extends BaseObject {
     bindElement(selector, handler) {
         const elements = document.querySelectorAll(selector);
         elements.forEach((element) => {
-            const listener = handler.bind(this);
+            const listener = () => {
+                handler();
+            };
             element.addEventListener('click', listener);
-            this.boundHandlers.set(`${selector}:${handler.name}`, listener);
+            this.boundHandlers.push({ element, listener });
         });
     }
     /**
      * Unbind all UI elements
      */
     unbindUIElements() {
-        this.boundHandlers.forEach((listener, key) => {
-            const [selector] = key.split(':');
-            const elements = document.querySelectorAll(selector);
-            elements.forEach((element) => {
-                element.removeEventListener('click', listener);
-            });
+        this.boundHandlers.forEach(({ element, listener }) => {
+            element.removeEventListener('click', listener);
         });
-        this.boundHandlers.clear();
+        this.boundHandlers = [];
     }
     /**
      * Handle back button action
@@ -201,6 +232,9 @@ export class SketchManager extends BaseObject {
      * Useful for framework integrations (React, Vue, etc.)
      */
     triggerAction(action) {
+        if (action !== 'back' && !this.isActive) {
+            this.setActive(true);
+        }
         switch (action) {
             case 'back':
                 this.handleBack();
@@ -234,6 +268,33 @@ export class SketchManager extends BaseObject {
         }
     }
     /**
+     * Helper to activate a mode from an InteractionMode value
+     */
+    setMode(mode) {
+        switch (mode) {
+            case 'draw-point':
+                this.activateDraw('Point');
+                break;
+            case 'draw-linestring':
+                this.activateDraw('LineString');
+                break;
+            case 'draw-polygon':
+                this.activateDraw('Polygon');
+                break;
+            case 'draw-circle':
+                this.activateDraw('Circle');
+                break;
+            case 'modify':
+                this.activateModify();
+                break;
+            case 'select':
+                this.activateSelect();
+                break;
+            default:
+                break;
+        }
+    }
+    /**
      * Deactivate all interactions
      */
     deactivateAll() {
@@ -244,7 +305,10 @@ export class SketchManager extends BaseObject {
         }
         this.modifyInteraction.setActive(false);
         this.selectInteraction.setActive(false);
+        this.selectInteraction.getFeatures().clear();
         this.translateInteraction.setActive(false);
+        this.modifyStartGeometries.clear();
+        this.translateStartGeometries.clear();
         this.currentMode = null;
         this.notifyModeChange();
     }
@@ -252,6 +316,7 @@ export class SketchManager extends BaseObject {
      * Activate draw mode with specified geometry type
      */
     activateDraw(type) {
+        this.ensureActive();
         this.deactivateAll();
         // Create new draw interaction
         this.drawInteraction = new Draw({
@@ -268,12 +333,8 @@ export class SketchManager extends BaseObject {
                 });
             }
             this.callbacks.onFeatureAdded(feature);
-            this.eventManager.emit('featureadded', {
-                type: 'featureadded',
-                feature,
-            });
-            this.eventManager.emit('drawend', {
-                type: 'drawend',
+            this.emitEvent('featureadded', { feature });
+            this.emitEvent('drawend', {
                 feature,
                 valid: true,
             });
@@ -287,6 +348,7 @@ export class SketchManager extends BaseObject {
      * Activate modify mode for editing geometries
      */
     activateModify() {
+        this.ensureActive();
         this.deactivateAll();
         this.modifyInteraction.setActive(true);
         this.currentMode = 'modify';
@@ -296,6 +358,7 @@ export class SketchManager extends BaseObject {
      * Activate select/translate mode for selecting and moving features
      */
     activateSelect() {
+        this.ensureActive();
         this.deactivateAll();
         this.selectInteraction.setActive(true);
         this.translateInteraction.setActive(true);
@@ -318,10 +381,7 @@ export class SketchManager extends BaseObject {
             this.source.removeFeature(feature);
             selected.clear();
             this.callbacks.onFeatureDeleted(feature);
-            this.eventManager.emit('featuredeleted', {
-                type: 'featuredeleted',
-                feature,
-            });
+            this.emitEvent('featuredeleted', { feature });
         }
     }
     /**
@@ -343,7 +403,7 @@ export class SketchManager extends BaseObject {
                 break;
             case 'modify':
                 if (lastAction.previousGeometry) {
-                    lastAction.feature.setGeometry(lastAction.previousGeometry);
+                    lastAction.feature.setGeometry(lastAction.previousGeometry.clone());
                 }
                 break;
         }
@@ -377,17 +437,18 @@ export class SketchManager extends BaseObject {
         if (!active) {
             this.deactivateAll();
         }
+        if (this.isActive === active) {
+            return;
+        }
+        this.isActive = active;
         this.callbacks.onActiveChange(active);
-        this.eventManager.emit('change:active', {
-            type: 'change:active',
-            active,
-        });
+        this.emitEvent('change:active', { active });
     }
     /**
      * Get current active state
      */
     getActive() {
-        return this.currentMode !== null;
+        return this.isActive;
     }
     /**
      * Get current interaction mode
@@ -415,14 +476,17 @@ export class SketchManager extends BaseObject {
         this.selectInteraction.getFeatures().clear();
     }
     /**
+     * Get current source features
+     */
+    getFeatures() {
+        return this.source.getFeatures();
+    }
+    /**
      * Notify external app of mode change
      */
     notifyModeChange() {
         this.callbacks.onModeChange(this.currentMode);
-        this.eventManager.emit('change:mode', {
-            type: 'change:mode',
-            mode: this.currentMode,
-        });
+        this.emitEvent('change:mode', { mode: this.currentMode });
     }
     /**
      * Update button selectors (for dynamically loaded UI)
@@ -437,11 +501,20 @@ export class SketchManager extends BaseObject {
      */
     destroy() {
         this.unbindUIElements();
-        this.deactivateAll();
+        this.setActive(false);
         this.map.removeInteraction(this.modifyInteraction);
         this.map.removeInteraction(this.selectInteraction);
         this.map.removeInteraction(this.translateInteraction);
         this.clearUndoStack();
+    }
+    ensureActive() {
+        if (this.isActive) {
+            return;
+        }
+        this.setActive(true);
+    }
+    emitEvent(type, payload) {
+        this.dispatchEvent({ type, ...payload });
     }
 }
 export default SketchManager;

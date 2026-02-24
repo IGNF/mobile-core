@@ -93,6 +93,6 @@ export declare class ReportManager {
       * @param proj projection of the features, default `EPSG:3857`
       * @return the feature(s)
       */
-    sketch2feature(sketch: string | any, proj: Projection): Feature[];
+    sketch2feature(sketch: string | any, proj?: Projection): Feature[];
 }
 //# sourceMappingURL=ReportManager.d.ts.map
