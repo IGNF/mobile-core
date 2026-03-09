@@ -69,6 +69,7 @@ export interface Table {
   databaseId: number;
   name: string;
   title: string;
+  idName?: string;
   description?: string;
   wfs: string; // WFS endpoint
   geometryName: string;
@@ -80,6 +81,8 @@ export interface Table {
   maxZoomLevel?: number;
   searchable?: boolean;
   editable?: boolean;
+  readOnly?: boolean;
+  tileZoomLevel?: number;
   docURI?: string; // Document upload endpoint
 }
 

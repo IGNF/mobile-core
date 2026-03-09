@@ -705,12 +705,10 @@ export default class CollabVectorSource extends VectorSource {
         return String(left) === String(right);
     }
     _getIdPropertyName() {
-        const tableAny = this.table;
-        return tableAny.idName || tableAny.id_name || 'id';
+        return this.table?.idName || 'id';
     }
     _getGeometryColumnName() {
-        const tableAny = this.table;
-        return tableAny.geometryName || tableAny.geometry_name || 'geometry';
+        return this.table?.geometryName || 'geometry';
     }
     _getTableCRS() {
         const geometryName = this._getGeometryColumnName();

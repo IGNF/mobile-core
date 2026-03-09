@@ -62,6 +62,7 @@ export interface Table {
     databaseId: number;
     name: string;
     title: string;
+    idName?: string;
     description?: string;
     wfs: string;
     geometryName: string;
@@ -73,6 +74,8 @@ export interface Table {
     maxZoomLevel?: number;
     searchable?: boolean;
     editable?: boolean;
+    readOnly?: boolean;
+    tileZoomLevel?: number;
     docURI?: string;
 }
 /**

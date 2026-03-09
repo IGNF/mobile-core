@@ -869,13 +869,11 @@ export default class CollabVectorSource extends VectorSource {
   }
 
   private _getIdPropertyName(): string {
-    const tableAny = this.table as any;
-    return tableAny.idName || tableAny.id_name || 'id';
+    return this.table?.idName || 'id';
   }
 
   private _getGeometryColumnName(): string {
-    const tableAny = this.table as any;
-    return tableAny.geometryName || tableAny.geometry_name || 'geometry';
+    return this.table?.geometryName || 'geometry';
   }
 
   private _getTableCRS(): string {

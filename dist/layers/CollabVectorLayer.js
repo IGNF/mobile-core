@@ -54,9 +54,8 @@ export class CollabVectorLayer extends VectorLayer {
         this.setSource(vectorSource);
         this.set('title', table.title);
         const view = new View();
-        const tableAny = table;
-        const maxZoom = tableAny.maxZoomLevel ?? tableAny.max_zoom_level;
-        const minZoom = tableAny.minZoomLevel ?? tableAny.min_zoom_level;
+        const maxZoom = table.maxZoomLevel;
+        const minZoom = table.minZoomLevel;
         if (maxZoom && maxZoom < 20) {
             view.setZoom(maxZoom);
             this.setMinResolution(view.getResolution() ?? 0);

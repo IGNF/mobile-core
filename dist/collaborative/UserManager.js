@@ -3,6 +3,7 @@
  * @migrated from: collaboratif/UserManager.js
  *
  */
+import { normalizeTable } from './normalize';
 import EventManager from '../utils/EventManager';
 /**
  * User authentication and community management
@@ -219,9 +220,7 @@ export class UserManager {
                 layer.geoservice = data.data;
             }
             else if (layer.table && layer.database) {
-                const table = data.data;
-                // API returns columns as {0: col1, 1: col2, ...}, convert to [col1, col2, ...]
-                table.columns = Object.values(table.columns);
+                const table = normalizeTable(data.data);
                 layer.table = table;
                 layer.extent = databaseExtentsMap[layer.database].split(',');
             }
