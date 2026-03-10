@@ -163,6 +163,56 @@ export default class CollabVectorSource extends VectorSource {
         feature.state = 'DELETE';
         this.writeChanges();
     }
+    getPendingChangesCount() {
+        return (this.insertedFeatures.getLength() +
+            this.updatedFeatures.getLength() +
+            this.deletedFeatures.getLength());
+    }
+    resetChanges() {
+        this.insertedFeatures.clear();
+        this.deletedFeatures.clear();
+        this.updatedFeatures.clear();
+        this.preservedFeatures.clear();
+        this.reload();
+        this.writeChanges(true);
+        this._dispatchEditChange();
+    }
+    async submitChanges() {
+        const actions = this._getTransactionActions();
+        this.dispatchEvent({ type: 'savestart' });
+        if (!actions.length) {
+            this.dispatchEvent({ type: 'saveend' });
+            return null;
+        }
+        const client = this._options.client;
+        if (typeof client?.addTransaction !== 'function') {
+            const error = new Error('Collaborative client does not support addTransaction');
+            this.dispatchEvent({ type: 'saveend', status: 'error', error });
+            throw error;
+        }
+        try {
+            const response = await client.addTransaction(this.table.databaseId, {
+                actions,
+                comment: `source vecteur: ${this.table.database}":"${this.table.name}`,
+            });
+            const transaction = response?.data;
+            if (transaction?.status === 'conflicting') {
+                this.dispatchEvent({
+                    type: 'saveend',
+                    status: 'error',
+                    error: transaction,
+                });
+                throw transaction;
+            }
+            this.resetChanges();
+            this.dispatchEvent({ type: 'saveend', transaction });
+            return transaction;
+        }
+        catch (error) {
+            this.dispatchEvent({ type: 'saveend', status: 'error', error });
+            throw error;
+        }
+    }
     removeFeatureFromCollection(collection, feature) {
         const features = collection.getArray();
         const index = features.indexOf(feature);
@@ -199,6 +249,7 @@ export default class CollabVectorSource extends VectorSource {
                 console.error('ERROR: writeChanges fallback to localStorage', error);
             }
         }
+        this._dispatchEditChange();
     }
     getSaveActions(includeGeometry = true) {
         const formatWKT = this.localProperties.formatWKT;
@@ -285,6 +336,7 @@ export default class CollabVectorSource extends VectorSource {
                 }
             });
         }
+        this._dispatchEditChange();
     }
     deserializeFeature(serialized, formatWKT) {
         try {
@@ -317,6 +369,68 @@ export default class CollabVectorSource extends VectorSource {
             this.updatedFeatures.push(feature);
         }
         this.writeChanges();
+    }
+    _dispatchEditChange() {
+        this.dispatchEvent({
+            type: 'editchange',
+            pendingChangesCount: this.getPendingChangesCount(),
+        });
+    }
+    _getTransactionActions() {
+        return [
+            ...this._buildTransactionActions(this.insertedFeatures, 'INSERT', true),
+            ...this._buildTransactionActions(this.deletedFeatures, 'DELETE', false),
+            ...this._buildTransactionActions(this.updatedFeatures, 'UPDATE', false),
+        ];
+    }
+    _buildTransactionActions(collection, state, full) {
+        return collection.getArray()
+            .filter((feature) => feature.state === state)
+            .map((feature) => ({
+            data: this._serializeTransactionFeature(feature, full),
+            state,
+            table: this.table.id,
+        }));
+    }
+    _serializeTransactionFeature(feature, full) {
+        const properties = feature.getProperties();
+        const data = {};
+        const geometryName = this._getGeometryColumnName();
+        const idName = this._getIdPropertyName();
+        const updates = (feature.updates || {});
+        if (full) {
+            for (const key in properties) {
+                if (key !== geometryName && key !== 'geometry') {
+                    data[key] = properties[key];
+                }
+            }
+        }
+        else {
+            const featureId = this._getFeatureIdentifier(feature, idName);
+            if (featureId !== undefined && featureId !== null) {
+                data[idName] = featureId;
+            }
+            for (const key in properties) {
+                if (key === geometryName || key === 'geometry') {
+                    continue;
+                }
+                if (updates[key] || key === 'gcms_fingerprint') {
+                    data[key] = properties[key];
+                }
+            }
+        }
+        if (full || updates.geometry) {
+            const geometry = feature.getGeometry();
+            const formatWKT = this.localProperties.formatWKT;
+            if (geometry && formatWKT) {
+                const geometryClone = geometry.clone();
+                if (this._projectionCode && this.localProperties.srsName) {
+                    geometryClone.transform(this._projectionCode, this.localProperties.srsName);
+                }
+                data[geometryName] = formatWKT.writeGeometry(geometryClone);
+            }
+        }
+        return data;
     }
     async _saveEditionCache(cacheKey, actions) {
         if (!this._cache)

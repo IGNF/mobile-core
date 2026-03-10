@@ -32,6 +32,9 @@ export default class CollabVectorSource extends VectorSource {
     getTable(): Table;
     onAddFeature(feature: Feature): void;
     onDeleteFeature(feature: Feature): void;
+    getPendingChangesCount(): number;
+    resetChanges(): void;
+    submitChanges(): Promise<unknown>;
     private removeFeatureFromCollection;
     writeChanges(force?: boolean): void;
     getSaveActions(includeGeometry?: boolean): any;
@@ -40,6 +43,10 @@ export default class CollabVectorSource extends VectorSource {
     private _restoreActions;
     private deserializeFeature;
     private onUpdateFeature;
+    private _dispatchEditChange;
+    private _getTransactionActions;
+    private _buildTransactionActions;
+    private _serializeTransactionFeature;
     private _saveEditionCache;
     private _loadEditionCache;
     setLoading(isLoading: boolean): void;

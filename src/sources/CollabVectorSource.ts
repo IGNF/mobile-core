@@ -216,6 +216,66 @@ export default class CollabVectorSource extends VectorSource {
     this.writeChanges();
   }
 
+  public getPendingChangesCount(): number {
+    return (
+      this.insertedFeatures.getLength() +
+      this.updatedFeatures.getLength() +
+      this.deletedFeatures.getLength()
+    );
+  }
+
+  public resetChanges(): void {
+    this.insertedFeatures.clear();
+    this.deletedFeatures.clear();
+    this.updatedFeatures.clear();
+    this.preservedFeatures.clear();
+    this.reload();
+    this.writeChanges(true);
+    this._dispatchEditChange();
+  }
+
+  public async submitChanges(): Promise<unknown> {
+    const actions = this._getTransactionActions();
+
+    this.dispatchEvent({ type: 'savestart' } as any);
+
+    if (!actions.length) {
+      this.dispatchEvent({ type: 'saveend' } as any);
+      return null;
+    }
+
+    const client = this._options.client as any;
+    if (typeof client?.addTransaction !== 'function') {
+      const error = new Error('Collaborative client does not support addTransaction');
+      this.dispatchEvent({ type: 'saveend', status: 'error', error } as any);
+      throw error;
+    }
+
+    try {
+      const response = await client.addTransaction(this.table.databaseId, {
+        actions,
+        comment: `source vecteur: ${this.table.database}":"${this.table.name}`,
+      });
+      const transaction = response?.data;
+
+      if (transaction?.status === 'conflicting') {
+        this.dispatchEvent({
+          type: 'saveend',
+          status: 'error',
+          error: transaction,
+        } as any);
+        throw transaction;
+      }
+
+      this.resetChanges();
+      this.dispatchEvent({ type: 'saveend', transaction } as any);
+      return transaction;
+    } catch (error) {
+      this.dispatchEvent({ type: 'saveend', status: 'error', error } as any);
+      throw error;
+    }
+  }
+
   private removeFeatureFromCollection(collection: Collection<Feature>, feature: Feature): void {
     const features = collection.getArray();
     const index = features.indexOf(feature);
@@ -252,6 +312,8 @@ export default class CollabVectorSource extends VectorSource {
         console.error('ERROR: writeChanges fallback to localStorage', error);
       }
     }
+
+    this._dispatchEditChange();
   }
 
   public getSaveActions(includeGeometry = true): any {
@@ -347,6 +409,8 @@ export default class CollabVectorSource extends VectorSource {
         }
       });
     }
+
+    this._dispatchEditChange();
   }
 
   private deserializeFeature(serialized: any, formatWKT: WKT): Feature | null {
@@ -386,6 +450,83 @@ export default class CollabVectorSource extends VectorSource {
     }
 
     this.writeChanges();
+  }
+
+  private _dispatchEditChange(): void {
+    this.dispatchEvent({
+      type: 'editchange',
+      pendingChangesCount: this.getPendingChangesCount(),
+    } as any);
+  }
+
+  private _getTransactionActions(): Array<Record<string, unknown>> {
+    return [
+      ...this._buildTransactionActions(this.insertedFeatures, 'INSERT', true),
+      ...this._buildTransactionActions(this.deletedFeatures, 'DELETE', false),
+      ...this._buildTransactionActions(this.updatedFeatures, 'UPDATE', false),
+    ];
+  }
+
+  private _buildTransactionActions(
+    collection: Collection<Feature>,
+    state: 'INSERT' | 'UPDATE' | 'DELETE',
+    full: boolean
+  ): Array<Record<string, unknown>> {
+    return collection.getArray()
+      .filter((feature) => (feature as any).state === state)
+      .map((feature) => ({
+        data: this._serializeTransactionFeature(feature, full),
+        state,
+        table: this.table.id,
+      }));
+  }
+
+  private _serializeTransactionFeature(
+    feature: Feature,
+    full: boolean
+  ): Record<string, unknown> {
+    const properties = feature.getProperties();
+    const data: Record<string, unknown> = {};
+    const geometryName = this._getGeometryColumnName();
+    const idName = this._getIdPropertyName();
+    const updates = ((feature as any).updates || {}) as Record<string, boolean>;
+
+    if (full) {
+      for (const key in properties) {
+        if (key !== geometryName && key !== 'geometry') {
+          data[key] = properties[key];
+        }
+      }
+    } else {
+      const featureId = this._getFeatureIdentifier(feature, idName);
+      if (featureId !== undefined && featureId !== null) {
+        data[idName] = featureId;
+      }
+
+      for (const key in properties) {
+        if (key === geometryName || key === 'geometry') {
+          continue;
+        }
+
+        if (updates[key] || key === 'gcms_fingerprint') {
+          data[key] = properties[key];
+        }
+      }
+    }
+
+    if (full || updates.geometry) {
+      const geometry = feature.getGeometry();
+      const formatWKT = this.localProperties.formatWKT as WKT | undefined;
+      if (geometry && formatWKT) {
+        const geometryClone = geometry.clone();
+        if (this._projectionCode && this.localProperties.srsName) {
+          geometryClone.transform(this._projectionCode, this.localProperties.srsName);
+        }
+        data[geometryName] = formatWKT.writeGeometry(geometryClone);
+      }
+    }
+
+    return data;
   }
 
   private async _saveEditionCache(cacheKey: string, actions: any): Promise<void> {
