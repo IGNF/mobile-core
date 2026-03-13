@@ -28,7 +28,7 @@ export type { IUserStorage } from './abstracts/IUserStorage';
 export { ReportManager } from './report/ReportManager';
 export { ReportValidator } from './report/ReportValidator';
 export { SketchManager } from './report/SketchManager';
-export type { SketchManagerOptions, SketchAction, InteractionMode, DrawGeometryType, ButtonConfig, SketchManagerCallbacks } from './report/SketchManager';
+export type { SketchManagerOptions, SketchAction, InteractionMode, DrawGeometryType, ModifyInteractionScope, ButtonConfig, SketchManagerCallbacks } from './report/SketchManager';
 export { CollabStyler } from './styles/CollabStyler';
 export type { SymbolCacheEntry, FeatureTypeConfig } from './styles/CollabStyler';
 export { CollabStylePresets } from './styles/CollabStylePresets';

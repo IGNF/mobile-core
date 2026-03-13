@@ -6,28 +6,28 @@
  * Note: this class has been mainly generated with AI, a full review is necessary.
  *
  * @example of initilization (client code):
-  const sketchManager = new SketchManager({
-  map,
-  source: vectorSource,
-  buttons: {
-    drawPoint: '#btn-point',
-    drawLine: '#btn-line',
-    drawPolygon: '#btn-polygon',
-    modify: '#btn-modify',
-    select: '#btn-select',
-    delete: '#btn-delete'
-  },
-  callbacks: {
-    onFeatureAdded: (feature) => console.log('Feature added!', feature),
-    onBack: () => console.log('User cancelled')
-  }
-});
+ * const sketchManager = new SketchManager({
+ *   map,
+ *   source: vectorSource,
+ *   buttons: {
+ *     drawPoint: '#btn-point',
+ *     drawLine: '#btn-line',
+ *     drawPolygon: '#btn-polygon',
+ *     modify: '#btn-modify',
+ *     select: '#btn-select',
+ *     delete: '#btn-delete'
+ *   },
+ *   callbacks: {
+ *     onFeatureAdded: (feature) => console.log('Feature added!', feature),
+ *     onBack: () => console.log('User cancelled')
+ *   }
+ * });
  */
 import type { Map } from 'ol';
 import type { Feature } from 'ol';
 import type { Geometry } from 'ol/geom';
-import type VectorSource from 'ol/source/Vector';
 import type { Layer } from 'ol/layer';
+import type VectorSource from 'ol/source/Vector';
 import BaseObject from 'ol/Object';
 /**
  * Supported geometry types for drawing
@@ -41,6 +41,12 @@ export type InteractionMode = 'draw-point' | 'draw-linestring' | 'draw-polygon' 
  * Action types that can be triggered programmatically
  */
 export type SketchAction = 'back' | 'drawPoint' | 'drawLine' | 'drawPolygon' | 'drawCircle' | 'modify' | 'select' | 'delete' | 'undo';
+/**
+ * Controls how the Modify interaction tracks editable features.
+ * - `source`: indexes the full source, which preserves the historical behavior.
+ * - `selection`: only indexes the selected features, which is safer for very large datasets.
+ */
+export type ModifyInteractionScope = 'source' | 'selection';
 /**
  * UI button configuration
  * Maps action names to CSS selectors (IDs, classes, or any valid selector)
@@ -62,6 +68,7 @@ export interface ButtonConfig {
 export interface SketchManagerCallbacks {
     onBack?: () => void;
     onFeatureAdded?: (feature: Feature<Geometry>) => void;
+    onFeatureSelected?: (feature: Feature<Geometry> | null) => void;
     onFeatureModified?: (feature: Feature<Geometry>) => void;
     onFeatureDeleted?: (feature: Feature<Geometry>) => void;
     onActiveChange?: (active: boolean) => void;
@@ -81,6 +88,19 @@ export interface SketchManagerOptions {
     callbacks?: SketchManagerCallbacks;
     /** Layer filter for selecting features (optional) */
     layerFilter?: (layer: Layer) => boolean;
+    /**
+     * Controls whether Modify should index the full source or only the selected
+     * features collection. Use `selection` for large datasets to avoid high
+     * memory usage.
+     */
+    modifyInteractionScope?: ModifyInteractionScope;
+    /** Pixel tolerance used by selection hit detection */
+    selectionHitTolerance?: number;
+    /**
+     * When the render hit detection misses a feature, try resolving the closest
+     * source feature near the tapped coordinate.
+     */
+    useSourceSelectionFallback?: boolean;
     /** Enable undo functionality */
     enableUndo?: boolean;
     /** Maximum undo stack size */
@@ -101,6 +121,9 @@ export interface SketchManagerEventMap {
     'featureadded': {
         feature: Feature<Geometry>;
     };
+    'featureselected': {
+        feature: Feature<Geometry> | null;
+    };
     'featuremodified': {
         feature: Feature<Geometry>;
     };
@@ -114,7 +137,7 @@ export interface SketchManagerEventMap {
 }
 /**
  * Framework-agnostic sketch tools for OpenLayers 10
- * Provides drawing, modification, selection, and deletion of vector features
+ * Provides drawing, modification, selection, and deletion of vector features.
  */
 export declare class SketchManager extends BaseObject {
     private readonly map;
@@ -122,6 +145,9 @@ export declare class SketchManager extends BaseObject {
     private readonly buttons;
     private readonly callbacks;
     private readonly layerFilter?;
+    private readonly modifyInteractionScope;
+    private readonly selectionHitTolerance;
+    private readonly useSourceSelectionFallback;
     private readonly enableUndo;
     private readonly maxUndoStackSize;
     private isActive;
@@ -131,9 +157,10 @@ export declare class SketchManager extends BaseObject {
     private modifyInteraction;
     private selectInteraction;
     private translateInteraction;
-    private modifyStartGeometries;
-    private translateStartGeometries;
+    private readonly modifyStartGeometries;
+    private readonly translateStartGeometries;
     private boundHandlers;
+    private readonly listenerKeys;
     /**
      * Creates a new SketchManager instance
      */
@@ -144,7 +171,7 @@ export declare class SketchManager extends BaseObject {
     private initializeInteractions;
     /**
      * Set up event listeners for interactions
-     * Notify callbacks and emit events when features are modified or moved
+     * Notify callbacks and emit events when features are selected, modified, or moved.
      */
     private setupEventListeners;
     /**
@@ -242,6 +269,10 @@ export declare class SketchManager extends BaseObject {
      */
     private notifyModeChange;
     /**
+     * Notify external app of feature selection changes.
+     */
+    private notifyFeatureSelected;
+    /**
      * Update button selectors (for dynamically loaded UI)
      */
     updateButtons(buttons: Partial<ButtonConfig>): void;
@@ -250,6 +281,10 @@ export declare class SketchManager extends BaseObject {
      */
     destroy(): void;
     private ensureActive;
+    private updateSelectedFeature;
+    private findFeatureFromTap;
+    private findFeatureAtPixel;
+    private findNearestFeature;
     private emitEvent;
 }
 export default SketchManager;

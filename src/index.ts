@@ -91,6 +91,7 @@ export type {
   SketchAction,
   InteractionMode,
   DrawGeometryType,
+  ModifyInteractionScope,
   ButtonConfig,
   SketchManagerCallbacks
 } from './report/SketchManager';

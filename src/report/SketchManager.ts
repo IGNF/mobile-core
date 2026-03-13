@@ -6,36 +6,41 @@
  * Note: this class has been mainly generated with AI, a full review is necessary.
  *
  * @example of initilization (client code):
-  const sketchManager = new SketchManager({
-  map,
-  source: vectorSource,
-  buttons: {
-    drawPoint: '#btn-point',
-    drawLine: '#btn-line',
-    drawPolygon: '#btn-polygon',
-    modify: '#btn-modify',
-    select: '#btn-select',
-    delete: '#btn-delete'
-  },
-  callbacks: {
-    onFeatureAdded: (feature) => console.log('Feature added!', feature),
-    onBack: () => console.log('User cancelled')
-  }
-});
+ * const sketchManager = new SketchManager({
+ *   map,
+ *   source: vectorSource,
+ *   buttons: {
+ *     drawPoint: '#btn-point',
+ *     drawLine: '#btn-line',
+ *     drawPolygon: '#btn-polygon',
+ *     modify: '#btn-modify',
+ *     select: '#btn-select',
+ *     delete: '#btn-delete'
+ *   },
+ *   callbacks: {
+ *     onFeatureAdded: (feature) => console.log('Feature added!', feature),
+ *     onBack: () => console.log('User cancelled')
+ *   }
+ * });
  */
 
 import type { Map } from 'ol';
 import type { Feature } from 'ol';
+import type MapBrowserEvent from 'ol/MapBrowserEvent';
+import type { Coordinate } from 'ol/coordinate';
+import type { EventsKey } from 'ol/events';
 import type { Geometry } from 'ol/geom';
-import type VectorSource from 'ol/source/Vector';
+import type { Type as GeometryType } from 'ol/geom/Geometry';
 import type { Layer } from 'ol/layer';
-import BaseObject from 'ol/Object';
+import type VectorSource from 'ol/source/Vector';
+import FeatureClass from 'ol/Feature';
+import { click } from 'ol/events/condition';
 import Draw from 'ol/interaction/Draw';
 import Modify from 'ol/interaction/Modify';
 import Select from 'ol/interaction/Select';
 import Translate from 'ol/interaction/Translate';
-import { click } from 'ol/events/condition';
-import type { Type as GeometryType } from 'ol/geom/Geometry';
+import BaseObject from 'ol/Object';
+import { unByKey } from 'ol/Observable';
 import { getUid } from 'ol/util';
 
 /**
@@ -70,6 +75,13 @@ export type SketchAction =
   | 'undo';
 
 /**
+ * Controls how the Modify interaction tracks editable features.
+ * - `source`: indexes the full source, which preserves the historical behavior.
+ * - `selection`: only indexes the selected features, which is safer for very large datasets.
+ */
+export type ModifyInteractionScope = 'source' | 'selection';
+
+/**
  * UI button configuration
  * Maps action names to CSS selectors (IDs, classes, or any valid selector)
  */
@@ -91,6 +103,7 @@ export interface ButtonConfig {
 export interface SketchManagerCallbacks {
   onBack?: () => void;
   onFeatureAdded?: (feature: Feature<Geometry>) => void;
+  onFeatureSelected?: (feature: Feature<Geometry> | null) => void;
   onFeatureModified?: (feature: Feature<Geometry>) => void;
   onFeatureDeleted?: (feature: Feature<Geometry>) => void;
   onActiveChange?: (active: boolean) => void;
@@ -115,6 +128,22 @@ export interface SketchManagerOptions {
 
   /** Layer filter for selecting features (optional) */
   layerFilter?: (layer: Layer) => boolean;
+
+  /**
+   * Controls whether Modify should index the full source or only the selected
+   * features collection. Use `selection` for large datasets to avoid high
+   * memory usage.
+   */
+  modifyInteractionScope?: ModifyInteractionScope;
+
+  /** Pixel tolerance used by selection hit detection */
+  selectionHitTolerance?: number;
+
+  /**
+   * When the render hit detection misses a feature, try resolving the closest
+   * source feature near the tapped coordinate.
+   */
+  useSourceSelectionFallback?: boolean;
 
   /** Enable undo functionality */
   enableUndo?: boolean;
@@ -147,14 +176,50 @@ export interface SketchManagerEventMap {
   'change:active': { active: boolean };
   'change:mode': { mode: InteractionMode };
   'featureadded': { feature: Feature<Geometry> };
+  'featureselected': { feature: Feature<Geometry> | null };
   'featuremodified': { feature: Feature<Geometry> };
   'featuredeleted': { feature: Feature<Geometry> };
   'drawend': { feature: Feature<Geometry>; valid: boolean };
 }
 
+const DEFAULT_SELECTION_HIT_TOLERANCE = 10;
+const noop = () => {};
+
+function isSelectionMode(mode: InteractionMode): mode is 'select' | 'modify' {
+  return mode === 'select' || mode === 'modify';
+}
+
+function getSquaredDistance(left: Coordinate, right: Coordinate): number {
+  const dx = left[0] - right[0];
+  const dy = left[1] - right[1];
+
+  return (dx * dx) + (dy * dy);
+}
+
+function getClosestPointOnFeature(
+  feature: Feature<Geometry>,
+  coordinate: Coordinate
+): Coordinate | null {
+  const geometry = feature.getGeometry();
+  if (!geometry) {
+    return null;
+  }
+
+  if (typeof geometry.intersectsCoordinate === 'function' && geometry.intersectsCoordinate(coordinate)) {
+    return coordinate;
+  }
+
+  const closestPoint: Coordinate = [Number.NaN, Number.NaN];
+  geometry.closestPointXY(coordinate[0], coordinate[1], closestPoint, Number.POSITIVE_INFINITY);
+
+  return Number.isFinite(closestPoint[0]) && Number.isFinite(closestPoint[1])
+    ? closestPoint
+    : null;
+}
+
 /**
  * Framework-agnostic sketch tools for OpenLayers 10
- * Provides drawing, modification, selection, and deletion of vector features
+ * Provides drawing, modification, selection, and deletion of vector features.
  */
 export class SketchManager extends BaseObject {
   private readonly map: Map;
@@ -162,6 +227,9 @@ export class SketchManager extends BaseObject {
   private readonly buttons: Required<ButtonConfig>;
   private readonly callbacks: Required<SketchManagerCallbacks>;
   private readonly layerFilter?: (layer: Layer) => boolean;
+  private readonly modifyInteractionScope: ModifyInteractionScope;
+  private readonly selectionHitTolerance: number;
+  private readonly useSourceSelectionFallback: boolean;
   private readonly enableUndo: boolean;
   private readonly maxUndoStackSize: number;
 
@@ -176,11 +244,12 @@ export class SketchManager extends BaseObject {
   private translateInteraction!: Translate;
 
   // Track initial geometries to support modify/translate undo
-  private modifyStartGeometries = new globalThis.Map<string, Geometry>();
-  private translateStartGeometries = new globalThis.Map<string, Geometry>();
+  private readonly modifyStartGeometries = new globalThis.Map<string, Geometry>();
+  private readonly translateStartGeometries = new globalThis.Map<string, Geometry>();
 
   // UI event handlers (stored for cleanup)
   private boundHandlers: BoundClickListener[] = [];
+  private readonly listenerKeys: EventsKey[] = [];
 
   /**
    * Creates a new SketchManager instance
@@ -198,10 +267,12 @@ export class SketchManager extends BaseObject {
     this.map = options.map;
     this.source = options.source;
     this.layerFilter = options.layerFilter;
+    this.modifyInteractionScope = options.modifyInteractionScope ?? 'source';
+    this.selectionHitTolerance = options.selectionHitTolerance ?? DEFAULT_SELECTION_HIT_TOLERANCE;
+    this.useSourceSelectionFallback = options.useSourceSelectionFallback ?? true;
     this.enableUndo = options.enableUndo ?? true;
     this.maxUndoStackSize = options.maxUndoStackSize ?? 50;
 
-    // Initialize button configuration with defaults
     this.buttons = {
       back: options.buttons?.back ?? null,
       drawPoint: options.buttons?.drawPoint ?? null,
@@ -214,25 +285,22 @@ export class SketchManager extends BaseObject {
       undo: options.buttons?.undo ?? null,
     } as Required<ButtonConfig>;
 
-    // Initialize callbacks with no-op defaults
     this.callbacks = {
-      onBack: options.callbacks?.onBack ?? (() => { }),
-      onFeatureAdded: options.callbacks?.onFeatureAdded ?? (() => { }),
-      onFeatureModified: options.callbacks?.onFeatureModified ?? (() => { }),
-      onFeatureDeleted: options.callbacks?.onFeatureDeleted ?? (() => { }),
-      onActiveChange: options.callbacks?.onActiveChange ?? (() => { }),
-      onModeChange: options.callbacks?.onModeChange ?? (() => { }),
+      onBack: options.callbacks?.onBack ?? noop,
+      onFeatureAdded: options.callbacks?.onFeatureAdded ?? noop,
+      onFeatureSelected: options.callbacks?.onFeatureSelected ?? noop,
+      onFeatureModified: options.callbacks?.onFeatureModified ?? noop,
+      onFeatureDeleted: options.callbacks?.onFeatureDeleted ?? noop,
+      onActiveChange: options.callbacks?.onActiveChange ?? noop,
+      onModeChange: options.callbacks?.onModeChange ?? noop,
     };
 
-    // Initialize interactions
     this.initializeInteractions();
 
-    // Bind UI elements if auto-bind is enabled (default: true)
     if (options.autoBindUI !== false) {
       this.bindUIElements();
     }
 
-    // Start inactive
     this.setActive(false);
   }
 
@@ -240,47 +308,65 @@ export class SketchManager extends BaseObject {
    * Initialize all OpenLayers interactions
    */
   private initializeInteractions(): void {
-    // Modify interaction
-    this.modifyInteraction = new Modify({
-      source: this.source,
-    });
-    this.modifyInteraction.setActive(false);
-    this.map.addInteraction(this.modifyInteraction);
-
-    // Select interaction
     this.selectInteraction = new Select({
       condition: click,
+      hitTolerance: this.selectionHitTolerance,
       layers: this.layerFilter ? this.layerFilter : undefined,
     });
     this.selectInteraction.setActive(false);
     this.map.addInteraction(this.selectInteraction);
 
-    // Translate interaction (for moving features)
+    this.modifyInteraction = this.modifyInteractionScope === 'selection'
+      ? new Modify({
+        features: this.selectInteraction.getFeatures(),
+      })
+      : new Modify({
+        source: this.source,
+      });
+    this.modifyInteraction.setActive(false);
+    this.map.addInteraction(this.modifyInteraction);
+
     this.translateInteraction = new Translate({
       features: this.selectInteraction.getFeatures(),
     });
     this.translateInteraction.setActive(false);
     this.map.addInteraction(this.translateInteraction);
 
-    // Set up event listeners
     this.setupEventListeners();
   }
 
   /**
    * Set up event listeners for interactions
-   * Notify callbacks and emit events when features are modified or moved
+   * Notify callbacks and emit events when features are selected, modified, or moved.
    */
   private setupEventListeners(): void {
-    this.modifyInteraction.on('modifystart', (event) => {
+    if (this.modifyInteractionScope === 'selection') {
+      this.listenerKeys.push(this.map.on('singleclick', (event) => {
+        if (!isSelectionMode(this.currentMode)) {
+          return;
+        }
+
+        const feature = this.findFeatureFromTap(event);
+        this.updateSelectedFeature(feature);
+      }));
+    } else {
+      this.listenerKeys.push(this.selectInteraction.on('select', () => {
+        this.notifyFeatureSelected(this.getSelectedFeature());
+      }));
+    }
+
+    this.listenerKeys.push(this.modifyInteraction.on('modifystart', (event) => {
       event.features.forEach((feature) => {
         const geometry = feature.getGeometry();
-        if (!geometry) return;
+        if (!geometry) {
+          return;
+        }
+
         this.modifyStartGeometries.set(String(getUid(feature)), geometry.clone());
       });
-    });
+    }));
 
-    // Modify end event (vertex/shape editing)
-    this.modifyInteraction.on('modifyend', (event) => {
+    this.listenerKeys.push(this.modifyInteraction.on('modifyend', (event) => {
       const features = event.features.getArray() as Feature<Geometry>[];
 
       features.forEach((feature) => {
@@ -299,18 +385,20 @@ export class SketchManager extends BaseObject {
         this.callbacks.onFeatureModified(feature);
         this.emitEvent('featuremodified', { feature });
       });
-    });
+    }));
 
-    this.translateInteraction.on('translatestart', (event) => {
+    this.listenerKeys.push(this.translateInteraction.on('translatestart', (event) => {
       event.features.forEach((feature) => {
         const geometry = feature.getGeometry();
-        if (!geometry) return;
+        if (!geometry) {
+          return;
+        }
+
         this.translateStartGeometries.set(String(getUid(feature)), geometry.clone());
       });
-    });
+    }));
 
-    // Translate end event (drag to move)
-    this.translateInteraction.on('translateend', (event) => {
+    this.listenerKeys.push(this.translateInteraction.on('translateend', (event) => {
       event.features.forEach((feature) => {
         const featureUid = String(getUid(feature));
         const previousGeometry = this.translateStartGeometries.get(featureUid);
@@ -327,7 +415,7 @@ export class SketchManager extends BaseObject {
         this.callbacks.onFeatureModified(feature);
         this.emitEvent('featuremodified', { feature });
       });
-    });
+    }));
   }
 
   /**
@@ -401,33 +489,34 @@ export class SketchManager extends BaseObject {
     switch (action) {
       case 'back':
         this.handleBack();
-        break;
+        return;
       case 'drawPoint':
         this.activateDraw('Point');
-        break;
+        return;
       case 'drawLine':
         this.activateDraw('LineString');
-        break;
+        return;
       case 'drawPolygon':
         this.activateDraw('Polygon');
-        break;
+        return;
       case 'drawCircle':
         this.activateDraw('Circle');
-        break;
+        return;
       case 'modify':
         this.activateModify();
-        break;
+        return;
       case 'select':
         this.activateSelect();
-        break;
+        return;
       case 'delete':
         this.deleteSelected();
-        break;
+        return;
       case 'undo':
         this.undo();
-        break;
+        return;
       default:
         console.warn(`Unknown action: ${action}`);
+        return;
     }
   }
 
@@ -438,24 +527,22 @@ export class SketchManager extends BaseObject {
     switch (mode) {
       case 'draw-point':
         this.activateDraw('Point');
-        break;
+        return;
       case 'draw-linestring':
         this.activateDraw('LineString');
-        break;
+        return;
       case 'draw-polygon':
         this.activateDraw('Polygon');
-        break;
+        return;
       case 'draw-circle':
         this.activateDraw('Circle');
-        break;
+        return;
       case 'modify':
         this.activateModify();
-        break;
+        return;
       case 'select':
         this.activateSelect();
-        break;
-      default:
-        break;
+        return;
     }
   }
 
@@ -488,13 +575,11 @@ export class SketchManager extends BaseObject {
     this.ensureActive();
     this.deactivateAll();
 
-    // Create new draw interaction
     this.drawInteraction = new Draw({
       source: this.source,
       type: type as GeometryType,
     });
 
-    // Handle draw end event
     this.drawInteraction.on('drawend', (event) => {
       const feature = event.feature as Feature<Geometry>;
 
@@ -526,8 +611,12 @@ export class SketchManager extends BaseObject {
   public activateModify(): void {
     this.ensureActive();
     this.deactivateAll();
-    this.modifyInteraction.setActive(true);
 
+    if (this.modifyInteractionScope === 'selection') {
+      this.selectInteraction.setActive(true);
+    }
+
+    this.modifyInteraction.setActive(true);
     this.currentMode = 'modify';
     this.notifyModeChange();
   }
@@ -550,23 +639,25 @@ export class SketchManager extends BaseObject {
    */
   public deleteSelected(): void {
     const selected = this.selectInteraction.getFeatures();
-
-    if (selected.getLength() > 0) {
-      const feature = selected.item(0) as Feature<Geometry>;
-
-      if (this.enableUndo) {
-        this.addToUndoStack({
-          type: 'delete',
-          feature: feature.clone(),
-        });
-      }
-
-      this.source.removeFeature(feature);
-      selected.clear();
-
-      this.callbacks.onFeatureDeleted(feature);
-      this.emitEvent('featuredeleted', { feature });
+    if (selected.getLength() === 0) {
+      return;
     }
+
+    const feature = selected.item(0) as Feature<Geometry>;
+
+    if (this.enableUndo) {
+      this.addToUndoStack({
+        type: 'delete',
+        feature: feature.clone(),
+      });
+    }
+
+    this.source.removeFeature(feature);
+    selected.clear();
+
+    this.callbacks.onFeatureDeleted(feature);
+    this.emitEvent('featuredeleted', { feature });
+    this.notifyFeatureSelected(null);
   }
 
   /**
@@ -578,20 +669,22 @@ export class SketchManager extends BaseObject {
     }
 
     const lastAction = this.undoStack.pop();
-    if (!lastAction) return;
+    if (!lastAction) {
+      return;
+    }
 
     switch (lastAction.type) {
       case 'add':
         this.source.removeFeature(lastAction.feature);
-        break;
+        return;
       case 'delete':
         this.source.addFeature(lastAction.feature);
-        break;
+        return;
       case 'modify':
         if (lastAction.previousGeometry) {
           lastAction.feature.setGeometry(lastAction.previousGeometry.clone());
         }
-        break;
+        return;
     }
   }
 
@@ -601,7 +694,6 @@ export class SketchManager extends BaseObject {
   private addToUndoStack(action: UndoAction): void {
     this.undoStack.push(action);
 
-    // Limit stack size
     if (this.undoStack.length > this.maxUndoStackSize) {
       this.undoStack.shift();
     }
@@ -672,6 +764,7 @@ export class SketchManager extends BaseObject {
    */
   public clearSelection(): void {
     this.selectInteraction.getFeatures().clear();
+    this.notifyFeatureSelected(null);
   }
 
   /**
@@ -690,6 +783,14 @@ export class SketchManager extends BaseObject {
   }
 
   /**
+   * Notify external app of feature selection changes.
+   */
+  private notifyFeatureSelected(feature: Feature<Geometry> | null): void {
+    this.callbacks.onFeatureSelected(feature);
+    this.emitEvent('featureselected', { feature });
+  }
+
+  /**
    * Update button selectors (for dynamically loaded UI)
    */
   public updateButtons(buttons: Partial<ButtonConfig>): void {
@@ -704,6 +805,8 @@ export class SketchManager extends BaseObject {
   public destroy(): void {
     this.unbindUIElements();
     this.setActive(false);
+    unByKey(this.listenerKeys);
+    this.listenerKeys.length = 0;
 
     this.map.removeInteraction(this.modifyInteraction);
     this.map.removeInteraction(this.selectInteraction);
@@ -713,11 +816,84 @@ export class SketchManager extends BaseObject {
   }
 
   private ensureActive(): void {
-    if (this.isActive) {
-      return;
+    if (!this.isActive) {
+      this.setActive(true);
+    }
+  }
+
+  private updateSelectedFeature(feature: Feature<Geometry> | null): void {
+    const selected = this.selectInteraction.getFeatures();
+    selected.clear();
+
+    if (feature) {
+      selected.push(feature);
     }
 
-    this.setActive(true);
+    this.notifyFeatureSelected(feature);
+  }
+
+  private findFeatureFromTap(
+    event: MapBrowserEvent<PointerEvent | KeyboardEvent | WheelEvent>
+  ): Feature<Geometry> | null {
+    const mapHitFeature = this.findFeatureAtPixel(event.pixel);
+    if (mapHitFeature) {
+      return mapHitFeature;
+    }
+
+    if (!this.useSourceSelectionFallback) {
+      return null;
+    }
+
+    return this.findNearestFeature(event.coordinate);
+  }
+
+  private findFeatureAtPixel(pixel: number[]): Feature<Geometry> | null {
+    let matchingFeature: Feature<Geometry> | null = null;
+
+    this.map.forEachFeatureAtPixel(
+      pixel,
+      (featureLike, layerLike) => {
+        if (!(featureLike instanceof FeatureClass)) {
+          return undefined;
+        }
+
+        if (Array.isArray(featureLike.get('features'))) {
+          return undefined;
+        }
+
+        const layer = layerLike as Layer | null | undefined;
+        if (this.layerFilter && (!layer || !this.layerFilter(layer))) {
+          return undefined;
+        }
+
+        matchingFeature = featureLike as Feature<Geometry>;
+        return matchingFeature;
+      },
+      { hitTolerance: this.selectionHitTolerance }
+    );
+
+    return matchingFeature;
+  }
+
+  private findNearestFeature(coordinate: Coordinate): Feature<Geometry> | null {
+    const closestFeature = this.source.getClosestFeatureToCoordinate(coordinate) as Feature<Geometry> | null;
+    if (!closestFeature) {
+      return null;
+    }
+
+    const closestPoint = getClosestPointOnFeature(closestFeature, coordinate);
+    if (!closestPoint) {
+      return null;
+    }
+
+    const tapPixel = this.map.getPixelFromCoordinate(coordinate);
+    const closestPixel = this.map.getPixelFromCoordinate(closestPoint);
+    const pixelDistance = Math.sqrt(getSquaredDistance(
+      tapPixel as unknown as Coordinate,
+      closestPixel as unknown as Coordinate
+    ));
+
+    return pixelDistance <= this.selectionHitTolerance ? closestFeature : null;
   }
 
   private emitEvent<K extends keyof SketchManagerEventMap>(
