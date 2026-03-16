@@ -69,6 +69,10 @@ export type {
 export { UserManager } from './collaborative/UserManager';
 export { DocumentManager } from './collaborative/DocumentManager';
 export type {
+  CollaborativeDocumentDraft,
+  CollaborativeDocumentDraftFile,
+} from './collaborative/DocumentManager';
+export type {
   User,
   Community,
   CommunityMember,

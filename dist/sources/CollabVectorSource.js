@@ -13,6 +13,7 @@ import GeoJSON from 'ol/format/GeoJSON';
 import proj4 from 'proj4';
 import { getCenter } from 'ol/extent';
 import { transformExtent } from 'ol/proj';
+import { DocumentManager, isCollaborativeDocumentDraft } from '../collaborative/DocumentManager';
 import { SOURCE_ERROR_CODES } from './ErrorCodes';
 import PathUtils from '../utils/PathUtils';
 const pathUtils = new PathUtils();
@@ -178,19 +179,19 @@ export default class CollabVectorSource extends VectorSource {
         this._dispatchEditChange();
     }
     async submitChanges() {
-        const actions = this._getTransactionActions();
         this.dispatchEvent({ type: 'savestart' });
-        if (!actions.length) {
-            this.dispatchEvent({ type: 'saveend' });
-            return null;
-        }
-        const client = this._options.client;
-        if (typeof client?.addTransaction !== 'function') {
-            const error = new Error('Collaborative client does not support addTransaction');
-            this.dispatchEvent({ type: 'saveend', status: 'error', error });
-            throw error;
-        }
         try {
+            const actions = await this._resolveTransactionDocumentActions(this._getTransactionActions());
+            if (!actions.length) {
+                this.dispatchEvent({ type: 'saveend' });
+                return null;
+            }
+            const client = this._options.client;
+            if (typeof client?.addTransaction !== 'function') {
+                const error = new Error('Collaborative client does not support addTransaction');
+                this.dispatchEvent({ type: 'saveend', status: 'error', error });
+                throw error;
+            }
             const response = await client.addTransaction(this.table.databaseId, {
                 actions,
                 comment: `source vecteur: ${this.table.database}":"${this.table.name}`,
@@ -382,6 +383,47 @@ export default class CollabVectorSource extends VectorSource {
             ...this._buildTransactionActions(this.deletedFeatures, 'DELETE', false),
             ...this._buildTransactionActions(this.updatedFeatures, 'UPDATE', false),
         ];
+    }
+    _getDocumentColumnNames() {
+        return Object.entries(this.table.columns)
+            .filter(([, column]) => typeof column.type === 'string' && column.type.toLowerCase() === 'document')
+            .map(([columnName]) => columnName);
+    }
+    async _resolveTransactionDocumentActions(actions) {
+        const documentColumnNames = this._getDocumentColumnNames();
+        if (!documentColumnNames.length) {
+            return actions;
+        }
+        const documentManager = new DocumentManager(this._options.client);
+        const uploadedDocumentIds = new Map();
+        return Promise.all(actions.map(async (action) => {
+            const actionData = action.data;
+            if (!actionData || typeof actionData !== 'object') {
+                return action;
+            }
+            const nextData = { ...actionData };
+            for (const columnName of documentColumnNames) {
+                const value = nextData[columnName];
+                if (!isCollaborativeDocumentDraft(value)) {
+                    continue;
+                }
+                if (value.file) {
+                    const cacheKey = JSON.stringify(value.file);
+                    let documentId = uploadedDocumentIds.get(cacheKey);
+                    if (!documentId) {
+                        documentId = await documentManager.addCollaborativeDocument(value.file);
+                        uploadedDocumentIds.set(cacheKey, documentId);
+                    }
+                    nextData[columnName] = documentId;
+                    continue;
+                }
+                nextData[columnName] = await documentManager.resolveCollaborativeDocumentValue(value);
+            }
+            return {
+                ...action,
+                data: nextData,
+            };
+        }));
     }
     _buildTransactionActions(collection, state, full) {
         return collection.getArray()

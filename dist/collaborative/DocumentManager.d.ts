@@ -6,6 +6,18 @@
  * UI-specific logic should be implemented in the consuming application.
  */
 import { ApiClient } from 'collaboratif-client-api';
+export interface CollaborativeDocumentDraftFile {
+    name: string;
+    mimeType?: string | null;
+    contentBase64: string;
+}
+export interface CollaborativeDocumentDraft {
+    kind: 'document';
+    documentId: string | null;
+    file: CollaborativeDocumentDraftFile | null;
+    removed: boolean;
+}
+export declare function isCollaborativeDocumentDraft(value: unknown): value is CollaborativeDocumentDraft;
 /**
  * Document manager for handling file and photo uploads
  */
@@ -21,6 +33,15 @@ export declare class DocumentManager {
      * @returns The URL of the uploaded document
      */
     uploadDocument(uri: string, file: Blob, filename: string, metadata?: Record<string, any>): Promise<string>;
+    /**
+     * Upload a collaborative document draft and return the stored document id.
+     */
+    addCollaborativeDocument(file: CollaborativeDocumentDraftFile): Promise<string>;
+    /**
+     * Resolve a collaborative document draft to the value expected by the
+     * transaction payload: either a stored document id or null when removed.
+     */
+    resolveCollaborativeDocumentValue(value: unknown): Promise<unknown>;
     /**
      * Delete a document by its ID
      * @param documentId - The ID of the document to delete

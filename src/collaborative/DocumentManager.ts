@@ -8,6 +8,40 @@
 
 import { ApiClient } from 'collaboratif-client-api';
 
+const COLLABORATIVE_DOCUMENT_ADD_ENDPOINT = '/../../document/add';
+
+export interface CollaborativeDocumentDraftFile {
+  name: string;
+  mimeType?: string | null;
+  contentBase64: string;
+}
+
+export interface CollaborativeDocumentDraft {
+  kind: 'document';
+  documentId: string | null;
+  file: CollaborativeDocumentDraftFile | null;
+  removed: boolean;
+}
+
+export function isCollaborativeDocumentDraft(value: unknown): value is CollaborativeDocumentDraft {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  return (value as CollaborativeDocumentDraft).kind === 'document';
+}
+
+function decodeBase64(value: string): ArrayBuffer {
+  const binaryString = atob(value);
+  const bytes = new Uint8Array(binaryString.length);
+
+  for (let index = 0; index < binaryString.length; index += 1) {
+    bytes[index] = binaryString.charCodeAt(index);
+  }
+
+  return bytes.buffer as ArrayBuffer;
+}
+
 /**
  * Document manager for handling file and photo uploads
  */
@@ -39,6 +73,61 @@ export class DocumentManager {
 
     const response = await this.apiClient.uploadFile(uri, formData);
     return response.data.url || response.data.path;
+  }
+
+  /**
+   * Upload a collaborative document draft and return the stored document id.
+   */
+  async addCollaborativeDocument(file: CollaborativeDocumentDraftFile): Promise<string> {
+    const client = this.apiClient as ApiClient & {
+      doRequest?: (
+        url: string,
+        method: string,
+        body?: Record<string, unknown> | null,
+        params?: Record<string, unknown> | null,
+        contentType?: string
+      ) => Promise<{ data?: { id?: number | string } }>;
+    };
+
+    if (typeof client.doRequest !== 'function') {
+      throw new Error('Collaborative client does not support document upload');
+    }
+
+    const blob = new Blob(
+      [decodeBase64(file.contentBase64)],
+      { type: file.mimeType ?? 'application/octet-stream' }
+    );
+
+    const response = await client.doRequest(
+      COLLABORATIVE_DOCUMENT_ADD_ENDPOINT,
+      'post',
+      { document: blob },
+      null,
+      'multipart/form-data'
+    );
+
+    const documentId = response?.data?.id;
+    if (documentId === null || documentId === undefined || documentId === '') {
+      throw new Error('Document upload did not return a document id');
+    }
+
+    return String(documentId);
+  }
+
+  /**
+   * Resolve a collaborative document draft to the value expected by the
+   * transaction payload: either a stored document id or null when removed.
+   */
+  async resolveCollaborativeDocumentValue(value: unknown): Promise<unknown> {
+    if (!isCollaborativeDocumentDraft(value)) {
+      return value;
+    }
+
+    if (value.file) {
+      return this.addCollaborativeDocument(value.file);
+    }
+
+    return value.removed ? null : value.documentId;
   }
 
   /**

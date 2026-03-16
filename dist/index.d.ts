@@ -23,6 +23,7 @@ export { WFSLayer } from './layers/WFSLayer';
 export type { CollabVectorLayerOptions, WFSLayerOptions } from './layers/types';
 export { UserManager } from './collaborative/UserManager';
 export { DocumentManager } from './collaborative/DocumentManager';
+export type { CollaborativeDocumentDraft, CollaborativeDocumentDraftFile, } from './collaborative/DocumentManager';
 export type { User, Community, CommunityMember, CommunityLayer, Table, TableColumn, Geoservice, LayerStyle, UserManagerConfig, UserManagerEvents } from './collaborative/types';
 export type { IUserStorage } from './abstracts/IUserStorage';
 export { ReportManager } from './report/ReportManager';

@@ -21,6 +21,7 @@ import { Geometry } from 'ol/geom';
 
 import { CollabVectorSourceOptions } from './types';
 import { Table } from '../collaborative/types';
+import { DocumentManager, isCollaborativeDocumentDraft } from '../collaborative/DocumentManager';
 import { SOURCE_ERROR_CODES } from './ErrorCodes';
 
 import PathUtils from '../utils/PathUtils';
@@ -235,23 +236,23 @@ export default class CollabVectorSource extends VectorSource {
   }
 
   public async submitChanges(): Promise<unknown> {
-    const actions = this._getTransactionActions();
-
     this.dispatchEvent({ type: 'savestart' } as any);
 
-    if (!actions.length) {
-      this.dispatchEvent({ type: 'saveend' } as any);
-      return null;
-    }
-
-    const client = this._options.client as any;
-    if (typeof client?.addTransaction !== 'function') {
-      const error = new Error('Collaborative client does not support addTransaction');
-      this.dispatchEvent({ type: 'saveend', status: 'error', error } as any);
-      throw error;
-    }
-
     try {
+      const actions = await this._resolveTransactionDocumentActions(this._getTransactionActions());
+
+      if (!actions.length) {
+        this.dispatchEvent({ type: 'saveend' } as any);
+        return null;
+      }
+
+      const client = this._options.client as any;
+      if (typeof client?.addTransaction !== 'function') {
+        const error = new Error('Collaborative client does not support addTransaction');
+        this.dispatchEvent({ type: 'saveend', status: 'error', error } as any);
+        throw error;
+      }
+
       const response = await client.addTransaction(this.table.databaseId, {
         actions,
         comment: `source vecteur: ${this.table.database}":"${this.table.name}`,
@@ -465,6 +466,60 @@ export default class CollabVectorSource extends VectorSource {
       ...this._buildTransactionActions(this.deletedFeatures, 'DELETE', false),
       ...this._buildTransactionActions(this.updatedFeatures, 'UPDATE', false),
     ];
+  }
+
+  private _getDocumentColumnNames(): string[] {
+    return Object.entries(this.table.columns)
+      .filter(([, column]) => typeof column.type === 'string' && column.type.toLowerCase() === 'document')
+      .map(([columnName]) => columnName);
+  }
+
+  private async _resolveTransactionDocumentActions(
+    actions: Array<Record<string, unknown>>
+  ): Promise<Array<Record<string, unknown>>> {
+    const documentColumnNames = this._getDocumentColumnNames();
+    if (!documentColumnNames.length) {
+      return actions;
+    }
+
+    const documentManager = new DocumentManager(this._options.client as any);
+    const uploadedDocumentIds = new Map<string, string>();
+
+    return Promise.all(actions.map(async (action) => {
+      const actionData = action.data;
+      if (!actionData || typeof actionData !== 'object') {
+        return action;
+      }
+
+      const nextData = { ...(actionData as Record<string, unknown>) };
+
+      for (const columnName of documentColumnNames) {
+        const value = nextData[columnName];
+        if (!isCollaborativeDocumentDraft(value)) {
+          continue;
+        }
+
+        if (value.file) {
+          const cacheKey = JSON.stringify(value.file);
+          let documentId = uploadedDocumentIds.get(cacheKey);
+
+          if (!documentId) {
+            documentId = await documentManager.addCollaborativeDocument(value.file);
+            uploadedDocumentIds.set(cacheKey, documentId);
+          }
+
+          nextData[columnName] = documentId;
+          continue;
+        }
+
+        nextData[columnName] = await documentManager.resolveCollaborativeDocumentValue(value);
+      }
+
+      return {
+        ...action,
+        data: nextData,
+      };
+    }));
   }
 
   private _buildTransactionActions(

@@ -45,6 +45,8 @@ export default class CollabVectorSource extends VectorSource {
     private onUpdateFeature;
     private _dispatchEditChange;
     private _getTransactionActions;
+    private _getDocumentColumnNames;
+    private _resolveTransactionDocumentActions;
     private _buildTransactionActions;
     private _serializeTransactionFeature;
     private _saveEditionCache;
