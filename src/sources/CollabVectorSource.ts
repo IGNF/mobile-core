@@ -27,6 +27,35 @@ import { SOURCE_ERROR_CODES } from './ErrorCodes';
 import PathUtils from '../utils/PathUtils';
 const pathUtils = new PathUtils();
 
+const FEATURE_TRANSACTION_STATES = {
+  insert: 'Insert',
+  update: 'Update',
+  delete: 'Delete',
+} as const;
+
+type FeatureTransactionState =
+  typeof FEATURE_TRANSACTION_STATES[keyof typeof FEATURE_TRANSACTION_STATES];
+
+function isFeatureState(
+  featureState: unknown,
+  expectedState: FeatureTransactionState
+): boolean {
+  if (featureState === expectedState) {
+    return true;
+  }
+
+  switch (expectedState) {
+    case FEATURE_TRANSACTION_STATES.insert:
+      return featureState === 'INSERT';
+    case FEATURE_TRANSACTION_STATES.update:
+      return featureState === 'UPDATE';
+    case FEATURE_TRANSACTION_STATES.delete:
+      return featureState === 'DELETE';
+    default:
+      return false;
+  }
+}
+
 export default class CollabVectorSource extends VectorSource {
 
   private _options: CollabVectorSourceOptions;
@@ -184,7 +213,7 @@ export default class CollabVectorSource extends VectorSource {
 
     if (this._isLoading) return;
 
-    (feature as any).state = 'INSERT';
+    (feature as any).state = FEATURE_TRANSACTION_STATES.insert;
 
     const columns = this.table?.columns || {};
     const geometryName = this._getGeometryColumnName();
@@ -204,16 +233,16 @@ export default class CollabVectorSource extends VectorSource {
 
     const featureState = (feature as any).state;
 
-    if (featureState === 'INSERT') {
+    if (isFeatureState(featureState, FEATURE_TRANSACTION_STATES.insert)) {
       this.removeFeatureFromCollection(this.insertedFeatures, feature);
     } else {
-      if (featureState === 'UPDATE') {
+      if (isFeatureState(featureState, FEATURE_TRANSACTION_STATES.update)) {
         this.removeFeatureFromCollection(this.updatedFeatures, feature);
       }
       this.deletedFeatures.push(feature);
     }
 
-    (feature as any).state = 'DELETE';
+    (feature as any).state = FEATURE_TRANSACTION_STATES.delete;
     this.writeChanges();
   }
 
@@ -385,7 +414,7 @@ export default class CollabVectorSource extends VectorSource {
       actions.insert.forEach((serialized: any) => {
         const feature = this.deserializeFeature(serialized, formatWKT);
         if (feature) {
-          (feature as any).state = 'INSERT';
+          (feature as any).state = FEATURE_TRANSACTION_STATES.insert;
           this.insertedFeatures.push(feature);
         }
       });
@@ -395,7 +424,7 @@ export default class CollabVectorSource extends VectorSource {
       actions.update.forEach((serialized: any) => {
         const feature = this.deserializeFeature(serialized, formatWKT);
         if (feature) {
-          (feature as any).state = 'UPDATE';
+          (feature as any).state = FEATURE_TRANSACTION_STATES.update;
           this.updatedFeatures.push(feature);
         }
       });
@@ -405,7 +434,7 @@ export default class CollabVectorSource extends VectorSource {
       actions.delete.forEach((serialized: any) => {
         const feature = this.deserializeFeature(serialized, formatWKT);
         if (feature) {
-          (feature as any).state = 'DELETE';
+          (feature as any).state = FEATURE_TRANSACTION_STATES.delete;
           this.deletedFeatures.push(feature);
         }
       });
@@ -438,15 +467,22 @@ export default class CollabVectorSource extends VectorSource {
     }
   }
 
-  private onUpdateFeature(feature: Feature): void {
+  private onUpdateFeature(feature: Feature, event?: { key?: string }): void {
     if (this._isLoading) return;
 
     const featureState = (feature as any).state;
+    const updatedKey = event?.key;
 
-    if (featureState === 'INSERT') return;
+    if (isFeatureState(featureState, FEATURE_TRANSACTION_STATES.insert)) return;
 
-    if (featureState !== 'UPDATE') {
-      (feature as any).state = 'UPDATE';
+    if (updatedKey && updatedKey !== 'geometry') {
+      const updates = ((feature as any).updates || {}) as Record<string, boolean>;
+      updates[updatedKey] = true;
+      (feature as any).updates = updates;
+    }
+
+    if (!isFeatureState(featureState, FEATURE_TRANSACTION_STATES.update)) {
+      (feature as any).state = FEATURE_TRANSACTION_STATES.update;
       this.updatedFeatures.push(feature);
     }
 
@@ -462,9 +498,9 @@ export default class CollabVectorSource extends VectorSource {
 
   private _getTransactionActions(): Array<Record<string, unknown>> {
     return [
-      ...this._buildTransactionActions(this.insertedFeatures, 'INSERT', true),
-      ...this._buildTransactionActions(this.deletedFeatures, 'DELETE', false),
-      ...this._buildTransactionActions(this.updatedFeatures, 'UPDATE', false),
+      ...this._buildTransactionActions(this.insertedFeatures, FEATURE_TRANSACTION_STATES.insert, true),
+      ...this._buildTransactionActions(this.deletedFeatures, FEATURE_TRANSACTION_STATES.delete, false),
+      ...this._buildTransactionActions(this.updatedFeatures, FEATURE_TRANSACTION_STATES.update, false),
     ];
   }
 
@@ -524,11 +560,11 @@ export default class CollabVectorSource extends VectorSource {
 
   private _buildTransactionActions(
     collection: Collection<Feature>,
-    state: 'INSERT' | 'UPDATE' | 'DELETE',
+    state: FeatureTransactionState,
     full: boolean
   ): Array<Record<string, unknown>> {
     return collection.getArray()
-      .filter((feature) => (feature as any).state === state)
+      .filter((feature) => isFeatureState((feature as any).state, state))
       .map((feature) => ({
         data: this._serializeTransactionFeature(feature, full),
         state,
@@ -694,7 +730,7 @@ export default class CollabVectorSource extends VectorSource {
 
       const idProperty = this._getIdPropertyName();
       this.insertedFeatures.getArray().forEach((feature) => {
-        if ((feature as any).state !== 'INSERT') return;
+        if (!isFeatureState((feature as any).state, FEATURE_TRANSACTION_STATES.insert)) return;
         if (this._containsFeature(finalFeatures, feature, idProperty)) return;
         finalFeatures.push(feature);
       });
