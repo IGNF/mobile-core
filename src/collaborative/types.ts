@@ -38,7 +38,7 @@ export interface Community {
   id: number;
   name: string;
   description?: string;
-  logo?: string;
+  logo_url?: string;
   layers?: CommunityLayer[];
   active?: boolean;
   offline_allowed?: boolean;
