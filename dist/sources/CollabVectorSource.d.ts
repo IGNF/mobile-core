@@ -59,6 +59,7 @@ export default class CollabVectorSource extends VectorSource {
     private _loadFromOfflineCache;
     private _saveFeaturesToOfflineCache;
     private _getOfflineCacheKeys;
+    private _getRequestedFields;
     getWFSParams(extent: number[], projectionCode: string): Record<string, unknown>;
     private _countPayloadFeatures;
     private _readFeatures;

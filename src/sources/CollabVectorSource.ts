@@ -825,6 +825,32 @@ export default class CollabVectorSource extends VectorSource {
     return [`${baseKey}:${tileCoord.join('-')}`, baseKey];
   }
 
+  private _getRequestedFields(): string {
+    const requestedFields = new Set<string>();
+    const idProperty = this._getIdPropertyName();
+    const geometryName = this._getGeometryColumnName();
+
+    if (idProperty) {
+      requestedFields.add(idProperty);
+    }
+
+    if (geometryName) {
+      requestedFields.add(geometryName);
+    }
+
+    for (const columnName of Object.keys(this.table?.columns || {})) {
+      if (columnName) {
+        requestedFields.add(columnName);
+      }
+    }
+
+    // Collaborative updates need the optimistic-lock token loaded with each
+    // feature so stale edits can be rejected as conflicts on submit.
+    requestedFields.add('gcms_fingerprint');
+
+    return Array.from(requestedFields).join(',');
+  }
+
   public getWFSParams(extent: number[], projectionCode: string): Record<string, unknown> {
     const bboxExtent = transformExtent(extent, projectionCode, this.localProperties.srsName);
 
@@ -836,6 +862,7 @@ export default class CollabVectorSource extends VectorSource {
       outputFormat,
       typeName: this.table.name,
       bbox: bboxExtent.join(','),
+      fields: this._getRequestedFields(),
       filter: JSON.stringify(this.localProperties.featureFilter || {}),
       maxFeatures: this._options.maxFeatures || COLLAB_VECTOR_DEFAULT_VALUES.MAX_FEATURES,
       version: '1.1.0'

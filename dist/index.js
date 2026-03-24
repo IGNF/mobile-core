@@ -19430,6 +19430,14 @@ class jo extends $n {
     const s = n.getTileCoordForCoordAndResolution(Le(t), e);
     return [`${i}:${s.join("-")}`, i];
   }
+  _getRequestedFields() {
+    var n;
+    const t = /* @__PURE__ */ new Set(), e = this._getIdPropertyName(), i = this._getGeometryColumnName();
+    e && t.add(e), i && t.add(i);
+    for (const s of Object.keys(((n = this.table) == null ? void 0 : n.columns) || {}))
+      s && t.add(s);
+    return t.add("gcms_fingerprint"), Array.from(t).join(",");
+  }
   getWFSParams(t, e) {
     const i = So(t, e, this.localProperties.srsName);
     return {
@@ -19438,6 +19446,7 @@ class jo extends $n {
       outputFormat: this._options.outputFormat || "JSON",
       typeName: this.table.name,
       bbox: i.join(","),
+      fields: this._getRequestedFields(),
       filter: JSON.stringify(this.localProperties.featureFilter || {}),
       maxFeatures: this._options.maxFeatures || Pi.MAX_FEATURES,
       version: "1.1.0"
