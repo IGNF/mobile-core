@@ -53,6 +53,7 @@ export interface CommunityLayer {
   title: string;
   visible?: boolean;
   opacity?: number;
+  format?: 'CSV' | 'JSON';
   geoservice?: Geoservice;
 	table?: Table;
 	database?: number;
