@@ -6,10 +6,54 @@ import { ApiClient } from "collaboratif-client-api";
 import { Browser } from '@capacitor/browser';
 import { App } from '@capacitor/app';
 import { CapacitorHttp } from '@capacitor/core';
+import { TEMP_CODE_VERIFIER_KEY, ACCESS_TOKEN_EXPIRES_AT_KEY, REFRESH_TOKEN_EXPIRES_AT_KEY } from "./Values";
 export class AuthManager {
     constructor(config) {
         this.config = config;
         this.apiClient = new ApiClient(config.apiBaseUrl, config.oAuthBaseUrl, config.oAuthClientId);
+    }
+    /**
+     * Get a stored timestamp from localStorage
+     * @param key - The key to get the stored timestamp for
+     * @returns The stored timestamp or null if not found
+     */
+    getStoredTimestamp(key) {
+        const rawValue = localStorage.getItem(key);
+        return rawValue ? Number(rawValue) : null;
+    }
+    /**
+     * Persist the token metadata (expiresIn and refreshExpiresIn) to localStorage
+     * @param tokens - The tokens to persist
+     * @returns The tokens to persist
+     */
+    persistTokenMetadata(tokens) {
+        const now = Date.now();
+        if (tokens.expiresIn) {
+            localStorage.setItem(ACCESS_TOKEN_EXPIRES_AT_KEY, (now + (tokens.expiresIn * 1000)).toString());
+        }
+        else {
+            localStorage.removeItem(ACCESS_TOKEN_EXPIRES_AT_KEY);
+        }
+        if (tokens.refreshExpiresIn) {
+            localStorage.setItem(REFRESH_TOKEN_EXPIRES_AT_KEY, (now + (tokens.refreshExpiresIn * 1000)).toString());
+        }
+        else {
+            localStorage.removeItem(REFRESH_TOKEN_EXPIRES_AT_KEY);
+        }
+    }
+    /**
+     * Clear the temporary code verifier from localStorage
+     */
+    clearTempCodeVerifier() {
+        localStorage.removeItem(TEMP_CODE_VERIFIER_KEY);
+    }
+    /**
+     * Clear the local authentication metadata from localStorage
+     */
+    clearLocalAuthMetadata() {
+        this.clearTempCodeVerifier();
+        localStorage.removeItem(ACCESS_TOKEN_EXPIRES_AT_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_EXPIRES_AT_KEY);
     }
     /**
      * Classic 'old' login with email and password
@@ -52,19 +96,11 @@ export class AuthManager {
      */
     async loginWithOAuth(redirectUri, platform) {
         try {
-            const clearTempCodeVerifier = async () => {
-                try {
-                    localStorage.removeItem('temp_code_verifier');
-                }
-                catch (error) {
-                    throw new Error(AUTH_ERROR_CODES.CODE_VERIFIER_MISSING);
-                }
-            };
             // Generate PKCE values
             const codeVerifier = generateCodeVerifier();
             const codeChallenge = await generateCodeChallengeFromVerifier(codeVerifier);
             // Store code verifier for later use in token exchange
-            localStorage.setItem('temp_code_verifier', codeVerifier);
+            localStorage.setItem(TEMP_CODE_VERIFIER_KEY, codeVerifier);
             const authUrl = `${this.config.oAuthBaseUrl}/auth?` + new URLSearchParams({
                 client_id: this.config.oAuthClientId,
                 redirect_uri: redirectUri,
@@ -112,7 +148,7 @@ export class AuthManager {
                         const code = urlObject.searchParams.get('code');
                         const error = urlObject.searchParams.get('error');
                         if (error) {
-                            await clearTempCodeVerifier();
+                            this.clearTempCodeVerifier();
                             settle({
                                 success: false,
                                 user: null,
@@ -121,7 +157,7 @@ export class AuthManager {
                             return;
                         }
                         if (!code) {
-                            await clearTempCodeVerifier();
+                            this.clearTempCodeVerifier();
                             settle({
                                 success: false,
                                 user: null,
@@ -129,27 +165,10 @@ export class AuthManager {
                             });
                             return;
                         }
-                        // Exchange code for tokens
-                        const tokenResult = await this.exchangeCodeForTokens(code, redirectUri);
-                        if (!tokenResult.success || !tokenResult.tokens) {
-                            settle({ success: false, user: null, error: tokenResult.error });
-                            return;
-                        }
-                        this.apiClient.setExternalToken(tokenResult.tokens.accessToken, tokenResult.tokens.refreshToken, tokenResult.tokens.expiresIn, tokenResult.tokens.refreshExpiresIn);
-                        if (tokenResult.tokens.refreshExpiresIn) {
-                            const refreshTokenExpiresAt = Date.now() + (tokenResult.tokens.refreshExpiresIn * 1000);
-                            localStorage.setItem('refresh_token_expires_at', refreshTokenExpiresAt.toString());
-                        }
-                        const response = await this.apiClient.user.get('me');
-                        const user = mapApiUserToUser(response.data);
-                        if (!user) {
-                            settle({ success: false, user: null, error: new Error(AUTH_ERROR_CODES.FAILED_TO_FETCH_USER_INFO) });
-                            return;
-                        }
-                        settle({ success: true, user });
+                        settle(await this.completeOAuthCallback(code, redirectUri));
                     }
                     catch (err) {
-                        await clearTempCodeVerifier();
+                        this.clearTempCodeVerifier();
                         settle({
                             success: false,
                             user: null,
@@ -164,7 +183,7 @@ export class AuthManager {
                             if (ignoreBrowserFinished) {
                                 return;
                             }
-                            await clearTempCodeVerifier();
+                            this.clearTempCodeVerifier();
                             settle({
                                 success: false,
                                 user: null,
@@ -174,7 +193,7 @@ export class AuthManager {
                         await Browser.open({ url: authUrl });
                     }
                     catch (error) {
-                        await clearTempCodeVerifier();
+                        this.clearTempCodeVerifier();
                         settle({
                             success: false,
                             user: null,
@@ -186,9 +205,51 @@ export class AuthManager {
         }
         catch (error) {
             try {
-                localStorage.removeItem('temp_code_verifier');
+                this.clearTempCodeVerifier();
             }
             catch { }
+            return {
+                success: false,
+                user: null,
+                error: new Error(AUTH_ERROR_CODES.OAUTH_CALLBACK_FAILED),
+            };
+        }
+    }
+    /**
+     * Complete an OAuth redirect/callback once the authorization code has been received.
+     * Consumers can use this for web callback routes while mobile flows reuse the same path internally.
+     * @param code the authorization code returned by the OAuth provider
+     * @param redirectUri the redirect URI used when starting the OAuth flow
+     * @returns the authenticated user and tokens on success
+     */
+    async completeOAuthCallback(code, redirectUri) {
+        try {
+            const tokenResult = await this.exchangeCodeForTokens(code, redirectUri);
+            if (!tokenResult.success || !tokenResult.tokens) {
+                return {
+                    success: false,
+                    user: null,
+                    error: tokenResult.error,
+                };
+            }
+            this.apiClient.setExternalToken(tokenResult.tokens.accessToken, tokenResult.tokens.refreshToken, tokenResult.tokens.expiresIn, tokenResult.tokens.refreshExpiresIn);
+            const response = await this.apiClient.user.get('me');
+            const user = mapApiUserToUser(response.data);
+            if (!user) {
+                return {
+                    success: false,
+                    user: null,
+                    error: new Error(AUTH_ERROR_CODES.FAILED_TO_FETCH_USER_INFO),
+                };
+            }
+            return {
+                success: true,
+                user,
+                tokens: tokenResult.tokens,
+            };
+        }
+        catch (error) {
+            this.clearTempCodeVerifier();
             return {
                 success: false,
                 user: null,
@@ -205,8 +266,8 @@ export class AuthManager {
                 return { success: false, error: new Error(AUTH_ERROR_CODES.REFRESH_TOKEN_MISSING) };
             }
             // Check if refresh token is expired
-            const refreshExpiresAt = localStorage.getItem('refresh_token_expires_at');
-            if (refreshExpiresAt && Date.now() >= parseInt(refreshExpiresAt, 10)) {
+            const refreshExpiresAt = this.getStoredTimestamp(REFRESH_TOKEN_EXPIRES_AT_KEY);
+            if (refreshExpiresAt !== null && Date.now() >= refreshExpiresAt) {
                 return { success: false, error: new Error(AUTH_ERROR_CODES.REFRESH_TOKEN_EXPIRED) };
             }
             const tokenUrl = `${this.config.oAuthBaseUrl}/token`;
@@ -225,14 +286,14 @@ export class AuthManager {
                 return { success: false, error: new Error(AUTH_ERROR_CODES.REFRESH_TOKEN_FAILED) };
             }
             const tokenResponse = response.data;
-            const accessTokenExpiresAt = new Date(Date.now() + (tokenResponse.expires_in * 1000));
-            localStorage.setItem('access_token_expires_at', accessTokenExpiresAt.toISOString());
             const authTokens = {
                 accessToken: tokenResponse.access_token,
                 refreshToken: tokenResponse.refresh_token,
+                idToken: tokenResponse.id_token,
                 expiresIn: tokenResponse.expires_in,
                 refreshExpiresIn: tokenResponse.refresh_expires_in,
             };
+            this.persistTokenMetadata(authTokens);
             return { success: true, tokens: authTokens };
         }
         catch (err) {
@@ -247,7 +308,7 @@ export class AuthManager {
    */
     async exchangeCodeForTokens(code, redirectUri) {
         try {
-            const codeVerifier = localStorage.getItem('temp_code_verifier');
+            const codeVerifier = localStorage.getItem(TEMP_CODE_VERIFIER_KEY);
             if (!codeVerifier) {
                 return {
                     success: false,
@@ -275,18 +336,20 @@ export class AuthManager {
                     error: new Error(AUTH_ERROR_CODES.TOKEN_EXCHANGE_FAILED),
                 };
             }
-            localStorage.removeItem('temp_code_verifier');
             const authTokens = {
                 accessToken: response.data.access_token,
                 refreshToken: response.data.refresh_token,
+                idToken: response.data.id_token,
                 expiresIn: response.data.expires_in,
                 refreshExpiresIn: response.data.refresh_expires_in,
             };
+            this.persistTokenMetadata(authTokens);
+            this.clearTempCodeVerifier();
             return { success: true, tokens: authTokens };
         }
         catch (err) {
             try {
-                localStorage.removeItem('temp_code_verifier');
+                this.clearTempCodeVerifier();
             }
             catch (cleanupError) {
                 throw new Error(AUTH_ERROR_CODES.TOKEN_EXCHANGE_FAILED);
@@ -309,6 +372,7 @@ export class AuthManager {
     async logout(accessToken, refreshToken) {
         try {
             this.clearInMemoryAuthState();
+            this.clearLocalAuthMetadata();
             void this.revokeToken(accessToken);
             void this.revokeToken(refreshToken);
             return { success: true };
@@ -367,13 +431,12 @@ export class AuthManager {
      */
     async isAccessTokenExpired(bufferSeconds = 60) {
         try {
-            const expiresAt = localStorage.getItem('access_token_expires_at');
-            if (!expiresAt) {
+            const expiresAt = this.getStoredTimestamp(ACCESS_TOKEN_EXPIRES_AT_KEY);
+            if (expiresAt === null) {
                 return true; // No expiry stored, consider expired
             }
-            const expiryTime = parseInt(expiresAt, 10);
             const bufferMs = bufferSeconds * 1000;
-            return Date.now() >= (expiryTime - bufferMs);
+            return Date.now() >= (expiresAt - bufferMs);
         }
         catch (error) {
             console.error('isAccessTokenExpired => error', error);

@@ -31,6 +31,7 @@ export interface RevokeTokenResult {
 export interface AuthResult {
     success: boolean;
     user: User | null;
+    tokens?: AuthTokens;
     error?: Error;
 }
 /**
@@ -59,6 +60,7 @@ export interface TokenExchangeResult {
 export interface AuthTokens {
     accessToken: string;
     refreshToken?: string;
+    idToken?: string;
     expiresIn?: number;
     refreshExpiresIn?: number;
 }

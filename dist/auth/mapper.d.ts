@@ -6,6 +6,8 @@ export interface ApiUserResponse {
     firstName: string;
     lastName: string;
     username: string;
+    avatar?: string;
+    description?: string;
     communities?: Community[];
     communities_member?: CommunityMember[];
 }

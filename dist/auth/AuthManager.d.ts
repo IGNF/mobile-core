@@ -5,6 +5,26 @@ export declare class AuthManager {
     config: AuthManagerConfig;
     constructor(config: AuthManagerConfig);
     /**
+     * Get a stored timestamp from localStorage
+     * @param key - The key to get the stored timestamp for
+     * @returns The stored timestamp or null if not found
+     */
+    private getStoredTimestamp;
+    /**
+     * Persist the token metadata (expiresIn and refreshExpiresIn) to localStorage
+     * @param tokens - The tokens to persist
+     * @returns The tokens to persist
+     */
+    private persistTokenMetadata;
+    /**
+     * Clear the temporary code verifier from localStorage
+     */
+    private clearTempCodeVerifier;
+    /**
+     * Clear the local authentication metadata from localStorage
+     */
+    private clearLocalAuthMetadata;
+    /**
      * Classic 'old' login with email and password
      * @param email
      * @param password
@@ -17,6 +37,14 @@ export declare class AuthManager {
      * @returns the authentication result
      */
     loginWithOAuth(redirectUri: string, platform: Platform): Promise<AuthResult>;
+    /**
+     * Complete an OAuth redirect/callback once the authorization code has been received.
+     * Consumers can use this for web callback routes while mobile flows reuse the same path internally.
+     * @param code the authorization code returned by the OAuth provider
+     * @param redirectUri the redirect URI used when starting the OAuth flow
+     * @returns the authenticated user and tokens on success
+     */
+    completeOAuthCallback(code: string, redirectUri: string): Promise<AuthResult>;
     /**
    * Refresh the access token using the stored refresh token
    */
