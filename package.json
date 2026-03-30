@@ -24,6 +24,9 @@
 	"author": "IGN",
 	"license": "IGN",
 	"dependencies": {
+		"@capacitor/app": "^8.1.0",
+		"@capacitor/browser": "^8.0.3",
+		"@capacitor/core": "^8.3.0",
 		"collaboratif-client-api": "github:IGNF/collaboratif-client-api#2.0",
 		"ol": "^10.6.1",
 		"ol-ext": "^4.0.35",

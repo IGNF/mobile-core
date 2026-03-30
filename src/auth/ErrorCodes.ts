@@ -1,0 +1,15 @@
+export enum AUTH_ERROR_CODES {
+  FAILED_TO_DISCONNECT = 'Failed to disconnect from the API',
+  LOGIN_FAILED = 'Login failed',
+  UNAUTHORIZED = 'Unauthorized',
+  CODE_VERIFIER_MISSING = 'Code verifier missing',
+  OAUTH_REDIRECT = 'OAuth redirect',
+  OAUTH_CALLBACK_FAILED = 'OAuth callback failed',
+  NO_AUTHORIZATION_CODE = 'No authorization code',
+  FAILED_TO_FETCH_USER_INFO = 'Failed to fetch user info',
+  NO_ACCESS_TOKEN_AFTER_EXCHANGE = 'No access token after exchange',
+  TOKEN_EXCHANGE_FAILED = 'Token exchange failed',
+  REFRESH_TOKEN_MISSING = 'Refresh token missing',
+  REFRESH_TOKEN_EXPIRED = 'Refresh token expired',
+  REFRESH_TOKEN_FAILED = 'Refresh token failed',
+}
