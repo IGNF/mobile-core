@@ -1,4 +1,4 @@
-import { AuthManagerConfig, AuthResult, LogoutResult, Platform, RefreshResult, RevokeTokenResult } from "./type";
+import { AuthManagerConfig, AuthResult, LogoutResult, RefreshResult, RevokeTokenResult } from "./type";
 import { ApiClient } from "collaboratif-client-api";
 export declare class AuthManager {
     apiClient: ApiClient;
@@ -36,7 +36,7 @@ export declare class AuthManager {
      * @param redirectUri the redirect URI to use for the OAuth flow - is different depending on the platform
      * @returns the authentication result
      */
-    loginWithOAuth(redirectUri: string, platform: Platform): Promise<AuthResult>;
+    loginWithOAuth(redirectUri: string): Promise<AuthResult>;
     /**
      * Complete an OAuth redirect/callback once the authorization code has been received.
      * Consumers can use this for web callback routes while mobile flows reuse the same path internally.

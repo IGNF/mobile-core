@@ -36,5 +36,5 @@ export { CollabStylePresets } from './styles/CollabStylePresets';
 export { StyleManager } from './styles/StyleManager';
 export { DEFAULT_STYLE, DEFAULT_STYLE_VALUES } from './styles/DefaultStyle';
 export { AuthManager } from './auth/AuthManager';
-export type { AuthManagerConfig, AuthResult, AuthTokens, LogoutResult, Platform, RefreshResult, RevokeTokenResult, TokenExchangeResult } from './auth/type';
+export type { AuthManagerConfig, AuthResult, AuthTokens, LogoutResult, RefreshResult, RevokeTokenResult, TokenExchangeResult } from './auth/type';
 //# sourceMappingURL=index.d.ts.map

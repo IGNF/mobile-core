@@ -6,6 +6,7 @@ import { ApiClient } from "collaboratif-client-api";
 import { Browser } from '@capacitor/browser';
 import { App } from '@capacitor/app';
 import { CapacitorHttp } from '@capacitor/core';
+import { Device } from '@capacitor/device';
 import { TEMP_CODE_VERIFIER_KEY, ACCESS_TOKEN_EXPIRES_AT_KEY, REFRESH_TOKEN_EXPIRES_AT_KEY } from "./Values";
 export class AuthManager {
     constructor(config) {
@@ -94,11 +95,12 @@ export class AuthManager {
      * @param redirectUri the redirect URI to use for the OAuth flow - is different depending on the platform
      * @returns the authentication result
      */
-    async loginWithOAuth(redirectUri, platform) {
+    async loginWithOAuth(redirectUri) {
         try {
             // Generate PKCE values
             const codeVerifier = generateCodeVerifier();
             const codeChallenge = await generateCodeChallengeFromVerifier(codeVerifier);
+            const platform = (await Device.getInfo()).platform;
             // Store code verifier for later use in token exchange
             localStorage.setItem(TEMP_CODE_VERIFIER_KEY, codeVerifier);
             const authUrl = `${this.config.oAuthBaseUrl}/auth?` + new URLSearchParams({

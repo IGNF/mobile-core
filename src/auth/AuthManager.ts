@@ -1,7 +1,7 @@
 import { AUTH_ERROR_CODES } from "./ErrorCodes";
 import { generateCodeVerifier, generateCodeChallengeFromVerifier } from "./helper";
 import { ApiUserResponse, mapApiUserToUser } from "./mapper";
-import { AuthManagerConfig, AuthResult, AuthTokens, LogoutResult, Platform, RefreshResult, TokenResponse, RevokeTokenResult, TokenExchangeResult } from "./type";
+import { AuthManagerConfig, AuthResult, AuthTokens, LogoutResult, RefreshResult, TokenResponse, RevokeTokenResult, TokenExchangeResult } from "./type";
 import { ApiClient } from "collaboratif-client-api";
 
 // Capacitor dependencies
@@ -9,6 +9,7 @@ import { Browser } from '@capacitor/browser';
 import { App } from '@capacitor/app';
 import { CapacitorHttp } from '@capacitor/core';
 import type { PluginListenerHandle } from '@capacitor/core';
+import { Device } from '@capacitor/device';
 
 import { TEMP_CODE_VERIFIER_KEY, ACCESS_TOKEN_EXPIRES_AT_KEY, REFRESH_TOKEN_EXPIRES_AT_KEY } from "./Values";
 
@@ -109,11 +110,12 @@ export class AuthManager {
    * @param redirectUri the redirect URI to use for the OAuth flow - is different depending on the platform
    * @returns the authentication result
    */
-  public async loginWithOAuth(redirectUri: string, platform: Platform): Promise<AuthResult> {
+  public async loginWithOAuth(redirectUri: string): Promise<AuthResult> {
     try {
       // Generate PKCE values
       const codeVerifier = generateCodeVerifier();
       const codeChallenge = await generateCodeChallengeFromVerifier(codeVerifier);
+      const platform = (await Device.getInfo()).platform;
 
       // Store code verifier for later use in token exchange
       localStorage.setItem(TEMP_CODE_VERIFIER_KEY, codeVerifier);

@@ -1,11 +1,6 @@
 import type { User } from "../collaborative/types";
 
 /**
- * Platform type
- */
-export type Platform = 'web' | 'ios' | 'android';
-
-/**
  * Auth manager configuration
  */
 export interface AuthManagerConfig {

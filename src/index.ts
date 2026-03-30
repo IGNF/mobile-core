@@ -114,7 +114,6 @@ export type {
   AuthResult,
   AuthTokens,
   LogoutResult,
-  Platform,
   RefreshResult,
   RevokeTokenResult,
   TokenExchangeResult
