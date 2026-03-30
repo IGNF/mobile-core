@@ -27,9 +27,6 @@ export declare class UserManager {
     off<K extends keyof UserManagerEvents>(event: K, handler: (data: UserManagerEvents[K]) => void): void;
     once<K extends keyof UserManagerEvents>(event: K, handler: (data: UserManagerEvents[K]) => void): void;
     private emit;
-    login(username: string, password: string): Promise<User>;
-    initialize(): Promise<void>;
-    logout(): Promise<void>;
     /**
      * Get a user
      * Call getCommunity for each community in the user's communities_member array

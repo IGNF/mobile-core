@@ -106,3 +106,16 @@ export type { SymbolCacheEntry, FeatureTypeConfig } from './styles/CollabStyler'
 export { CollabStylePresets } from './styles/CollabStylePresets';
 export { StyleManager } from './styles/StyleManager';
 export { DEFAULT_STYLE, DEFAULT_STYLE_VALUES } from './styles/DefaultStyle';
+
+// Auth
+export { AuthManager } from './auth/AuthManager';
+export type {
+  AuthManagerConfig,
+  AuthResult,
+  AuthTokens,
+  LogoutResult,
+  Platform,
+  RefreshResult,
+  RevokeTokenResult,
+  TokenExchangeResult
+} from './auth/type';

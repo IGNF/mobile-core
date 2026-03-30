@@ -12,4 +12,6 @@ export enum AUTH_ERROR_CODES {
   REFRESH_TOKEN_MISSING = 'Refresh token missing',
   REFRESH_TOKEN_EXPIRED = 'Refresh token expired',
   REFRESH_TOKEN_FAILED = 'Refresh token failed',
+  UNKNOWN_ERROR = 'Unknown error',
+  TOKEN_MISSING = 'Token missing',
 }

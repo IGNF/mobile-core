@@ -53,46 +53,6 @@ export class UserManager {
     this._eventManager.emit(event, data);
   }
 
-  async login(username: string, password: string): Promise<User> {
-    try {
-      const userResponse = await this.apiClient.login(username, password); // see what exists instead
-      if (!userResponse.data) {
-        throw new Error('Login failed');
-      }
-      const user = userResponse.data;
-      this.emit('user:connect', { user });
-      return user;
-    } catch (error: any) {
-      this.emit('user:error', { error, code: 'LOGIN_FAILED' });
-      throw error;
-    }
-  }
-
-  async initialize(): Promise<void> {
-    try {
-      const cacheData = await this.storage.getCredentials();
-      if (cacheData && cacheData.username && cacheData.password) {
-        const user = await this.login(cacheData.username, cacheData.password);
-        await this.storage.saveUser(user);
-      }
-    } catch (error: any) {
-      this.emit('user:error', { error, code: 'INIT_FAILED' });
-      throw error;
-    }
-  }
-
-  async logout(): Promise<void> {
-    try {
-      await this.apiClient.disconnect(); // see what exists instead
-      await this.storage.clearUser();
-      await this.storage.clearCredentials();
-      this.emit('user:disconnect', {});
-    } catch (error: any) {
-      this.emit('user:error', { error, code: 'LOGOUT_FAILED' });
-      throw error;
-    }
-  }
-
   /**
    * Get a user
    * Call getCommunity for each community in the user's communities_member array
@@ -329,7 +289,6 @@ export class UserManager {
     if (url === (await this.apiClient.getBaseUrl())) {
       return;
     }
-    await this.logout();
     await this.apiClient.setBaseUrl(url);
   }
 }

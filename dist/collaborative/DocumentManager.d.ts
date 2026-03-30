@@ -51,7 +51,15 @@ export declare class DocumentManager {
      * Get the URL of a document by its ID
      * @param documentId - The ID of the document
      * @returns The URL of the document
+     *
+     * Note: The exact URL pattern depends on the API server configuration.
+     * Common patterns are:
+     * - ${baseUrl}/document/${documentId}
+     * - ${baseUrl}/documents/${documentId}
+     * - ${baseUrl}/api/v1/documents/${documentId}
+     *
+     * This should be verified against the actual API documentation.
      */
-    getDocumentUrl(documentId: number): Promise<string>;
+    getDocumentUrl(documentId: number): string;
 }
 //# sourceMappingURL=DocumentManager.d.ts.map

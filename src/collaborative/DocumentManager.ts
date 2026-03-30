@@ -71,7 +71,7 @@ export class DocumentManager {
       }
     }
 
-    const response = await this.apiClient.uploadFile(uri, formData);
+    const response = await this.apiClient.doRequest(uri, 'post', formData, null, 'multipart/form-data');
     return response.data.url || response.data.path;
   }
 
@@ -135,16 +135,25 @@ export class DocumentManager {
    * @param documentId - The ID of the document to delete
    */
   async deleteDocument(documentId: number): Promise<void> {
-    await this.apiClient.deleteDocument(documentId);
+    await this.apiClient.doRequest(`${this.apiClient.getBaseUrl()}/document/${documentId}`, 'delete');
   }
 
   /**
    * Get the URL of a document by its ID
    * @param documentId - The ID of the document
    * @returns The URL of the document
+   * 
+   * Note: The exact URL pattern depends on the API server configuration.
+   * Common patterns are:
+   * - ${baseUrl}/document/${documentId}
+   * - ${baseUrl}/documents/${documentId}
+   * - ${baseUrl}/api/v1/documents/${documentId}
+   * 
+   * This should be verified against the actual API documentation.
    */
-  async getDocumentUrl(documentId: number): Promise<string> {
-    const response = await this.apiClient.getDocument(documentId.toString());
-    return response.data.url;
+  getDocumentUrl(documentId: number): string {
+    const baseUrl = this.apiClient.getBaseUrl();
+    // TODO: Verify this URL pattern with the collaboratif-client-api documentation
+    return `${baseUrl}/document/${documentId}`;
   }
 }
