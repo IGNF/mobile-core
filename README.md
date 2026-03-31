@@ -106,7 +106,9 @@ events.once('cache:complete', (data) => {
 
 ### Authentification
 
-`AuthManager` gere l'authentification OAuth et par mot de passe.
+`AuthManager` gere l'authentification utilisateur. Deux modes sont supportes : connexion classique par email/mot de passe, et connexion OAuth avec flux PKCE. Le comportement OAuth differe selon la plateforme (web ou mobile).
+
+#### Configuration
 
 ```typescript
 import { AuthManager } from '@ign/mobile-core';
@@ -116,27 +118,141 @@ const auth = new AuthManager({
   oAuthBaseUrl: 'https://auth.example.com',
   oAuthClientId: 'mon-client-id',
 });
+```
 
-// Connexion par mot de passe
+#### Connexion par mot de passe
+
+Methode classique via `collaboratif-client-api`. Les identifiants sont transmis directement a l'API.
+
+```typescript
 const result = await auth.loginWithPassword('email@example.com', 'motdepasse');
 
-// Connexion OAuth (flux PKCE)
-const oauthResult = await auth.loginWithOAuth('myapp://callback');
+if (result.success) {
+  console.log(result.user); // User connecte
+}
+```
 
-// Rafraichissement du token
-const refreshed = await auth.refreshAccessToken(tokens.refreshToken);
+#### Connexion OAuth (PKCE)
 
-// Verification de l'expiration
-const expired = await auth.isAccessTokenExpired(60); // buffer de 60s
+Le flux OAuth utilise PKCE (Proof Key for Code Exchange) pour securiser l'echange de tokens. Le `redirectUri` et le comportement different selon la plateforme.
 
-// Deconnexion
+##### Sur mobile (iOS / Android)
+
+Sur mobile, `loginWithOAuth` ouvre un navigateur in-app via `Browser.open()` (Capacitor). Un listener `App.addListener('appUrlOpen', ...)` ecoute le deep link de retour. Lorsque le fournisseur OAuth redirige vers le `redirectUri` (un scheme custom comme `myapp://callback`), le listener intercepte l'URL, extrait le code d'autorisation, et finalise automatiquement l'echange de tokens en interne. La methode retourne directement le resultat complet.
+
+```typescript
+// Mobile : tout se fait en un seul appel
+const result = await auth.loginWithOAuth('myapp://callback');
+
+if (result.success) {
+  console.log(result.user);
+  console.log(result.tokens);
+}
+```
+
+Un second listener `Browser.addListener('browserFinished', ...)` detecte si l'utilisateur ferme le navigateur in-app avant d'avoir termine l'authentification, auquel cas un resultat d'echec est retourne.
+
+##### Sur le web
+
+Sur le web, `loginWithOAuth` redirige l'utilisateur vers le fournisseur OAuth via `window.location.href`. La methode retourne immediatement un resultat avec `success: false` et l'erreur `OAUTH_REDIRECT` (ce n'est pas une vraie erreur, mais un signal indiquant que la redirection est en cours).
+
+Apres authentification, le fournisseur redirige vers le `redirectUri` (par exemple `/auth/callback`). C'est a l'application consommatrice de recuperer le code d'autorisation depuis l'URL et d'appeler `completeOAuthCallback` pour finaliser l'echange :
+
+```typescript
+// Etape 1 : lancer la redirection
+const result = await auth.loginWithOAuth('https://monapp.com/auth/callback');
+// result.error.message === 'OAuth redirect' → redirection en cours
+
+// Etape 2 : dans la route /auth/callback de l'application
+const urlParams = new URLSearchParams(window.location.search);
+const code = urlParams.get('code');
+
+const authResult = await auth.completeOAuthCallback(code, 'https://monapp.com/auth/callback');
+
+if (authResult.success) {
+  console.log(authResult.user);
+  console.log(authResult.tokens);
+}
+```
+
+> **Note :** `completeOAuthCallback` est utilisee en interne par le flux mobile (appelee automatiquement par le listener). Cote web, elle doit etre appelee explicitement par l'application car la redirection rompt le contexte d'execution JavaScript.
+
+#### Gestion des tokens
+
+Les metadonnees d'expiration des tokens sont persistees dans `localStorage` pour survivre aux rechargements de page.
+
+```typescript
+// Verifier si le token est expire (avec un buffer de securite)
+const expired = await auth.isAccessTokenExpired(60); // expire dans moins de 60s
+
+// Rafraichir le token d'acces
+if (expired) {
+  const refreshed = await auth.refreshAccessToken(tokens.refreshToken);
+  if (refreshed.success) {
+    // Utiliser refreshed.tokens
+  }
+}
+```
+
+Le rafraichissement verifie d'abord si le refresh token lui-meme n'est pas expire avant de tenter l'appel au serveur.
+
+#### Deconnexion
+
+La deconnexion nettoie d'abord l'etat local (memoire + localStorage), puis revoque les tokens cote serveur de maniere asynchrone (fire-and-forget). Cela garantit que la deconnexion locale est immediate, meme si la revocation reseau echoue ou est lente.
+
+```typescript
 await auth.logout(accessToken, refreshToken);
 ```
 
-**Types retournes :**
-- `AuthResult` - `{ success, user?, tokens?, error? }`
-- `AuthTokens` - `{ accessToken, refreshToken, idToken, expiresIn, refreshExpiresIn }`
-- `RefreshResult` - `{ success, tokens?, error? }`
+#### Codes d'erreur
+
+L'enum `AUTH_ERROR_CODES` fournit les codes d'erreur possibles :
+
+| Code | Description |
+|------|-------------|
+| `UNAUTHORIZED` | Identifiants invalides (401) |
+| `LOGIN_FAILED` | Echec de connexion (autre erreur) |
+| `OAUTH_REDIRECT` | Redirection OAuth en cours (web uniquement, pas une vraie erreur) |
+| `OAUTH_CALLBACK_FAILED` | Echec du callback OAuth |
+| `NO_AUTHORIZATION_CODE` | Code d'autorisation absent de l'URL de retour |
+| `CODE_VERIFIER_MISSING` | Code verifier PKCE introuvable dans le localStorage |
+| `TOKEN_EXCHANGE_FAILED` | Echec de l'echange code → tokens |
+| `REFRESH_TOKEN_MISSING` | Refresh token non fourni |
+| `REFRESH_TOKEN_EXPIRED` | Refresh token expire |
+| `REFRESH_TOKEN_FAILED` | Echec du rafraichissement |
+| `FAILED_TO_FETCH_USER_INFO` | Tokens obtenus mais impossible de recuperer les infos utilisateur |
+| `FAILED_TO_DISCONNECT` | Echec lors de la deconnexion de l'API |
+
+#### Types
+
+```typescript
+interface AuthManagerConfig {
+  apiBaseUrl: string;      // URL de base de l'API
+  oAuthBaseUrl: string;    // URL du fournisseur OAuth
+  oAuthClientId: string;   // ID client OAuth
+}
+
+interface AuthResult {
+  success: boolean;
+  user: User | null;
+  tokens?: AuthTokens;
+  error?: Error;
+}
+
+interface AuthTokens {
+  accessToken: string;
+  refreshToken?: string;
+  idToken?: string;
+  expiresIn?: number;       // Duree de vie en secondes
+  refreshExpiresIn?: number;
+}
+
+interface RefreshResult {
+  success: boolean;
+  tokens?: AuthTokens;
+  error?: Error;
+}
+```
 
 ---
 
