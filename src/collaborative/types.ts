@@ -30,7 +30,13 @@ export interface User {
 export interface CommunityMember {
   id: number;
   community_id: number;
+  community_name: string;
+  active?: boolean;
+  date?: string;
+  grids?: string[];
+  role?: string;
   profile?: any;
+  user_id?: number;
 }
 
 /**
