@@ -40,6 +40,8 @@ export interface Community {
     active?: boolean;
     offline_allowed?: boolean;
     profile?: any;
+    open_without_affiliation?: boolean;
+    open_with_email?: Record<string, string>;
 }
 /**
  * Community layer definition
