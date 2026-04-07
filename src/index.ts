@@ -31,6 +31,7 @@ export type { IReportStorage } from './abstracts/IReportStorage';
 // Cache Types
 export type {
   CacheMetadata,
+  VectorCacheMetadata,
   RasterCacheConfig,
   RasterCacheOptions,
   VectorCacheConfig,
@@ -40,6 +41,7 @@ export type {
 // Cache Management
 export { default as ExtentManager } from './cache/ExtentManager';
 export { default as RasterCacheManager } from './cache/RasterCacheManager';
+export { VectorCacheManager } from './cache/VectorCacheManager';
 
 // Sources
 export { default as CollabVectorSource } from './sources/CollabVectorSource';

@@ -25,6 +25,11 @@ export interface CollabVectorSourceOptions extends SourceOptions {
   userManager?: {
     apiClient?: Pick<ApiClient, 'getDocument'>;
   };
+  /**
+   * Explicit namespace used for offline feature cache keys and local edition cache.
+   * Use this when multiple communities or offline packages can point to the same table.
+   */
+  cacheNamespace?: string;
   cacheUrl?: string;
   cache?: any; // ICacheStorage - avoiding circular dependency
   online?: boolean;

@@ -37,6 +37,16 @@ function isFeatureState(featureState, expectedState) {
             return false;
     }
 }
+function uniqueStrings(values) {
+    const result = [];
+    for (const value of values) {
+        if (!value || result.includes(value)) {
+            continue;
+        }
+        result.push(value);
+    }
+    return result;
+}
 export default class CollabVectorSource extends VectorSource {
     constructor(options) {
         const projectionUtils = new ProjectionUtils();
@@ -73,11 +83,18 @@ export default class CollabVectorSource extends VectorSource {
         }
         const table = opts.table;
         let strategy = opts.strategy || bbox;
+        const cacheNamespace = CollabVectorSource._getCacheNamespace(opts);
+        const legacyEditionCacheFile = pathUtils.sanitizeFileName(`${table.database}-${table.name}-editions.txt`);
+        const editionCacheFile = cacheNamespace
+            ? pathUtils.sanitizeFileName(`${cacheNamespace}-editions.txt`)
+            : legacyEditionCacheFile;
         const properties = {
             online: opts.online ?? true,
             useCacheWhenOnline: opts.useCacheWhenOnline === true,
+            cacheNamespace,
             cacheUrl: opts.cacheUrl,
-            editionCacheFile: pathUtils.sanitizeFileName(`${table.database}-${table.name}-editions.txt`),
+            editionCacheFile,
+            legacyEditionCacheFile: editionCacheFile !== legacyEditionCacheFile ? legacyEditionCacheFile : undefined,
             formatWKT: new WKT(),
             tiled: false,
             tileGrid: undefined,
@@ -103,6 +120,13 @@ export default class CollabVectorSource extends VectorSource {
             useSpatialIndex: true,
             wrapX: opts.wrapX,
         };
+    }
+    static _getCacheNamespace(options) {
+        const rawNamespace = options.cacheNamespace?.trim();
+        if (!rawNamespace) {
+            return undefined;
+        }
+        return pathUtils.sanitizeFileName(rawNamespace);
     }
     _initCollabVectorSource() {
         const table = this._options.table || {};
@@ -304,8 +328,12 @@ export default class CollabVectorSource extends VectorSource {
         const editionCacheFile = this.localProperties.editionCacheFile;
         if (!editionCacheFile)
             return;
+        const editionCacheKeys = uniqueStrings([
+            editionCacheFile,
+            this.localProperties.legacyEditionCacheFile,
+        ]);
         if (this._cache) {
-            this._loadEditionCache(editionCacheFile)
+            this._loadEditionCacheFromCandidates(editionCacheKeys)
                 .then(actions => {
                 if (actions) {
                     this._restoreActions(actions);
@@ -317,7 +345,13 @@ export default class CollabVectorSource extends VectorSource {
         }
         else {
             try {
-                const cached = localStorage.getItem(editionCacheFile);
+                let cached = null;
+                for (const cacheKey of editionCacheKeys) {
+                    cached = localStorage.getItem(cacheKey);
+                    if (cached) {
+                        break;
+                    }
+                }
                 if (cached) {
                     const actions = JSON.parse(cached);
                     this._restoreActions(actions);
@@ -531,6 +565,15 @@ export default class CollabVectorSource extends VectorSource {
             return null;
         }
     }
+    async _loadEditionCacheFromCandidates(cacheKeys) {
+        for (const cacheKey of cacheKeys) {
+            const actions = await this._loadEditionCache(cacheKey);
+            if (actions) {
+                return actions;
+            }
+        }
+        return null;
+    }
     setLoading(isLoading) {
         this._isLoading = isLoading;
     }
@@ -564,7 +607,7 @@ export default class CollabVectorSource extends VectorSource {
         try {
             let payload = [];
             const isOnline = this.localProperties.online !== false;
-            const canReadCache = Boolean(this.localProperties.cacheUrl);
+            const canReadCache = Boolean(this.localProperties.cacheUrl || this.localProperties.cacheNamespace);
             const useCacheWhenOnline = this.localProperties.useCacheWhenOnline === true;
             if (canReadCache && (!isOnline || useCacheWhenOnline)) {
                 payload = await this._loadFromOfflineCache(extent, resolution);
@@ -631,7 +674,7 @@ export default class CollabVectorSource extends VectorSource {
         if (!this._cache || typeof this._cache.loadFeatures !== 'function') {
             return [];
         }
-        const keys = this._getOfflineCacheKeys(extent, resolution);
+        const keys = this._getOfflineCacheKeys(extent, resolution, true);
         for (const key of keys) {
             try {
                 const cachedFeatures = await this._cache.loadFeatures(key);
@@ -659,14 +702,27 @@ export default class CollabVectorSource extends VectorSource {
             // Offline cache is best effort
         }
     }
-    _getOfflineCacheKeys(extent, resolution) {
-        const baseKey = `${this.table.database}:${this.table.name}`;
+    getCacheNamespace() {
+        return this.localProperties.cacheNamespace || this._getLegacyCacheNamespace();
+    }
+    getOfflineCacheKeys(extent, resolution) {
+        return this._getOfflineCacheKeys(extent, resolution);
+    }
+    _getOfflineCacheKeys(extent, resolution, includeLegacyFallback = false) {
+        const legacyBaseKey = this._getLegacyCacheNamespace();
+        const baseKeys = uniqueStrings([
+            this.localProperties.cacheNamespace || legacyBaseKey,
+            includeLegacyFallback ? legacyBaseKey : undefined,
+        ]);
         const tileGrid = this.localProperties.tileGrid;
         if (!tileGrid) {
-            return [baseKey];
+            return baseKeys;
         }
         const tileCoord = tileGrid.getTileCoordForCoordAndResolution(getCenter(extent), resolution);
-        return [`${baseKey}:${tileCoord.join('-')}`, baseKey];
+        return uniqueStrings(baseKeys.flatMap((baseKey) => [`${baseKey}:${tileCoord.join('-')}`, baseKey]));
+    }
+    _getLegacyCacheNamespace() {
+        return `${this.table.database}:${this.table.name}`;
     }
     getWFSParams(extent, projectionCode) {
         const bboxExtent = transformExtent(extent, projectionCode, this.localProperties.srsName);

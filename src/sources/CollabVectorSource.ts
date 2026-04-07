@@ -56,6 +56,20 @@ function isFeatureState(
   }
 }
 
+function uniqueStrings(values: Array<string | undefined>): string[] {
+  const result: string[] = [];
+
+  for (const value of values) {
+    if (!value || result.includes(value)) {
+      continue;
+    }
+
+    result.push(value);
+  }
+
+  return result;
+}
+
 export default class CollabVectorSource extends VectorSource {
 
   private _options: CollabVectorSourceOptions;
@@ -110,12 +124,22 @@ export default class CollabVectorSource extends VectorSource {
 
     const table = opts.table;
     let strategy = opts.strategy || bbox;
+    const cacheNamespace = CollabVectorSource._getCacheNamespace(opts);
+    const legacyEditionCacheFile = pathUtils.sanitizeFileName(
+      `${table.database}-${table.name}-editions.txt`
+    );
+    const editionCacheFile = cacheNamespace
+      ? pathUtils.sanitizeFileName(`${cacheNamespace}-editions.txt`)
+      : legacyEditionCacheFile;
 
     const properties: Record<string, any> = {
       online: opts.online ?? true,
       useCacheWhenOnline: opts.useCacheWhenOnline === true,
+      cacheNamespace,
       cacheUrl: opts.cacheUrl,
-      editionCacheFile: pathUtils.sanitizeFileName(`${table.database}-${table.name}-editions.txt`),
+      editionCacheFile,
+      legacyEditionCacheFile:
+        editionCacheFile !== legacyEditionCacheFile ? legacyEditionCacheFile : undefined,
       formatWKT: new WKT(),
       tiled: false,
       tileGrid: undefined,
@@ -144,6 +168,17 @@ export default class CollabVectorSource extends VectorSource {
       useSpatialIndex: true,
       wrapX: opts.wrapX,
     };
+  }
+
+  private static _getCacheNamespace(
+    options: CollabVectorSourceOptions
+  ): string | undefined {
+    const rawNamespace = options.cacheNamespace?.trim();
+    if (!rawNamespace) {
+      return undefined;
+    }
+
+    return pathUtils.sanitizeFileName(rawNamespace);
   }
 
   private _initCollabVectorSource(): void {
@@ -383,9 +418,13 @@ export default class CollabVectorSource extends VectorSource {
   public loadChanges(): void {
     const editionCacheFile = this.localProperties.editionCacheFile;
     if (!editionCacheFile) return;
+    const editionCacheKeys = uniqueStrings([
+      editionCacheFile,
+      this.localProperties.legacyEditionCacheFile,
+    ]);
 
     if (this._cache) {
-      this._loadEditionCache(editionCacheFile)
+      this._loadEditionCacheFromCandidates(editionCacheKeys)
         .then(actions => {
           if (actions) {
             this._restoreActions(actions);
@@ -396,7 +435,13 @@ export default class CollabVectorSource extends VectorSource {
         });
     } else {
       try {
-        const cached = localStorage.getItem(editionCacheFile);
+        let cached: string | null = null;
+        for (const cacheKey of editionCacheKeys) {
+          cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            break;
+          }
+        }
         if (cached) {
           const actions = JSON.parse(cached);
           this._restoreActions(actions);
@@ -653,6 +698,19 @@ export default class CollabVectorSource extends VectorSource {
     }
   }
 
+  private async _loadEditionCacheFromCandidates(
+    cacheKeys: string[]
+  ): Promise<any | null> {
+    for (const cacheKey of cacheKeys) {
+      const actions = await this._loadEditionCache(cacheKey);
+      if (actions) {
+        return actions;
+      }
+    }
+
+    return null;
+  }
+
   public setLoading(isLoading: boolean): void {
     this._isLoading = isLoading;
   }
@@ -706,7 +764,9 @@ export default class CollabVectorSource extends VectorSource {
     try {
       let payload: unknown = [];
       const isOnline = this.localProperties.online !== false;
-      const canReadCache = Boolean(this.localProperties.cacheUrl);
+      const canReadCache = Boolean(
+        this.localProperties.cacheUrl || this.localProperties.cacheNamespace
+      );
       const useCacheWhenOnline = this.localProperties.useCacheWhenOnline === true;
 
       if (canReadCache && (!isOnline || useCacheWhenOnline)) {
@@ -782,7 +842,7 @@ export default class CollabVectorSource extends VectorSource {
       return [];
     }
 
-    const keys = this._getOfflineCacheKeys(extent, resolution);
+    const keys = this._getOfflineCacheKeys(extent, resolution, true);
 
     for (const key of keys) {
       try {
@@ -813,16 +873,38 @@ export default class CollabVectorSource extends VectorSource {
     }
   }
 
-  private _getOfflineCacheKeys(extent: number[], resolution: number): string[] {
-    const baseKey = `${this.table.database}:${this.table.name}`;
+  public getCacheNamespace(): string {
+    return this.localProperties.cacheNamespace || this._getLegacyCacheNamespace();
+  }
+
+  public getOfflineCacheKeys(extent: number[], resolution: number): string[] {
+    return this._getOfflineCacheKeys(extent, resolution);
+  }
+
+  private _getOfflineCacheKeys(
+    extent: number[],
+    resolution: number,
+    includeLegacyFallback = false
+  ): string[] {
+    const legacyBaseKey = this._getLegacyCacheNamespace();
+    const baseKeys = uniqueStrings([
+      this.localProperties.cacheNamespace || legacyBaseKey,
+      includeLegacyFallback ? legacyBaseKey : undefined,
+    ]);
     const tileGrid: TileGrid | undefined = this.localProperties.tileGrid;
 
     if (!tileGrid) {
-      return [baseKey];
+      return baseKeys;
     }
 
     const tileCoord = tileGrid.getTileCoordForCoordAndResolution(getCenter(extent as any), resolution);
-    return [`${baseKey}:${tileCoord.join('-')}`, baseKey];
+    return uniqueStrings(
+      baseKeys.flatMap((baseKey) => [`${baseKey}:${tileCoord.join('-')}`, baseKey])
+    );
+  }
+
+  private _getLegacyCacheNamespace(): string {
+    return `${this.table.database}:${this.table.name}`;
   }
 
   public getWFSParams(extent: number[], projectionCode: string): Record<string, unknown> {

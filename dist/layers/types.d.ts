@@ -9,6 +9,11 @@ export interface CollabVectorLayerOptions {
     name: string;
     url: string;
     client: ApiClient;
+    /**
+     * Explicit namespace used for offline feature cache keys and local edition cache.
+     * Use this when multiple communities or offline packages can point to the same table.
+     */
+    cacheNamespace?: string;
     cacheUrl?: string;
     renderMode?: string;
     table: Table;

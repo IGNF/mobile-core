@@ -14,9 +14,12 @@ export class CollabVectorLayer extends VectorLayer {
         super(superOptions);
         this.set('name', `${options.database}:${options.name}`);
         sourceOptions.client = options.client;
-        if (options.cacheUrl) {
+        sourceOptions.cacheNamespace = options.cacheNamespace;
+        if (options.cacheUrl || options.cacheNamespace) {
             sourceOptions.cacheUrl = options.cacheUrl;
-            sourceOptions.online = sourceOptions.online != undefined ? sourceOptions.online : false;
+            if (options.cacheUrl && sourceOptions.online == undefined) {
+                sourceOptions.online = false;
+            }
             this.set('cache', true);
         }
         this.createSource(options, sourceOptions, options.table);

@@ -1,4 +1,4 @@
-import { W as e } from "./index-B8N7UW-F.js";
+import { W as e } from "./index-ms17kt2V.js";
 class o extends e {
   constructor() {
     super(), this._lastWindow = null;
@@ -16,4 +16,4 @@ new o();
 export {
   o as BrowserWeb
 };
-//# sourceMappingURL=web-Bdh_vIRm.js.map
+//# sourceMappingURL=web-BVRsKuWB.js.map

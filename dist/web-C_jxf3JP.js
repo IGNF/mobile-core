@@ -1,4 +1,4 @@
-import { W as w } from "./index-B8N7UW-F.js";
+import { W as w } from "./index-ms17kt2V.js";
 class y extends w {
   async getId() {
     return {
@@ -95,4 +95,4 @@ class y extends w {
 export {
   y as DeviceWeb
 };
-//# sourceMappingURL=web-CK669-pw.js.map
+//# sourceMappingURL=web-C_jxf3JP.js.map

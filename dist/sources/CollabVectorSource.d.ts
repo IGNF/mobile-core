@@ -28,6 +28,7 @@ export default class CollabVectorSource extends VectorSource {
     updatedFeatures: Collection<Feature>;
     constructor(options: CollabVectorSourceOptions);
     private static _computeVectorSourceOptions;
+    private static _getCacheNamespace;
     private _initCollabVectorSource;
     getTable(): Table;
     onAddFeature(feature: Feature): void;
@@ -51,6 +52,7 @@ export default class CollabVectorSource extends VectorSource {
     private _serializeTransactionFeature;
     private _saveEditionCache;
     private _loadEditionCache;
+    private _loadEditionCacheFromCandidates;
     setLoading(isLoading: boolean): void;
     reload(): void;
     loaderFn(extent: number[], resolution: number, projection: any, success?: (features: Feature[]) => void, failure?: () => void): void;
@@ -58,7 +60,10 @@ export default class CollabVectorSource extends VectorSource {
     private _loadFromOnline;
     private _loadFromOfflineCache;
     private _saveFeaturesToOfflineCache;
+    getCacheNamespace(): string;
+    getOfflineCacheKeys(extent: number[], resolution: number): string[];
     private _getOfflineCacheKeys;
+    private _getLegacyCacheNamespace;
     getWFSParams(extent: number[], projectionCode: string): Record<string, unknown>;
     private _countPayloadFeatures;
     private _readFeatures;

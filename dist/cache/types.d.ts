@@ -21,6 +21,10 @@ export interface VectorCacheMetadata extends CacheMetadata {
     id_guichet: number;
     nom: string;
     layers: CollabVectorLayerOptions[];
+    date?: string;
+    extents?: Extent[];
+    extentNames?: string[];
+    loaded?: boolean;
 }
 /**
  * Raster cache configuration

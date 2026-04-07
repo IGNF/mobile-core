@@ -312,6 +312,12 @@ const vectorCache = new VectorCacheManager(monCacheStorage, apiClient);
 // Recuperer les couches en cache pour une communaute
 const layers = await vectorCache.getCacheLayers(community);
 
+// Generer un namespace stable pour une couche mise en cache
+const cacheNamespace = vectorCache.getLayerCacheNamespace(
+  { id: '1', id_guichet: community.id },
+  layer
+);
+
 // Ajouter au cache
 await vectorCache.addCache('ma-carte', layers);
 
@@ -366,6 +372,7 @@ const source = new CollabVectorSource({
   online: true,
   outputFormat: 'JSON',
   cache: monCacheStorage,    // Optionnel : cache hors-ligne
+  cacheNamespace: 'community-42-cache-1-ma-table',
   useCacheWhenOnline: false,
 });
 
@@ -374,6 +381,12 @@ source.insertedFeatures;    // Entites ajoutees localement
 source.updatedFeatures;     // Entites modifiees localement
 source.deletedFeatures;     // Entites supprimees localement
 source.preservedFeatures;   // Entites persistantes entre rechargements
+
+// Clef de cache offline effective
+source.getCacheNamespace();
+
+// Clefs de cache utilisees pour une emprise / resolution donnees
+source.getOfflineCacheKeys(extent, resolution);
 ```
 
 **Strategies de chargement :** `bbox` (par emprise) ou `tile` (par tuile).
@@ -438,6 +451,7 @@ const layer = new CollabVectorLayer({
   name: 'ma-table',
   url: 'https://wfs.example.com',
   client: apiClient,
+  cacheNamespace: 'community-42-cache-1-ma-table',
   table: maTable,
   style: monStyle,
 });
