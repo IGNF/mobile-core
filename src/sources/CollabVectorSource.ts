@@ -128,6 +128,7 @@ export default class CollabVectorSource extends VectorSource {
     const legacyEditionCacheFile = pathUtils.sanitizeFileName(
       `${table.database}-${table.name}-editions.txt`
     );
+    const legacyCacheFallback = opts.legacyCacheFallback !== false;
     const editionCacheFile = cacheNamespace
       ? pathUtils.sanitizeFileName(`${cacheNamespace}-editions.txt`)
       : legacyEditionCacheFile;
@@ -139,7 +140,10 @@ export default class CollabVectorSource extends VectorSource {
       cacheUrl: opts.cacheUrl,
       editionCacheFile,
       legacyEditionCacheFile:
-        editionCacheFile !== legacyEditionCacheFile ? legacyEditionCacheFile : undefined,
+        legacyCacheFallback && editionCacheFile !== legacyEditionCacheFile
+          ? legacyEditionCacheFile
+          : undefined,
+      legacyCacheFallback,
       formatWKT: new WKT(),
       tiled: false,
       tileGrid: undefined,
@@ -887,9 +891,10 @@ export default class CollabVectorSource extends VectorSource {
     includeLegacyFallback = false
   ): string[] {
     const legacyBaseKey = this._getLegacyCacheNamespace();
+    const allowLegacyFallback = this.localProperties.legacyCacheFallback !== false;
     const baseKeys = uniqueStrings([
       this.localProperties.cacheNamespace || legacyBaseKey,
-      includeLegacyFallback ? legacyBaseKey : undefined,
+      includeLegacyFallback && allowLegacyFallback ? legacyBaseKey : undefined,
     ]);
     const tileGrid: TileGrid | undefined = this.localProperties.tileGrid;
 

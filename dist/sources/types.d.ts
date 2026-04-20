@@ -27,6 +27,11 @@ export interface CollabVectorSourceOptions extends SourceOptions {
      * Use this when multiple communities or offline packages can point to the same table.
      */
     cacheNamespace?: string;
+    /**
+     * Keeps the historical fallback to legacy cache keys and edition files.
+     * Disable this when a namespaced layer must stay isolated from the default table cache.
+     */
+    legacyCacheFallback?: boolean;
     cacheUrl?: string;
     cache?: any;
     online?: boolean;

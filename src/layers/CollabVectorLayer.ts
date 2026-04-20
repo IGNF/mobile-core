@@ -24,6 +24,7 @@ export class CollabVectorLayer extends VectorLayer<CollabVectorSource> {
     this.set('name', `${options.database}:${options.name}`);
     sourceOptions.client = options.client;
     sourceOptions.cacheNamespace = options.cacheNamespace;
+    sourceOptions.legacyCacheFallback = options.legacyCacheFallback;
 
     if (options.cacheUrl || options.cacheNamespace) {
       sourceOptions.cacheUrl = options.cacheUrl;
