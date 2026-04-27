@@ -45,11 +45,13 @@ export interface CommunityMember {
 export interface Community {
   id: number;
   name: string;
+  editorial?: string;
   description?: string;
   logo_url?: string;
   layers?: CommunityLayer[];
   active?: boolean;
   offline_allowed?: boolean;
+  all_members_can_valid?: boolean;
   profile?: any;
   open_without_affiliation?: boolean;
   open_with_email?: Record<string, string>;
