@@ -22,6 +22,7 @@ export interface User {
     description?: string;
     communities: Community[];
     communities_member?: CommunityMember[];
+    shared_themes?: Array<Record<string, unknown>>;
 }
 export interface CommunityMember {
     id: number;
