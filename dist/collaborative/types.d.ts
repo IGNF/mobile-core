@@ -51,6 +51,17 @@ export interface Community {
     profile?: any;
     open_without_affiliation?: boolean;
     open_with_email?: Record<string, string>;
+    report_statuses?: Record<string, string>;
+    attributes?: unknown[];
+    default_comment?: string;
+    extent?: unknown;
+    functionnalities?: string[];
+    listed?: boolean;
+    zoom?: number;
+    max_zoom?: number;
+    min_zoom?: number;
+    position?: string;
+    shared_georem?: string;
 }
 /**
  * Community layer definition
