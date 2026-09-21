@@ -99,7 +99,7 @@ export declare class CollabStyler {
      * @param fstyle The feature style configuration
      * @param feature The feature being styled (unused for now)
      */
-    setImage(olStyle: Style, fstyle: StyleRule, feature: Feature): void;
+    setImage(olStyle: Style, fstyle: StyleRule, _feature: Feature): void;
     /**
      * Create a Text style from feature style configuration
      * @param fstyle The feature style configuration
@@ -142,9 +142,10 @@ export declare class CollabStyler {
      * @param width Symbol width
      * @param height Symbol height
      * @param feature The feature being styled
+     * @param fallbackUri Direct style URI used when the symbol is not listed in `styles`
      * @returns Symbol URI from cache, or null if not yet loaded
      */
-    getSymbolURI(featureType: FeatureTypeConfig, name: string, width: number, height: number, feature: Feature): string | null;
+    getSymbolURI(featureType: FeatureTypeConfig, name: string, width: number, height: number, feature: Feature, fallbackUri?: string): string | null;
     /**
      * Get the glyph for a graphic
      * @param graphicName the name of the graphic

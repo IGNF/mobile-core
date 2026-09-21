@@ -258,6 +258,35 @@ function getResponseContentType(headers: unknown): string {
   return typeof value === 'string' && value.length > 0 ? value : 'image/png';
 }
 
+function toArrayBuffer(data: unknown): ArrayBuffer | null {
+  if (data instanceof ArrayBuffer) {
+    return data;
+  }
+
+  if (ArrayBuffer.isView(data)) {
+    return data.buffer.slice(
+      data.byteOffset,
+      data.byteOffset + data.byteLength
+    ) as ArrayBuffer;
+  }
+
+  // CapacitorHttp serializes arraybuffer responses as base64.
+  if (typeof data === 'string' && data.length > 0) {
+    try {
+      const binary = atob(data);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+      }
+      return bytes.buffer;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
 function createObjectUrlFromResponse(response: unknown): string | null {
   if (!response || typeof response !== 'object') {
     return null;
@@ -272,14 +301,35 @@ function createObjectUrlFromResponse(response: unknown): string | null {
     return URL.createObjectURL(httpResponse.data);
   }
 
-  if (httpResponse.data instanceof ArrayBuffer) {
-    const blob = new Blob([httpResponse.data], {
-      type: getResponseContentType(httpResponse.headers),
-    });
-    return URL.createObjectURL(blob);
+  const arrayBuffer = toArrayBuffer(httpResponse.data);
+  if (!arrayBuffer) {
+    return null;
   }
 
-  return null;
+  return URL.createObjectURL(new Blob([arrayBuffer], {
+    type: getResponseContentType(httpResponse.headers),
+  }));
+}
+
+function isExternalGraphicName(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value !== 'undefined';
+}
+
+function collectGraphicUrls(
+  style: StyleRule | StyleRuleWithMatcher | undefined,
+  urls: Record<string, string>
+): void {
+  if (!style) {
+    return;
+  }
+
+  if (isExternalGraphicName(style.externalGraphic) && typeof style.uri === 'string' && style.uri.length > 0) {
+    urls[style.externalGraphic] = style.uri;
+  }
+
+  for (const child of (style as StyleRuleWithMatcher).children ?? []) {
+    collectGraphicUrls(child, urls);
+  }
 }
 
 /**
@@ -470,35 +520,18 @@ export class CollabStyler {
    * @param fstyle The feature style configuration
    * @param feature The feature being styled (unused for now)
    */
-  public setImage(olStyle: Style, fstyle: StyleRule, feature: Feature): void {
-    // old code - needs refactoring for modern usage:
+  public setImage(olStyle: Style, fstyle: StyleRule, _feature: Feature): void {
     let image: Circle | Icon | RegularShape | undefined;
-    let img: string | undefined;
-    // TODO: .img seems to be a legacy property, see if it's still the way to use it
-    if (fstyle.img) {
-      img = fstyle.img
-    } else if (fstyle.externalGraphic && fstyle.externalGraphic !== 'undefined') {
-      img = fstyle.uri + '?width=' + fstyle.graphicWidth + '&height=' + fstyle.graphicWidth;
-    }
+    const img = fstyle.img;
+
     if (img) {
-      if (imageCache[img]) { // TODO: see where this is loaded, for the moment it's not
-        image = imageCache[img];
-      } else {
-        // Test download
-        const i = new Image();
-        // Save cache Image
-        i.addEventListener('load', () => {
-          imageCache[img!] = new Icon({ src: img! });
-          olStyle.setImage(imageCache[img!]);
-          // Note: feature.layer doesn't exist in OpenLayers 10+
-          // We replaced 'feature.layer.changed();' with 'feature.changed();'
-          // see if it's still correct of if it creates issues
-          feature.changed();
-        });
-        i.src = img;
-        // Use default circle while image loads
-        image = this.getDefaultCircleImage();
+      if (!imageCache[img]) {
+        imageCache[img] = new Icon({ src: img });
       }
+      image = imageCache[img];
+    } else if (isExternalGraphicName(fstyle.externalGraphic)) {
+      // Authenticated symbol is still loading via getSymbolURI.
+      image = this.getDefaultCircleImage();
     } else {
       const radius = Number(fstyle.pointRadius) || 5;
 
@@ -670,28 +703,22 @@ export class CollabStyler {
       // Format the style with feature properties
       const fstyle = this.formatFeatureStyle((style || {}) as StyleRule, feature);
 
-      // Handle symbol libraries
-      if (style?.name) {
-        const defaultIconSize = 16; // Default icon size
-        if (featureType.symbo_attribute) {
-          fstyle.radius = 5;
-          fstyle.img = this.getSymbolURI(
-            featureType,
-            style.name + '/' + feature.get(featureType.symbo_attribute.name),
-            style.graphicWidth || defaultIconSize,
-            style.graphicHeight || defaultIconSize,
-            feature
-          );
-        } else if (style.externalGraphic) {
-          fstyle.radius = 5;
-          fstyle.img = this.getSymbolURI(
-            featureType,
-            style.externalGraphic,
-            style.graphicWidth || defaultIconSize,
-            style.graphicHeight || defaultIconSize,
-            feature
-          );
-        }
+      const symbolName = featureType.symbo_attribute && style?.name
+        ? `${style.name}/${feature.get(featureType.symbo_attribute.name)}`
+        : style && isExternalGraphicName(style.externalGraphic)
+          ? style.externalGraphic
+          : undefined;
+
+      if (symbolName && style) {
+        fstyle.radius = 5;
+        fstyle.img = this.getSymbolURI(
+          featureType,
+          symbolName,
+          Number(style.graphicWidth) || 16,
+          Number(style.graphicHeight) || 16,
+          feature,
+          style.uri
+        ) ?? undefined;
       }
 
       // Create the OpenLayers style
@@ -778,20 +805,11 @@ export class CollabStyler {
   public getUrls(featureType: FeatureTypeConfig): Record<string, string> {
     const urls: Record<string, string> = {};
 
-    if (!featureType.styles) return urls;
+    collectGraphicUrls(featureType.style, urls);
 
-    for (const i in featureType.styles) {
-      const style = featureType.styles[i] as any;
-      if (style.externalGraphic && style.uri) {
-        urls[style.externalGraphic] = style.uri;
-      }
-      if (style.children) {
-        for (const j in style.children) {
-          const child = style.children[j];
-          if (child.externalGraphic && child.uri) {
-            urls[child.externalGraphic] = child.uri;
-          }
-        }
+    if (featureType.styles) {
+      for (const style of featureType.styles) {
+        collectGraphicUrls(style, urls);
       }
     }
 
@@ -808,9 +826,17 @@ export class CollabStyler {
    * @param width Symbol width
    * @param height Symbol height
    * @param feature The feature being styled
+   * @param fallbackUri Direct style URI used when the symbol is not listed in `styles`
    * @returns Symbol URI from cache, or null if not yet loaded
    */
-  public getSymbolURI(featureType: FeatureTypeConfig, name: string, width: number, height: number, feature: Feature): string | null {
+  public getSymbolURI(
+    featureType: FeatureTypeConfig,
+    name: string,
+    width: number,
+    height: number,
+    feature: Feature,
+    fallbackUri?: string
+  ): string | null {
     const cacheName = name.replace(/\//g, '_') + '_' + width + 'x' + height;
 
     // Already in cache
@@ -819,8 +845,9 @@ export class CollabStyler {
     }
 
     const stylePictos = this.getUrls(featureType);
+    const symbolUri = stylePictos[name] ?? fallbackUri;
 
-    if (!stylePictos[name]) {
+    if (!symbolUri) {
       console.warn("Symbol not found in feature type styles:", name);
       return null;
     }
@@ -828,13 +855,14 @@ export class CollabStyler {
     if (this._cacheLoading.indexOf(cacheName) !== -1) return null;
 
     // Check if UserManager is available for API calls
-    const getDocument = this._userManager?.apiClient?.getDocument;
+    const apiClient = this._userManager?.apiClient;
+    const getDocument = apiClient?.getDocument?.bind(apiClient);
     if (typeof getDocument !== 'function') {
       console.warn("UserManager not initialized - cannot load symbol from API");
       return null;
     }
 
-    const img = stylePictos[name] + '?width=' + width + '&height=' + height;
+    const img = `${symbolUri}${symbolUri.includes('?') ? '&' : '?'}width=${width}&height=${height}`;
 
     this._cacheLoading.push(cacheName);
 
@@ -842,6 +870,7 @@ export class CollabStyler {
       .then((response) => {
         const objectUrl = createObjectUrlFromResponse(response);
         if (!objectUrl) {
+          console.warn('Failed to convert symbol response to an image URL', name);
           return;
         }
 
