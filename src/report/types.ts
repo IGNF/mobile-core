@@ -142,6 +142,48 @@ export const STATUS_STYLES: Partial<Record<ReportStatus, Style>> = {
       fill: baseCircleFill
     })
   }),
+  [ReportStatus.Draft]: new Style({
+    image: new CircleStyle({
+      radius: BASE_RADIUS,
+      stroke: new Stroke({ color: [120, 128, 137], width: 3 }),
+      fill: baseCircleFill
+    })
+  }),
+  [ReportStatus.Pending_Qualification]: new Style({
+    image: new CircleStyle({
+      radius: BASE_RADIUS,
+      stroke: new Stroke({ color: [255, 128, 0], width: 3 }),
+      fill: baseCircleFill,
+    }),
+  }),
+  [ReportStatus.Pending_Entry]: new Style({
+    image: new CircleStyle({
+      radius: BASE_RADIUS,
+      stroke: new Stroke({ color: [204, 102, 0], width: 3 }),
+      fill: baseCircleFill,
+    }),
+  }),
+  [ReportStatus.Pending_Validation]: new Style({
+    image: new CircleStyle({
+      radius: BASE_RADIUS,
+      stroke: new Stroke({ color: [255, 170, 77], width: 3 }),
+      fill: baseCircleFill,
+    }),
+  }),
+  [ReportStatus.Valid_Already_Treated]: new Style({
+    image: new CircleStyle({
+      radius: BASE_RADIUS,
+      stroke: new Stroke({ color: [0, 140, 0], width: 3 }),
+      fill: baseCircleFill,
+    }),
+  }),
+  [ReportStatus.Reject_Irrelevant]: new Style({
+    image: new CircleStyle({
+      radius: BASE_RADIUS,
+      stroke: new Stroke({ color: [180, 0, 0], width: 3 }),
+      fill: baseCircleFill,
+    }),
+  }),
 };
 
 /**

@@ -13,6 +13,16 @@ et le projet suit [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [1.0.3] - 2026-09-30
+
+### Added
+
+- Added missing report status styles in the STATUS_STYLES const
+
+### Changed
+
+### Fixed
+
 ## [1.0.2] - 2026-09-21
 
 ### Added

@@ -1,0 +1,19 @@
+import { W as e } from "./index-jsDoGkbl.js";
+class o extends e {
+  constructor() {
+    super(), this._lastWindow = null;
+  }
+  async open(s) {
+    this._lastWindow = window.open(s.url, s.windowName || "_blank");
+  }
+  async close() {
+    return new Promise((s, n) => {
+      this._lastWindow != null ? (this._lastWindow.close(), this._lastWindow = null, s()) : n("No active window to close!");
+    });
+  }
+}
+new o();
+export {
+  o as BrowserWeb
+};
+//# sourceMappingURL=web-mO_gssv3.js.map
