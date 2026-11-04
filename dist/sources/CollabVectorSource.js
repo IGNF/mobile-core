@@ -22,6 +22,9 @@ const FEATURE_TRANSACTION_STATES = {
     update: 'Update',
     delete: 'Delete',
 };
+/** First wait before loading a failed tile again. The next waits double, up to three retries. */
+const FAILED_EXTENT_RETRY_MS = 2000;
+const MAX_FAILED_EXTENT_RETRIES = 3;
 function isFeatureState(featureState, expectedState) {
     if (featureState === expectedState) {
         return true;
@@ -57,6 +60,9 @@ export default class CollabVectorSource extends VectorSource {
         this._writeUpdateCounter = 0;
         this._tileLoading = 0;
         this._projectionCode = DEFAULT_VECTOR_PROJECTION_CODE;
+        this._extentRetryGeneration = 0;
+        this._extentRetryTimers = [];
+        this._extentRetryAttempts = new Map();
         this.localProperties = {};
         /** Features that should persist across source reloads (e.g., currently edited features) */
         this.preservedFeatures = new Collection();
@@ -588,10 +594,15 @@ export default class CollabVectorSource extends VectorSource {
         this.dispatchEvent({ type: 'reload', maxreload: this.localProperties.maxReload });
         this.refresh();
     }
+    refresh() {
+        this._invalidateExtentRetries();
+        super.refresh();
+    }
     loaderFn(extent, resolution, projection, success, failure) {
         void this._loadFeatures(extent, resolution, projection, success, failure);
     }
     async _loadFeatures(extent, resolution, projection, success, failure) {
+        const loadGeneration = this._extentRetryGeneration;
         this._projectionCode = typeof projection === 'string'
             ? projection
             : (projection?.getCode?.() || DEFAULT_VECTOR_PROJECTION_CODE);
@@ -651,6 +662,9 @@ export default class CollabVectorSource extends VectorSource {
             if (loadedCount >= (this._options.maxFeatures || COLLAB_VECTOR_DEFAULT_VALUES.MAX_FEATURES)) {
                 this.dispatchEvent({ type: 'overload' });
             }
+            if (loadGeneration === this._extentRetryGeneration) {
+                this._extentRetryAttempts.delete(extent.join(','));
+            }
             if (success)
                 success(finalFeatures);
         }
@@ -662,9 +676,41 @@ export default class CollabVectorSource extends VectorSource {
                 status: 'error',
                 remains: Math.max(0, --this._tileLoading)
             });
-            if (failure)
-                failure();
+            this._failExtentLoad(extent, loadGeneration, failure, error);
         }
+    }
+    /**
+     * OpenLayers marks the extent loaded as soon as the loader starts, and does not undo that when `failure` runs.
+     * A failed tile is loaded again up to three times. After that, the extent stays marked loaded until a refresh.
+     */
+    _failExtentLoad(extent, loadGeneration, failure, error) {
+        if (failure)
+            failure();
+        if (loadGeneration !== this._extentRetryGeneration)
+            return;
+        if (error instanceof Error && error.message === 'Table WFS URL is missing')
+            return;
+        const key = extent.join(',');
+        const attempt = this._extentRetryAttempts.get(key) ?? 0;
+        if (attempt >= MAX_FAILED_EXTENT_RETRIES)
+            return;
+        this._extentRetryAttempts.set(key, attempt + 1);
+        const timer = setTimeout(() => {
+            this._extentRetryTimers = this._extentRetryTimers.filter((candidate) => candidate !== timer);
+            if (loadGeneration !== this._extentRetryGeneration)
+                return;
+            this.removeLoadedExtent(extent);
+            this.changed();
+        }, FAILED_EXTENT_RETRY_MS * 2 ** attempt);
+        this._extentRetryTimers.push(timer);
+    }
+    _invalidateExtentRetries() {
+        this._extentRetryGeneration += 1;
+        this._extentRetryAttempts.clear();
+        for (const timer of this._extentRetryTimers) {
+            clearTimeout(timer);
+        }
+        this._extentRetryTimers = [];
     }
     async _loadFromOnline(extent) {
         const parameters = this.getWFSParams(extent, this._projectionCode);
@@ -817,6 +863,9 @@ export default class CollabVectorSource extends VectorSource {
                     dataProjection: this.localProperties.srsName,
                     featureProjection: projectionCode
                 });
+                if (!geometry) {
+                    return null;
+                }
                 return new Feature({ geometry });
             }
             catch {

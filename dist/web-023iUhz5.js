@@ -1,4 +1,4 @@
-import { W as t } from "./index-jsDoGkbl.js";
+import { W as t } from "./index-CLwwZPpt.js";
 class s extends t {
   constructor() {
     super(), this.handleVisibilityChange = () => {
@@ -35,4 +35,4 @@ class s extends t {
 export {
   s as AppWeb
 };
-//# sourceMappingURL=web-6JZn9cf2.js.map
+//# sourceMappingURL=web-023iUhz5.js.map

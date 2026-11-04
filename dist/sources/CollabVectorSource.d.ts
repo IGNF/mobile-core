@@ -14,6 +14,9 @@ export default class CollabVectorSource extends VectorSource {
     private _cache?;
     private _tileLoading;
     private _projectionCode;
+    private _extentRetryGeneration;
+    private _extentRetryTimers;
+    private _extentRetryAttempts;
     table: Table;
     localProperties: Record<string, any>;
     /** Features that should persist across source reloads (e.g., currently edited features) */
@@ -55,8 +58,15 @@ export default class CollabVectorSource extends VectorSource {
     private _loadEditionCacheFromCandidates;
     setLoading(isLoading: boolean): void;
     reload(): void;
+    refresh(): void;
     loaderFn(extent: number[], resolution: number, projection: any, success?: (features: Feature[]) => void, failure?: () => void): void;
     private _loadFeatures;
+    /**
+     * OpenLayers marks the extent loaded as soon as the loader starts, and does not undo that when `failure` runs.
+     * A failed tile is loaded again up to three times. After that, the extent stays marked loaded until a refresh.
+     */
+    private _failExtentLoad;
+    private _invalidateExtentRetries;
     private _loadFromOnline;
     private _loadFromOfflineCache;
     private _saveFeaturesToOfflineCache;

@@ -165,6 +165,9 @@ export default class ReportSource {
         dataProjection: 'EPSG:4326',
         featureProjection: projection
       });
+      if (!f) {
+        return;
+      }
       f.setProperties({ report: this.createTransportFeature(report) });
       loadedFeatures.push(f);
     });

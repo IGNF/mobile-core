@@ -36,6 +36,10 @@ const FEATURE_TRANSACTION_STATES = {
 type FeatureTransactionState =
   typeof FEATURE_TRANSACTION_STATES[keyof typeof FEATURE_TRANSACTION_STATES];
 
+/** First wait before loading a failed tile again. The next waits double, up to three retries. */
+const FAILED_EXTENT_RETRY_MS = 2000;
+const MAX_FAILED_EXTENT_RETRIES = 3;
+
 function isFeatureState(
   featureState: unknown,
   expectedState: FeatureTransactionState
@@ -78,6 +82,9 @@ export default class CollabVectorSource extends VectorSource {
   private _cache?: any; // ICacheStorage - avoiding circular dependency
   private _tileLoading = 0;
   private _projectionCode = DEFAULT_VECTOR_PROJECTION_CODE;
+  private _extentRetryGeneration = 0;
+  private _extentRetryTimers: ReturnType<typeof setTimeout>[] = [];
+  private _extentRetryAttempts = new Map<string, number>();
 
   public table!: Table;
   public localProperties: Record<string, any> = {};
@@ -727,6 +734,11 @@ export default class CollabVectorSource extends VectorSource {
     this.refresh();
   }
 
+  public refresh(): void {
+    this._invalidateExtentRetries();
+    super.refresh();
+  }
+
   public loaderFn(
     extent: number[],
     resolution: number,
@@ -744,6 +756,7 @@ export default class CollabVectorSource extends VectorSource {
     success?: (features: Feature[]) => void,
     failure?: () => void
   ): Promise<void> {
+    const loadGeneration = this._extentRetryGeneration;
     this._projectionCode = typeof projection === 'string'
       ? projection
       : (projection?.getCode?.() || DEFAULT_VECTOR_PROJECTION_CODE);
@@ -817,6 +830,9 @@ export default class CollabVectorSource extends VectorSource {
         this.dispatchEvent({ type: 'overload' } as any);
       }
 
+      if (loadGeneration === this._extentRetryGeneration) {
+        this._extentRetryAttempts.delete(extent.join(','));
+      }
       if (success) success(finalFeatures);
     } catch (error: any) {
       this._isLoading = false;
@@ -826,8 +842,45 @@ export default class CollabVectorSource extends VectorSource {
         status: 'error',
         remains: Math.max(0, --this._tileLoading)
       } as any);
-      if (failure) failure();
+      this._failExtentLoad(extent, loadGeneration, failure, error);
     }
+  }
+
+  /**
+   * OpenLayers marks the extent loaded as soon as the loader starts, and does not undo that when `failure` runs.
+   * A failed tile is loaded again up to three times. After that, the extent stays marked loaded until a refresh.
+   */
+  private _failExtentLoad(
+    extent: number[],
+    loadGeneration: number,
+    failure?: () => void,
+    error?: unknown
+  ): void {
+    if (failure) failure();
+    if (loadGeneration !== this._extentRetryGeneration) return;
+    if (error instanceof Error && error.message === 'Table WFS URL is missing') return;
+
+    const key = extent.join(',');
+    const attempt = this._extentRetryAttempts.get(key) ?? 0;
+    if (attempt >= MAX_FAILED_EXTENT_RETRIES) return;
+
+    this._extentRetryAttempts.set(key, attempt + 1);
+    const timer = setTimeout(() => {
+      this._extentRetryTimers = this._extentRetryTimers.filter((candidate) => candidate !== timer);
+      if (loadGeneration !== this._extentRetryGeneration) return;
+      this.removeLoadedExtent(extent);
+      this.changed();
+    }, FAILED_EXTENT_RETRY_MS * 2 ** attempt);
+    this._extentRetryTimers.push(timer);
+  }
+
+  private _invalidateExtentRetries(): void {
+    this._extentRetryGeneration += 1;
+    this._extentRetryAttempts.clear();
+    for (const timer of this._extentRetryTimers) {
+      clearTimeout(timer);
+    }
+    this._extentRetryTimers = [];
   }
 
   private async _loadFromOnline(extent: number[]): Promise<unknown> {
@@ -1014,6 +1067,9 @@ export default class CollabVectorSource extends VectorSource {
           dataProjection: this.localProperties.srsName,
           featureProjection: projectionCode
         });
+        if (!geometry) {
+          return null;
+        }
         return new Feature({ geometry }) as Feature<Geometry>;
       } catch {
         return null;
