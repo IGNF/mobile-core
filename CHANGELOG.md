@@ -13,11 +13,22 @@ et le projet suit [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [1.0.4] - 2026-11-03
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Une tuile collaborative dont le chargement échoue est redemandée au plus trois fois, après 2 s, 4 s puis 8 s. Au-delà, elle reste marquée comme chargée jusqu'au prochain rafraîchissement.
+- Une projection inconnue ou une URL WFS absente n'est pas rejouée.
+
 ## [1.0.3] - 2026-09-30
 
 ### Added
 
-- Added missing report status styles in the STATUS_STYLES const
+- Ajout de styles manquants liés au statut des signalements dans la const STATUS_STYLES
 
 ### Changed
 
@@ -31,7 +42,7 @@ et le projet suit [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Fix an image (symbology) loading issue (needed authentication to get it)
+- Corrige un problème de chargement des images (symbology) (l'authentification était requise)
 
 ## [1.0.1] - 2026-05-13
 
@@ -39,6 +50,6 @@ et le projet suit [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- Updated the definition of the 'Community' interface
+- Mise à jour de la définition de l'interface 'Community'
 
 ### Fixed

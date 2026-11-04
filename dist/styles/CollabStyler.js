@@ -605,10 +605,9 @@ export class CollabStyler {
                     const lrot = (sens, geom) => {
                         if (sens !== direct && sens !== inverse)
                             return 0;
-                        let geometry = geom;
-                        if (geom instanceof MultiLineString) {
-                            geometry = geom.getLineString(0);
-                        }
+                        const geometry = geom instanceof MultiLineString ? geom.getLineString(0) : geom;
+                        if (!geometry)
+                            return 0;
                         const coords = geometry.getCoordinates();
                         let x = 0, y = 0, dl = 0;
                         const length = geometry.getLength();
