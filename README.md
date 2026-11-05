@@ -42,12 +42,13 @@ Librairie TypeScript fournissant les fonctionnalites cartographiques et de cache
 ## Installation
 
 ```bash
-npm install @ign/mobile-core
+npm install @ign/mobile-core ol
 ```
+
+`ol` (`^10.6.1`) est une dépendance pair : l'application fournit sa version, et la librairie l'utilise au lieu d'embarquer sa propre copie.
 
 **Dependances principales :**
 
-- `ol` (OpenLayers 10.x)
 - `ol-ext` (4.x)
 - `proj4`
 - `collaboratif-client-api`

@@ -10,8 +10,9 @@ export default defineConfig({
 			fileName: 'index'
 		},
 		rollupOptions: {
-			// Externalize dependencies - they won't be bundled
-			external: ['ol', 'ol-ext', 'proj4'],
+			// Externalize dependencies - they won't be bundled.
+			// A pattern is required: a plain 'ol' string does not match subpaths such as 'ol/Feature'.
+			external: /^(ol|ol-ext|proj4)(\/|$)/,
 			output: {
 				// Preserve module structure for tree-shaking
 				preserveModules: false,

@@ -13,6 +13,19 @@ et le projet suit [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [1.0.5] - 2026-11-05
+
+### Added
+
+### Changed
+
+- `ol` passe en `peerDependencies` (`^10.6.1`) : l'application doit déclarer sa propre version d'OpenLayers, et une version hors de cette plage fait échouer l'installation au lieu d'ajouter une seconde copie.
+
+### Fixed
+
+- `ol`, `ol-ext` et `proj4` ne sont plus embarqués dans le `dist` : l'option `external` de Vite ne couvrait pas leurs sous-chemins, comme `ol/Feature`.
+
+
 ## [1.0.4] - 2026-11-03
 
 ### Added
