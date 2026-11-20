@@ -13,6 +13,16 @@ et le projet suit [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [1.0.6] - 2026-11-20
+
+### Added
+
+### Changed
+
+- Montée de version de la dépendance Vite (voir https://github.com/vitejs/vite/security/advisories/GHSA-p4f5-76q4-ffq7)
+
+### Fixed
+
 ## [1.0.5] - 2026-11-05
 
 ### Added
